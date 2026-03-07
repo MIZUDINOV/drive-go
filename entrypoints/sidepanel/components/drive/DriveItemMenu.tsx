@@ -4,6 +4,7 @@ import type { DriveItem } from "./driveTypes";
 
 type DriveItemMenuProps = {
   item: DriveItem;
+  onOpen: () => void;
 };
 
 function logPlaceholder(action: string, item: DriveItem) {
@@ -29,7 +30,7 @@ export function DriveItemMenu(props: DriveItemMenuProps) {
         <DropdownMenu.Content class="drive-item-menu-content">
           <DropdownMenu.Item
             class="drive-item-menu-item"
-            onSelect={() => logPlaceholder("open", props.item)}
+            onSelect={props.onOpen}
           >
             Открыть
           </DropdownMenu.Item>

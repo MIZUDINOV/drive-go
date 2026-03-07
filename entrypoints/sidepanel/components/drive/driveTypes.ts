@@ -14,6 +14,7 @@ export type DriveItem = {
   ownerName?: string;
   iconLink?: string;
   thumbnailLink?: string;
+  webViewLink?: string;
 };
 
 export type DriveApiFile = {
@@ -24,6 +25,7 @@ export type DriveApiFile = {
   size?: string;
   iconLink?: string;
   thumbnailLink?: string;
+  webViewLink?: string;
   owners?: DriveOwner[];
 };
 

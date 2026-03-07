@@ -1,5 +1,6 @@
 import type {
   DriveApiFile,
+  DriveItem,
   DriveListMyDriveResponse,
 } from "../components/drive/driveTypes";
 
@@ -9,7 +10,39 @@ type DriveListResult = {
 };
 
 const DRIVE_FIELDS =
-  "nextPageToken,files(id,name,mimeType,modifiedTime,size,iconLink,thumbnailLink,owners(displayName))";
+  "nextPageToken,files(id,name,mimeType,modifiedTime,size,iconLink,thumbnailLink,webViewLink,owners(displayName))";
+
+function getDriveItemOpenUrl(item: Pick<DriveItem, "id" | "mimeType" | "webViewLink">): string {
+  if (item.webViewLink) {
+    return item.webViewLink;
+  }
+
+  switch (item.mimeType) {
+    case "application/vnd.google-apps.document":
+      return `https://docs.google.com/document/d/${item.id}/edit`;
+    case "application/vnd.google-apps.spreadsheet":
+      return `https://docs.google.com/spreadsheets/d/${item.id}/edit`;
+    case "application/vnd.google-apps.presentation":
+      return `https://docs.google.com/presentation/d/${item.id}/edit`;
+    case "application/vnd.google-apps.form":
+      return `https://docs.google.com/forms/d/${item.id}/edit`;
+    default:
+      return `https://drive.google.com/file/d/${item.id}/view`;
+  }
+}
+
+export async function openDriveItemInNewTab(
+  item: Pick<DriveItem, "id" | "mimeType" | "webViewLink">,
+): Promise<void> {
+  const url = getDriveItemOpenUrl(item);
+
+  if (browser.tabs?.create) {
+    await browser.tabs.create({ url });
+    return;
+  }
+
+  window.open(url, "_blank", "noopener,noreferrer");
+}
 
 async function getAccessToken(): Promise<Browser.identity.GetAuthTokenResult> {
   try {

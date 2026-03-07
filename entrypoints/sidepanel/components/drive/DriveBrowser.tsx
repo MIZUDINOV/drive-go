@@ -7,6 +7,7 @@ import { useDriveBrowser } from "./useDriveBrowser";
 import { DriveItemMenu } from "./DriveItemMenu";
 import type { DriveItem, DriveViewMode } from "./driveTypes";
 import { isFolder } from "./driveTypes";
+import { openDriveItemInNewTab } from "../../services/driveApi";
 
 type DriveBrowserProps = {
   formatDate: (dateIso: string) => string;
@@ -38,7 +39,10 @@ export function DriveBrowser(props: DriveBrowserProps) {
   const onItemDoubleClick = (item: DriveItem) => {
     if (isFolder(item)) {
       void browserState.openFolder(item);
+      return;
     }
+
+    void openDriveItemInNewTab(item);
   };
 
   const hasPreview = (item: DriveItem) =>
@@ -180,7 +184,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
                               </div>
                             </div>
 
-                            <DriveItemMenu item={item} />
+                            <DriveItemMenu item={item} onOpen={() => onItemDoubleClick(item)} />
                           </div>
                         </article>
                       )}
@@ -212,7 +216,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
                               </div>
                             </div>
 
-                            <DriveItemMenu item={item} />
+                            <DriveItemMenu item={item} onOpen={() => onItemDoubleClick(item)} />
                           </div>
 
                           <div class="drive-grid-preview">
@@ -276,7 +280,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
                       </div>
                     </div>
 
-                    <DriveItemMenu item={item} />
+                    <DriveItemMenu item={item} onOpen={() => onItemDoubleClick(item)} />
                   </article>
                 )}
               </For>

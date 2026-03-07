@@ -17,6 +17,7 @@ function mapApiFile(file: DriveApiFile): DriveItem {
     ownerName: file.owners?.[0]?.displayName,
     iconLink: file.iconLink,
     thumbnailLink: file.thumbnailLink,
+    webViewLink: file.webViewLink,
   };
 }
 
