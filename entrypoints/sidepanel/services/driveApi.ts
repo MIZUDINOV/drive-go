@@ -348,6 +348,44 @@ export async function moveFile(
 
 type RenameFileResult = { ok: true } | { ok: false; error: string };
 
+type TrashFileResult = { ok: true } | { ok: false; error: string };
+
+export async function trashFile(fileId: string): Promise<TrashFileResult> {
+  try {
+    const token = await getAccessToken();
+
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ trashed: true }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        ok: false,
+        error: `Ошибка удаления ${response.status}: ${errorText}`,
+      };
+    }
+
+    return { ok: true };
+  } catch (unknownError: unknown) {
+    return {
+      ok: false,
+      error:
+        unknownError instanceof Error
+          ? unknownError.message
+          : "Неизвестная ошибка",
+    };
+  }
+}
+
 export async function renameFile(
   fileId: string,
   newName: string,

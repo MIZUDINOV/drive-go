@@ -5,6 +5,7 @@ import { Button } from "@kobalte/core/button";
 import type { DriveItem } from "./driveTypes";
 import { MoveFileDialog } from "./MoveFileDialog";
 import { RenameDialog } from "./RenameDialog";
+import { TrashConfirmDialog } from "./TrashConfirmDialog";
 
 type MenuItemsProps = {
   item: DriveItem;
@@ -13,6 +14,7 @@ type MenuItemsProps = {
   onMoveSuccess?: () => void;
   onMoveClick: () => void;
   onRenameClick: () => void;
+  onTrashClick: () => void;
 };
 
 function logPlaceholder(action: string, item: DriveItem) {
@@ -23,7 +25,9 @@ function DropdownMenuItems(props: MenuItemsProps) {
   return (
     <>
       <DropdownMenu.Item class="drive-item-menu-item" onSelect={props.onOpen}>
-        <span class="material-symbols-outlined drive-item-menu-icon">open_in_new</span>
+        <span class="material-symbols-outlined drive-item-menu-icon">
+          open_in_new
+        </span>
         <DropdownMenu.ItemLabel>Открыть</DropdownMenu.ItemLabel>
       </DropdownMenu.Item>
       <DropdownMenu.Item
@@ -37,21 +41,27 @@ function DropdownMenuItems(props: MenuItemsProps) {
         class="drive-item-menu-item"
         onSelect={props.onMoveClick}
       >
-        <span class="material-symbols-outlined drive-item-menu-icon">drive_file_move</span>
+        <span class="material-symbols-outlined drive-item-menu-icon">
+          drive_file_move
+        </span>
         <DropdownMenu.ItemLabel>Переместить</DropdownMenu.ItemLabel>
       </DropdownMenu.Item>
       <DropdownMenu.Item
         class="drive-item-menu-item"
-        onSelect={() => logPlaceholder("delete", props.item)}
+        onSelect={props.onTrashClick}
       >
-        <span class="material-symbols-outlined drive-item-menu-icon">delete</span>
-        <DropdownMenu.ItemLabel>Удалить</DropdownMenu.ItemLabel>
+        <span class="material-symbols-outlined drive-item-menu-icon">
+          delete
+        </span>
+        <DropdownMenu.ItemLabel>Отправить в корзину</DropdownMenu.ItemLabel>
       </DropdownMenu.Item>
       <DropdownMenu.Item
         class="drive-item-menu-item"
         onSelect={() => logPlaceholder("share", props.item)}
       >
-        <span class="material-symbols-outlined drive-item-menu-icon">person_add</span>
+        <span class="material-symbols-outlined drive-item-menu-icon">
+          person_add
+        </span>
         <DropdownMenu.ItemLabel>Поделиться</DropdownMenu.ItemLabel>
       </DropdownMenu.Item>
     </>
@@ -62,9 +72,12 @@ function ContextMenuItems(props: MenuItemsProps) {
   return (
     <>
       <ContextMenu.Item class="drive-item-menu-item" onSelect={props.onOpen}>
-        <span class="material-symbols-outlined drive-item-menu-icon">open_in_new</span>
+        <span class="material-symbols-outlined drive-item-menu-icon">
+          open_in_new
+        </span>
         <ContextMenu.ItemLabel>Открыть</ContextMenu.ItemLabel>
       </ContextMenu.Item>
+
       <ContextMenu.Item
         class="drive-item-menu-item"
         onSelect={props.onRenameClick}
@@ -72,26 +85,35 @@ function ContextMenuItems(props: MenuItemsProps) {
         <span class="material-symbols-outlined drive-item-menu-icon">edit</span>
         <ContextMenu.ItemLabel>Переименовать</ContextMenu.ItemLabel>
       </ContextMenu.Item>
+
       <ContextMenu.Item
         class="drive-item-menu-item"
         onSelect={props.onMoveClick}
       >
-        <span class="material-symbols-outlined drive-item-menu-icon">drive_file_move</span>
+        <span class="material-symbols-outlined drive-item-menu-icon">
+          drive_file_move
+        </span>
         <ContextMenu.ItemLabel>Переместить</ContextMenu.ItemLabel>
       </ContextMenu.Item>
-      <ContextMenu.Item
-        class="drive-item-menu-item"
-        onSelect={() => logPlaceholder("delete", props.item)}
-      >
-        <span class="material-symbols-outlined drive-item-menu-icon">delete</span>
-        <ContextMenu.ItemLabel>Удалить</ContextMenu.ItemLabel>
-      </ContextMenu.Item>
+
       <ContextMenu.Item
         class="drive-item-menu-item"
         onSelect={() => logPlaceholder("share", props.item)}
       >
-        <span class="material-symbols-outlined drive-item-menu-icon">person_add</span>
+        <span class="material-symbols-outlined drive-item-menu-icon">
+          person_add
+        </span>
         <ContextMenu.ItemLabel>Поделиться</ContextMenu.ItemLabel>
+      </ContextMenu.Item>
+
+      <ContextMenu.Item
+        class="drive-item-menu-item"
+        onSelect={props.onTrashClick}
+      >
+        <span class="material-symbols-outlined drive-item-menu-icon">
+          delete
+        </span>
+        <ContextMenu.ItemLabel>Отправить в корзину</ContextMenu.ItemLabel>
       </ContextMenu.Item>
     </>
   );
@@ -108,6 +130,7 @@ type DriveItemContextMenuProps = {
 export function DriveItemContextMenu(props: DriveItemContextMenuProps) {
   const [isMoveDialogOpen, setIsMoveDialogOpen] = createSignal(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = createSignal(false);
+  const [isTrashDialogOpen, setIsTrashDialogOpen] = createSignal(false);
 
   const handleMoveClick = () => {
     setIsMoveDialogOpen(true);
@@ -117,13 +140,11 @@ export function DriveItemContextMenu(props: DriveItemContextMenuProps) {
     setIsRenameDialogOpen(true);
   };
 
-  const handleMoveSuccess = () => {
-    if (props.onMoveSuccess) {
-      props.onMoveSuccess();
-    }
+  const handleTrashClick = () => {
+    setIsTrashDialogOpen(true);
   };
 
-  const handleRenameSuccess = () => {
+  const handleSuccess = () => {
     if (props.onMoveSuccess) {
       props.onMoveSuccess();
     }
@@ -145,6 +166,7 @@ export function DriveItemContextMenu(props: DriveItemContextMenuProps) {
               onMoveSuccess={props.onMoveSuccess}
               onMoveClick={handleMoveClick}
               onRenameClick={handleRenameClick}
+              onTrashClick={handleTrashClick}
             />
           </ContextMenu.Content>
         </ContextMenu.Portal>
@@ -155,14 +177,21 @@ export function DriveItemContextMenu(props: DriveItemContextMenuProps) {
         currentFolderId={props.currentFolderId}
         open={isMoveDialogOpen()}
         onOpenChange={setIsMoveDialogOpen}
-        onMoveSuccess={handleMoveSuccess}
+        onMoveSuccess={handleSuccess}
       />
 
       <RenameDialog
         item={props.item}
         open={isRenameDialogOpen()}
         onOpenChange={setIsRenameDialogOpen}
-        onRenameSuccess={handleRenameSuccess}
+        onRenameSuccess={handleSuccess}
+      />
+
+      <TrashConfirmDialog
+        item={props.item}
+        open={isTrashDialogOpen()}
+        onOpenChange={setIsTrashDialogOpen}
+        onTrashSuccess={handleSuccess}
       />
     </>
   );
@@ -178,6 +207,7 @@ type DriveItemMenuButtonProps = {
 export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
   const [isMoveDialogOpen, setIsMoveDialogOpen] = createSignal(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = createSignal(false);
+  const [isTrashDialogOpen, setIsTrashDialogOpen] = createSignal(false);
 
   const handleMoveClick = () => {
     setIsMoveDialogOpen(true);
@@ -187,13 +217,11 @@ export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
     setIsRenameDialogOpen(true);
   };
 
-  const handleMoveSuccess = () => {
-    if (props.onMoveSuccess) {
-      props.onMoveSuccess();
-    }
+  const handleTrashClick = () => {
+    setIsTrashDialogOpen(true);
   };
 
-  const handleRenameSuccess = () => {
+  const handleSuccess = () => {
     if (props.onMoveSuccess) {
       props.onMoveSuccess();
     }
@@ -223,6 +251,7 @@ export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
               onMoveSuccess={props.onMoveSuccess}
               onMoveClick={handleMoveClick}
               onRenameClick={handleRenameClick}
+              onTrashClick={handleTrashClick}
             />
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
@@ -233,14 +262,21 @@ export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
         currentFolderId={props.currentFolderId}
         open={isMoveDialogOpen()}
         onOpenChange={setIsMoveDialogOpen}
-        onMoveSuccess={handleMoveSuccess}
+        onMoveSuccess={handleSuccess}
       />
 
       <RenameDialog
         item={props.item}
         open={isRenameDialogOpen()}
         onOpenChange={setIsRenameDialogOpen}
-        onRenameSuccess={handleRenameSuccess}
+        onRenameSuccess={handleSuccess}
+      />
+
+      <TrashConfirmDialog
+        item={props.item}
+        open={isTrashDialogOpen()}
+        onOpenChange={setIsTrashDialogOpen}
+        onTrashSuccess={handleSuccess}
       />
     </>
   );
