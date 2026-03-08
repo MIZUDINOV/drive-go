@@ -11,6 +11,7 @@ import {
   DEFAULT_DRIVE_SEARCH_FILTERS,
   type DriveSearchFilters,
 } from "./services/driveApi";
+import "material-symbols/outlined.css";
 import "./App.css";
 
 type TabItem = {
@@ -124,7 +125,7 @@ function App() {
 
       <section class="content-area">
         <header class="topbar">
-          <h1 class="brand">Google Drive Mini</h1>
+          <h1 class="brand">Google Drive Go</h1>
 
           <div class="search-block">
             <DriveSearchBar

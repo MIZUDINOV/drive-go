@@ -11,6 +11,7 @@ import { useDriveBrowser } from "./useDriveBrowser";
 import { DriveItemContextMenu, DriveItemMenuButton } from "./DriveItemMenu";
 import type { DriveItem, DriveViewMode } from "./driveTypes";
 import { isFolder } from "./driveTypes";
+import { DriveItemsSkeleton } from "./DriveItemsSkeleton";
 import {
   openDriveItemInNewTab,
   createFolder,
@@ -573,7 +574,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
         fallback={<p class="drive-error">Ошибка: {browserState.error()}</p>}
       >
         <Show
-          when={browserState.items().length > 0}
+          when={browserState.items().length > 0 || browserState.loading()}
           fallback={
             <p class="drive-empty">
               {browserState.loading()
@@ -583,26 +584,30 @@ export function DriveBrowser(props: DriveBrowserProps) {
           }
         >
           <Show
-            when={viewMode() === "list"}
-            fallback={
-              <div class="drive-grid-layout">
-                <Show when={folders().length > 0}>
-                  <div class="drive-grid-folders-row">
-                    <For each={folders()}>
-                      {(item) => (
-                        <DriveItemContextMenu
-                          item={item}
-                          currentFolderId={browserState.currentFolderId()}
-                          onOpen={() => onItemDoubleClick(item)}
-                          onMoveSuccess={browserState.refresh}
-                        >
-                          <article
-                            class="drive-item drive-item-grid drive-item-grid-folder"
-                            role="button"
-                            tabIndex={0}
-                            onClick={(event) => {
-                              if (event.detail === 2) {
-                                onItemDoubleClick(item);
+            when={!browserState.loading()}
+            fallback={<DriveItemsSkeleton viewMode={viewMode()} />}
+          >
+            <Show
+              when={viewMode() === "list"}
+              fallback={
+                <div class="drive-grid-layout">
+                  <Show when={folders().length > 0}>
+                    <div class="drive-grid-folders-row">
+                      <For each={folders()}>
+                        {(item) => (
+                          <DriveItemContextMenu
+                            item={item}
+                            currentFolderId={browserState.currentFolderId()}
+                            onOpen={() => onItemDoubleClick(item)}
+                            onMoveSuccess={browserState.refresh}
+                          >
+                            <article
+                              class="drive-item drive-item-grid drive-item-grid-folder"
+                              role="button"
+                              tabIndex={0}
+                              onClick={(event) => {
+                                if (event.detail === 2) {
+                                  onItemDoubleClick(item);
                               }
                             }}
                           >
@@ -762,6 +767,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
                 )}
               </For>
             </div>
+          </Show>
           </Show>
         </Show>
       </Show>

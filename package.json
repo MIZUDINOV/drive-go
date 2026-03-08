@@ -1,6 +1,6 @@
 {
-  "name": "wxt-solid-starter",
-  "description": "manifest.json description",
+  "name": "google-drive-go",
+  "description": "Google Drive Go - Chrome extension for managing your Google Drive files",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@kobalte/core": "^0.13.11",
+    "material-symbols": "^0.40.2",
     "solid-js": "^1.9.11"
   },
   "devDependencies": {

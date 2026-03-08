@@ -7,12 +7,9 @@ export default defineConfig({
   manifest: {
     permissions: ["identity", "storage"],
     host_permissions: ["https://www.googleapis.com/*"],
-    // action: {
-    //   default_title: "Google Drive Mini",
-    // },
-    // side_panel: {
-    //   default_path: "sidepanel.html",
-    // },
+    action: {
+      default_title: "Google Drive Go",
+    },
     oauth2: {
       client_id:
         "531460003531-oh7s45m6jl7sql4qj11l3nanoejrg5pl.apps.googleusercontent.com",

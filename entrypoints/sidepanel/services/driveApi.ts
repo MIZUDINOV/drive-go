@@ -10,7 +10,14 @@ type DriveListResult = {
 };
 
 export type DriveSearchFilters = {
-  type: "all" | "folders" | "documents" | "spreadsheets" | "presentations" | "pdf" | "images";
+  type:
+    | "all"
+    | "folders"
+    | "documents"
+    | "spreadsheets"
+    | "presentations"
+    | "pdf"
+    | "images";
   owner: "all" | "me";
   modified: "any" | "7d" | "30d" | "365d";
 };
@@ -33,7 +40,9 @@ function escapeQueryValue(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
 
-function getModifiedSinceIso(filter: DriveSearchFilters["modified"]): string | null {
+function getModifiedSinceIso(
+  filter: DriveSearchFilters["modified"],
+): string | null {
   if (filter === "any") {
     return null;
   }
@@ -95,7 +104,9 @@ function buildDriveQuery(
   return parts.join(" and ");
 }
 
-function getDriveItemOpenUrl(item: Pick<DriveItem, "id" | "mimeType" | "webViewLink">): string {
+function getDriveItemOpenUrl(
+  item: Pick<DriveItem, "id" | "mimeType" | "webViewLink">,
+): string {
   if (item.webViewLink) {
     return item.webViewLink;
   }
@@ -287,9 +298,7 @@ export async function createFolder(
   }
 }
 
-type MoveFileResult =
-  | { ok: true }
-  | { ok: false; error: string };
+type MoveFileResult = { ok: true } | { ok: false; error: string };
 
 export async function moveFile(
   fileId: string,
@@ -322,6 +331,51 @@ export async function moveFile(
       return {
         ok: false,
         error: `Ошибка перемещения ${response.status}: ${errorText}`,
+      };
+    }
+
+    return { ok: true };
+  } catch (unknownError: unknown) {
+    return {
+      ok: false,
+      error:
+        unknownError instanceof Error
+          ? unknownError.message
+          : "Неизвестная ошибка",
+    };
+  }
+}
+
+type RenameFileResult = { ok: true } | { ok: false; error: string };
+
+export async function renameFile(
+  fileId: string,
+  newName: string,
+): Promise<RenameFileResult> {
+  if (!newName.trim()) {
+    return { ok: false, error: "Имя не может быть пустым" };
+  }
+
+  try {
+    const token = await getAccessToken();
+
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: newName.trim() }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        ok: false,
+        error: `Ошибка переименования ${response.status}: ${errorText}`,
       };
     }
 

@@ -520,7 +520,7 @@
 
 .drive-browser-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
   padding: 8px 0;
@@ -529,7 +529,7 @@
 
 .drive-browser-filters {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
   flex-wrap: wrap;
   flex: 1;
@@ -1295,7 +1295,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .move-file-folder-item[data-checked] .move-file-folder-control {
@@ -1401,13 +1403,25 @@
   padding: 7px 8px;
   font-size: 12px;
   color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
   cursor: pointer;
+}
+
+.drive-item-menu-icon {
+  font-size: 18px;
+  color: #5f6368;
 }
 
 .drive-item-menu-item[data-highlighted] {
   background: #eef5ff;
   color: var(--accent);
   outline: none;
+}
+
+.drive-item-menu-item[data-highlighted] .drive-item-menu-icon {
+  color: var(--accent);
 }
 
 .drive-load-more-btn {
@@ -1692,4 +1706,81 @@
 
 .upload-file-input {
   display: none;
+}
+
+/* Skeleton Loaders */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    90deg,
+    #e0e7ee 0%,
+    #e0e7ee 40%,
+    #f5f7fa 50%,
+    #e0e7ee 60%,
+    #e0e7ee 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 2s ease-in-out infinite;
+}
+
+.skeleton > * {
+  visibility: hidden;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-item-list {
+  pointer-events: none;
+}
+
+.skeleton-item-list .drive-item-main {
+  gap: 8px;
+}
+
+.skeleton-icon {
+  flex: 0 0 auto;
+  display: block;
+}
+
+.skeleton-title {
+  width: 150px;
+  height: 13px;
+  display: block;
+}
+
+.skeleton-meta {
+  width: 200px;
+  height: 12px;
+  display: block;
+  margin-top: 4px;
+}
+
+.skeleton-menu {
+  flex: 0 0 auto;
+}
+
+.skeleton-item-grid {
+  pointer-events: none;
+}
+
+.skeleton-preview {
+  flex: 1 1 auto;
+  min-height: 200px;
+  display: block;
+}
+
+.skeleton-item-grid-folder {
+  pointer-events: none;
+}
+
+.skeleton-title-folder {
+  width: 100px;
 }
