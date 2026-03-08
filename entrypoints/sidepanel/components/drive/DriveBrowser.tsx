@@ -1,10 +1,10 @@
 import { For, Show, createEffect, createSignal } from "solid-js";
 import { Breadcrumbs } from "@kobalte/core/breadcrumbs";
-import { ToggleGroup } from "@kobalte/core/toggle-group";
+import { SegmentedControl } from "@kobalte/core/segmented-control";
 import { Button } from "@kobalte/core/button";
 import { FileTypeIcon } from "../../fileTypes";
 import { useDriveBrowser } from "./useDriveBrowser";
-import { DriveItemMenu } from "./DriveItemMenu";
+import { DriveItemContextMenu, DriveItemMenuButton } from "./DriveItemMenu";
 import type { DriveItem, DriveViewMode } from "./driveTypes";
 import { isFolder } from "./driveTypes";
 import { openDriveItemInNewTab } from "../../services/driveApi";
@@ -12,6 +12,7 @@ import { openDriveItemInNewTab } from "../../services/driveApi";
 type DriveBrowserProps = {
   formatDate: (dateIso: string) => string;
   formatSize: (size?: string) => string;
+  onFolderChange?: (folderId: string | null) => void;
 };
 
 function buildMetaLine(
@@ -33,6 +34,14 @@ export function DriveBrowser(props: DriveBrowserProps) {
       browserState.loadedFolderId() !== browserState.currentFolderId()
     ) {
       void browserState.loadFolder(browserState.currentFolderId(), true);
+    }
+  });
+
+  // Уведомляем родителя об изменении папки
+  createEffect(() => {
+    const folderId = browserState.currentFolderId();
+    if (props.onFolderChange) {
+      props.onFolderChange(folderId);
     }
   });
 
@@ -59,7 +68,9 @@ export function DriveBrowser(props: DriveBrowserProps) {
             type="button"
             class="drive-browser-back-btn"
             onClick={() => void browserState.goUp()}
-            disabled={browserState.breadcrumbs().length <= 1 || browserState.loading()}
+            disabled={
+              browserState.breadcrumbs().length <= 1 || browserState.loading()
+            }
           >
             Назад
           </Button>
@@ -74,7 +85,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
           </Button>
         </div>
 
-        <ToggleGroup
+        <SegmentedControl
           class="drive-view-toggle"
           value={viewMode()}
           onChange={(value) => {
@@ -82,44 +93,87 @@ export function DriveBrowser(props: DriveBrowserProps) {
               setViewMode(value);
             }
           }}
-          multiple={false}
+          aria-label="Режим отображения"
         >
-          <ToggleGroup.Item
+          <SegmentedControl.Item
             class="drive-view-toggle-item"
             value="list"
             aria-label="Режим списка"
             title="Список"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M6 7h12M6 12h12M6 17h12"
-                fill="none"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-width="1.8"
-              />
-            </svg>
-          </ToggleGroup.Item>
-          <ToggleGroup.Item
+            <SegmentedControl.ItemInput class="drive-view-toggle-input" />
+            <SegmentedControl.ItemLabel class="drive-view-toggle-item-label">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M6 7h12M6 12h12M6 17h12"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-width="1.8"
+                />
+              </svg>
+            </SegmentedControl.ItemLabel>
+          </SegmentedControl.Item>
+          <SegmentedControl.Item
             class="drive-view-toggle-item"
             value="grid"
             aria-label="Режим плиток"
             title="Плитка"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="5" y="5" width="5.5" height="5.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.7" />
-              <rect x="13.5" y="5" width="5.5" height="5.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.7" />
-              <rect x="5" y="13.5" width="5.5" height="5.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.7" />
-              <rect x="13.5" y="13.5" width="5.5" height="5.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.7" />
-            </svg>
-          </ToggleGroup.Item>
-        </ToggleGroup>
+            <SegmentedControl.ItemInput class="drive-view-toggle-input" />
+            <SegmentedControl.ItemLabel class="drive-view-toggle-item-label">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect
+                  x="5"
+                  y="5"
+                  width="5.5"
+                  height="5.5"
+                  rx="1"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                />
+                <rect
+                  x="13.5"
+                  y="5"
+                  width="5.5"
+                  height="5.5"
+                  rx="1"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                />
+                <rect
+                  x="5"
+                  y="13.5"
+                  width="5.5"
+                  height="5.5"
+                  rx="1"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                />
+                <rect
+                  x="13.5"
+                  y="13.5"
+                  width="5.5"
+                  height="5.5"
+                  rx="1"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                />
+              </svg>
+            </SegmentedControl.ItemLabel>
+          </SegmentedControl.Item>
+        </SegmentedControl>
       </header>
 
       <Breadcrumbs class="drive-breadcrumbs" aria-label="Путь">
         <For each={browserState.breadcrumbs()}>
           {(crumb, index) => {
-            const isLast = () => index() === browserState.breadcrumbs().length - 1;
+            const isLast = () =>
+              index() === browserState.breadcrumbs().length - 1;
             return (
               <>
                 <Breadcrumbs.Link
@@ -145,7 +199,10 @@ export function DriveBrowser(props: DriveBrowserProps) {
 
       <div class="drive-meta">Элементов: {browserState.items().length}</div>
 
-      <Show when={!browserState.error()} fallback={<p class="drive-error">Ошибка: {browserState.error()}</p>}>
+      <Show
+        when={!browserState.error()}
+        fallback={<p class="drive-error">Ошибка: {browserState.error()}</p>}
+      >
         <Show
           when={browserState.items().length > 0}
           fallback={
@@ -164,29 +221,41 @@ export function DriveBrowser(props: DriveBrowserProps) {
                   <div class="drive-grid-folders-row">
                     <For each={folders()}>
                       {(item) => (
-                        <article
-                          class="drive-item drive-item-grid drive-item-grid-folder"
-                          role="button"
-                          tabIndex={0}
-                          onClick={(event) => {
-                            if (event.detail === 2) {
-                              onItemDoubleClick(item);
-                            }
-                          }}
+                        <DriveItemContextMenu
+                          item={item}
+                          currentFolderId={browserState.currentFolderId()}
+                          onOpen={() => onItemDoubleClick(item)}
+                          onMoveSuccess={browserState.refresh}
                         >
-                          <div class="drive-grid-tile-top">
-                            <div class="drive-grid-title-wrap">
-                              <span class="name-icon" aria-hidden="true">
-                                <FileTypeIcon mimeType={item.mimeType} />
-                              </span>
-                              <div class="drive-item-title" title={item.name}>
-                                {item.name}
+                          <article
+                            class="drive-item drive-item-grid drive-item-grid-folder"
+                            role="button"
+                            tabIndex={0}
+                            onClick={(event) => {
+                              if (event.detail === 2) {
+                                onItemDoubleClick(item);
+                              }
+                            }}
+                          >
+                            <div class="drive-grid-tile-top">
+                              <div class="drive-grid-title-wrap">
+                                <span class="name-icon" aria-hidden="true">
+                                  <FileTypeIcon mimeType={item.mimeType} />
+                                </span>
+                                <div class="drive-item-title" title={item.name}>
+                                  {item.name}
+                                </div>
                               </div>
-                            </div>
 
-                            <DriveItemMenu item={item} onOpen={() => onItemDoubleClick(item)} />
-                          </div>
-                        </article>
+                              <DriveItemMenuButton
+                                item={item}
+                                currentFolderId={browserState.currentFolderId()}
+                                onOpen={() => onItemDoubleClick(item)}
+                                onMoveSuccess={browserState.refresh}
+                              />
+                            </div>
+                          </article>
+                        </DriveItemContextMenu>
                       )}
                     </For>
                   </div>
@@ -196,53 +265,72 @@ export function DriveBrowser(props: DriveBrowserProps) {
                   <div class="drive-items-grid">
                     <For each={files()}>
                       {(item) => (
-                        <article
-                          class="drive-item drive-item-grid"
-                          role="button"
-                          tabIndex={0}
-                          onClick={(event) => {
-                            if (event.detail === 2) {
-                              onItemDoubleClick(item);
-                            }
-                          }}
+                        <DriveItemContextMenu
+                          item={item}
+                          currentFolderId={browserState.currentFolderId()}
+                          onOpen={() => onItemDoubleClick(item)}
+                          onMoveSuccess={browserState.refresh}
                         >
-                          <div class="drive-grid-tile-top">
-                            <div class="drive-grid-title-wrap">
-                              <span class="name-icon" aria-hidden="true">
-                                <FileTypeIcon mimeType={item.mimeType} />
-                              </span>
-                              <div class="drive-item-title" title={item.name}>
-                                {item.name}
+                          <article
+                            class="drive-item drive-item-grid"
+                            role="button"
+                            tabIndex={0}
+                            onClick={(event) => {
+                              if (event.detail === 2) {
+                                onItemDoubleClick(item);
+                              }
+                            }}
+                          >
+                            <div class="drive-grid-tile-top">
+                              <div class="drive-grid-title-wrap">
+                                <span class="name-icon" aria-hidden="true">
+                                  <FileTypeIcon mimeType={item.mimeType} />
+                                </span>
+                                <div class="drive-item-title" title={item.name}>
+                                  {item.name}
+                                </div>
                               </div>
+
+                              <DriveItemMenuButton
+                                item={item}
+                                currentFolderId={browserState.currentFolderId()}
+                                onOpen={() => onItemDoubleClick(item)}
+                                onMoveSuccess={browserState.refresh}
+                              />
                             </div>
 
-                            <DriveItemMenu item={item} onOpen={() => onItemDoubleClick(item)} />
-                          </div>
+                            <div class="drive-grid-preview">
+                              <Show
+                                when={hasPreview(item)}
+                                fallback={
+                                  <span
+                                    class="drive-grid-preview-fallback"
+                                    aria-hidden="true"
+                                  >
+                                    <FileTypeIcon mimeType={item.mimeType} />
+                                  </span>
+                                }
+                              >
+                                <img
+                                  class="drive-grid-preview-image"
+                                  src={item.thumbnailLink}
+                                  alt=""
+                                  loading="lazy"
+                                  onError={(event) => {
+                                    event.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              </Show>
+                            </div>
 
-                          <div class="drive-grid-preview">
-                            <Show when={hasPreview(item)} fallback={<FileTypeIcon mimeType={item.mimeType} />}>
-                              <img
-                                class="drive-grid-preview-image"
-                                src={item.thumbnailLink}
-                                alt=""
-                                loading="lazy"
-                                onError={(event) => {
-                                  event.currentTarget.style.display = "none";
-                                }}
-                              />
-                              <span class="drive-grid-preview-fallback" aria-hidden="true">
-                                <FileTypeIcon mimeType={item.mimeType} />
-                              </span>
-                            </Show>
-                          </div>
-
-                          {/* <div
+                            {/* <div
                             class="drive-item-meta"
                             title={buildMetaLine(item, props.formatDate, props.formatSize)}
                           >
                             {buildMetaLine(item, props.formatDate, props.formatSize)}
                           </div> */}
-                        </article>
+                          </article>
+                        </DriveItemContextMenu>
                       )}
                     </For>
                   </div>
@@ -253,35 +341,55 @@ export function DriveBrowser(props: DriveBrowserProps) {
             <div class="drive-items-list">
               <For each={browserState.items()}>
                 {(item) => (
-                  <article
-                    class="drive-item drive-item-list"
-                    role="button"
-                    tabIndex={0}
-                    onClick={(event) => {
-                      if (event.detail === 2) {
-                        onItemDoubleClick(item);
-                      }
-                    }}
+                  <DriveItemContextMenu
+                    item={item}
+                    currentFolderId={browserState.currentFolderId()}
+                    onOpen={() => onItemDoubleClick(item)}
+                    onMoveSuccess={browserState.refresh}
                   >
-                    <div class="drive-item-main">
-                      <span class="name-icon" aria-hidden="true">
-                        <FileTypeIcon mimeType={item.mimeType} />
-                      </span>
-                      <div class="drive-item-text">
-                        <div class="drive-item-title" title={item.name}>
-                          {item.name}
-                        </div>
-                        <div
-                          class="drive-item-meta"
-                          title={buildMetaLine(item, props.formatDate, props.formatSize)}
-                        >
-                          {buildMetaLine(item, props.formatDate, props.formatSize)}
+                    <article
+                      class="drive-item drive-item-list"
+                      role="button"
+                      tabIndex={0}
+                      onClick={(event) => {
+                        if (event.detail === 2) {
+                          onItemDoubleClick(item);
+                        }
+                      }}
+                    >
+                      <div class="drive-item-main">
+                        <span class="name-icon" aria-hidden="true">
+                          <FileTypeIcon mimeType={item.mimeType} />
+                        </span>
+                        <div class="drive-item-text">
+                          <div class="drive-item-title" title={item.name}>
+                            {item.name}
+                          </div>
+                          <div
+                            class="drive-item-meta"
+                            title={buildMetaLine(
+                              item,
+                              props.formatDate,
+                              props.formatSize,
+                            )}
+                          >
+                            {buildMetaLine(
+                              item,
+                              props.formatDate,
+                              props.formatSize,
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <DriveItemMenu item={item} onOpen={() => onItemDoubleClick(item)} />
-                  </article>
+                      <DriveItemMenuButton
+                        item={item}
+                        currentFolderId={browserState.currentFolderId()}
+                        onOpen={() => onItemDoubleClick(item)}
+                        onMoveSuccess={browserState.refresh}
+                      />
+                    </article>
+                  </DriveItemContextMenu>
                 )}
               </For>
             </div>

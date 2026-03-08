@@ -286,3 +286,81 @@ export async function createFolder(
     };
   }
 }
+
+type MoveFileResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function moveFile(
+  fileId: string,
+  newParentId: string,
+  oldParentId?: string,
+): Promise<MoveFileResult> {
+  try {
+    const token = await getAccessToken();
+    const params = new URLSearchParams({
+      addParents: newParentId,
+      fields: "id,parents",
+    });
+
+    if (oldParentId) {
+      params.set("removeParents", oldParentId);
+    }
+
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?${params.toString()}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token.token}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        ok: false,
+        error: `Ошибка перемещения ${response.status}: ${errorText}`,
+      };
+    }
+
+    return { ok: true };
+  } catch (unknownError: unknown) {
+    return {
+      ok: false,
+      error:
+        unknownError instanceof Error
+          ? unknownError.message
+          : "Неизвестная ошибка",
+    };
+  }
+}
+
+export async function listAllFolders(): Promise<DriveApiFile[]> {
+  try {
+    const token = await getAccessToken();
+    const params = new URLSearchParams({
+      pageSize: "100",
+      q: "mimeType = 'application/vnd.google-apps.folder' and trashed=false",
+      fields: "files(id,name,mimeType,iconLink)",
+      orderBy: "name_natural",
+    });
+
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files?${params.toString()}`,
+      {
+        headers: { Authorization: `Bearer ${token.token}` },
+      },
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = (await response.json()) as DriveListResult;
+    return data.files ?? [];
+  } catch {
+    return [];
+  }
+}

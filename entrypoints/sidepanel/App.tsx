@@ -5,6 +5,9 @@ import { TabIcon, type TabIconName } from "./tabIcons";
 import { DriveBrowser } from "./components/drive/DriveBrowser";
 import { DriveSearchBar } from "./components/search/DriveSearchBar";
 import { CreateButton } from "./components/CreateButton";
+import { UploadPopover } from "./components/upload/UploadPopover";
+import { DragDropOverlay } from "./components/upload/DragDropOverlay";
+import { addFilesToUploadQueue } from "./services/uploadManager";
 import {
   DEFAULT_DRIVE_SEARCH_FILTERS,
   type DriveSearchFilters,
@@ -73,6 +76,11 @@ function App() {
   const [searchFilters, setSearchFilters] = createSignal<DriveSearchFilters>(
     DEFAULT_DRIVE_SEARCH_FILTERS,
   );
+  const [currentFolderId, setCurrentFolderId] = createSignal<string | null>(null);
+
+  const handleFilesDrop = (files: File[]) => {
+    addFilesToUploadQueue(files, currentFolderId());
+  };
 
   return (
     <Tabs
@@ -128,26 +136,9 @@ function App() {
               onFiltersChange={setSearchFilters}
             />
 
-            <CreateButton />
+            <CreateButton currentFolderId={currentFolderId()} />
 
-            <Button
-              class="upload-icon-btn"
-              type="button"
-              aria-label="Очередь загрузок"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 17h16v2H4z" fill="currentColor" />
-                <path
-                  d="M12 4v9m0 0-3.5-3.5M12 13l3.5-3.5"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.9"
-                />
-              </svg>
-              <span class="upload-count">0</span>
-            </Button>
+            <UploadPopover />
           </div>
         </header>
 
@@ -166,6 +157,7 @@ function App() {
                   <DriveBrowser
                     formatDate={formatDate}
                     formatSize={formatSize}
+                    onFolderChange={setCurrentFolderId}
                   />
                 </Show>
               </Tabs.Content>
@@ -173,6 +165,8 @@ function App() {
           </For>
         </div>
       </section>
+
+      <DragDropOverlay onDrop={handleFilesDrop} />
     </Tabs>
   );
 }

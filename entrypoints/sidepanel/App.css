@@ -518,27 +518,46 @@
 }
 
 .drive-view-toggle-item {
+  position: relative;
   height: 30px;
   width: 34px;
   border: 0;
   background: transparent;
   font-size: 0;
+  padding: 0;
+}
+
+.drive-view-toggle-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.drive-view-toggle-item-label {
+  height: 100%;
+  width: 100%;
   color: var(--text-main);
   border-radius: 999px;
   display: grid;
   place-items: center;
   padding: 0;
   line-height: 0;
+  cursor: pointer;
 }
 
-.drive-view-toggle-item svg {
+.drive-view-toggle-item-label svg {
   width: 17px;
   height: 17px;
   display: block;
 }
 
-.drive-view-toggle-item[data-pressed],
-.drive-view-toggle-item[data-state="on"] {
+.drive-view-toggle-item[data-checked] .drive-view-toggle-item-label {
   background: #fff;
   color: #1a73e8;
   box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3);
@@ -621,14 +640,19 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  min-height: 260px;
+  min-height: 300px;
+  max-height: 300px;
+  height: 300px;
   padding: 8px;
   border: 1px solid #dfe3eb;
   background: #f8fafd;
+  gap: 8px;
 }
 
 .drive-item-grid-folder {
-  min-height: 0;
+  min-height: 48px;
+  max-height: 48px;
+  height: 48px;
   padding: 10px;
 }
 
@@ -651,6 +675,16 @@
 .drive-item:focus-visible {
   outline: 2px solid var(--accent-soft);
   outline-offset: 1px;
+}
+
+.drive-item-context-trigger {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.drive-item-context-trigger:focus-visible {
+  outline: none;
 }
 
 .drive-item-main {
@@ -706,11 +740,13 @@
   border-radius: 10px;
   border: 1px solid #e1e7ef;
   background: #fff;
-  height: stretch;
-  display: grid;
-  place-items: center;
+  flex: 1 1 auto;
+  min-height: 140px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
-  position: relative;
 }
 
 .drive-grid-preview.is-folder {
@@ -932,6 +968,117 @@
   cursor: not-allowed;
 }
 
+/* Move File Dialog */
+.move-file-dialog-content {
+  max-width: 520px;
+}
+
+.move-file-dialog-body {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 0 20px 20px;
+}
+
+.move-file-folders {
+  display: grid;
+  gap: 1px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--line);
+}
+
+.move-file-folder-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: background 0.15s ease;
+  position: relative;
+}
+
+.move-file-folder-item:hover {
+  background: #f2f7ff;
+}
+
+.move-file-folder-item[data-checked] {
+  background: #e6f0ff;
+}
+
+.move-file-folder-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.move-file-folder-control {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.move-file-folder-item[data-checked] .move-file-folder-control {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.move-file-folder-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: white;
+}
+
+.move-file-folder-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.move-file-folder-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.move-file-folder-icon .drive-file-icon-folder {
+  width: 24px;
+  height: 24px;
+}
+
+.move-file-folder-name {
+  font-size: 14px;
+  color: var(--text-main);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.move-file-loading,
+.move-file-empty {
+  padding: 40px 20px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
 .drive-grid-preview .drive-file-icon {
   width: 28px;
   height: 28px;
@@ -942,8 +1089,6 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  position: absolute;
-  inset: 0;
 }
 
 .drive-grid-preview-fallback {
@@ -1044,4 +1189,235 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* Upload Popover */
+.upload-popover-content {
+  width: 380px;
+  max-height: 480px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(20, 41, 64, 0.14);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 100;
+}
+
+.upload-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.upload-popover-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.upload-popover-clear-btn {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.upload-popover-clear-btn:hover {
+  background: var(--surface-hover);
+}
+
+.upload-popover-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.upload-popover-empty {
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.upload-popover-empty p {
+  color: var(--text-subtle);
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Upload Task Item */
+.upload-task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.upload-task-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.upload-task-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upload-task-details {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.upload-task-pending {
+  color: var(--text-subtle);
+}
+
+.upload-task-uploading {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.upload-task-completed {
+  color: #16a34a;
+  font-weight: 500;
+}
+
+.upload-task-error {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.upload-task-cancelled {
+  color: var(--text-subtle);
+}
+
+.upload-task-progress-text {
+  color: var(--text-subtle);
+}
+
+.upload-task-error-text {
+  color: #dc2626;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.upload-task-progress-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--surface);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.upload-task-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.upload-task-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.upload-task-action-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.upload-task-action-btn:hover {
+  background: var(--surface-hover);
+}
+
+.upload-task-action-btn svg {
+  width: 12px;
+  height: 12px;
+  color: var(--text-subtle);
+}
+
+/* Drag & Drop Overlay */
+.drag-drop-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background: rgba(59, 130, 246, 0.08);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.drag-drop-content {
+  background: var(--surface);
+  border: 2px dashed var(--accent);
+  border-radius: 16px;
+  padding: 48px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(20, 41, 64, 0.2);
+}
+
+.drag-drop-icon {
+  width: 64px;
+  height: 64px;
+  color: var(--accent);
+  margin: 0 auto 16px;
+}
+
+.drag-drop-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.drag-drop-subtitle {
+  font-size: 14px;
+  color: var(--text-subtle);
+  margin: 0;
+}
+
+.upload-file-input {
+  display: none;
 }

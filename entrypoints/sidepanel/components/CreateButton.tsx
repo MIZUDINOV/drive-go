@@ -4,6 +4,7 @@ import { DropdownMenu } from "@kobalte/core/dropdown-menu";
 import { Button } from "@kobalte/core/button";
 import { TextField } from "@kobalte/core/text-field";
 import { createFolder } from "../services/driveApi";
+import { addFilesToUploadQueue } from "../services/uploadManager";
 import { FileTypeIcon } from "../fileTypes";
 
 type CreateOption = {
@@ -13,11 +14,17 @@ type CreateOption = {
   action: () => void;
 };
 
-export function CreateButton() {
+type CreateButtonProps = {
+  currentFolderId: string | null;
+};
+
+export function CreateButton(props: CreateButtonProps) {
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
   const [folderName, setFolderName] = createSignal("Без названия");
   const [isCreating, setIsCreating] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  
+  let fileInputRef: HTMLInputElement | undefined;
 
   const handleCreateFolder = async () => {
     setError(null);
@@ -58,12 +65,43 @@ export function CreateButton() {
     }
   };
 
+  const handleFileSelect = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const files = Array.from(input.files);
+      addFilesToUploadQueue(files, props.currentFolderId);
+      input.value = ""; // Сброс для повторного выбора тех же файлов
+    }
+  };
+
+  const openFileDialog = () => {
+    fileInputRef?.click();
+  };
+
   const createOptions: CreateOption[] = [
     {
       id: "folder",
       label: "Создать папку",
       icon: () => <FileTypeIcon mimeType="application/vnd.google-apps.folder" />,
       action: openDialog,
+    },
+    {
+      id: "upload",
+      label: "Загрузить файлы",
+      icon: () => (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 17h16v2H4z" fill="currentColor" />
+          <path
+            d="M12 4v9m0 0-3.5-3.5M12 13l3.5-3.5"
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.9"
+          />
+        </svg>
+      ),
+      action: openFileDialog,
     },
     {
       id: "document",
@@ -118,6 +156,14 @@ export function CreateButton() {
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        class="upload-file-input"
+        onChange={handleFileSelect}
+      />
 
       <Dialog open={isDialogOpen()} onOpenChange={setIsDialogOpen}>
         <Dialog.Portal>
