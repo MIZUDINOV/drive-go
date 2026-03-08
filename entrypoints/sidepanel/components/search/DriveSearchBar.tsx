@@ -6,11 +6,12 @@ import {
   createSignal,
   onCleanup,
 } from "solid-js";
-import { DropdownMenu } from "@kobalte/core/dropdown-menu";
+import { Search } from "@kobalte/core/search";
+import { Select } from "@kobalte/core/select";
+import { Button } from "@kobalte/core/button";
 import { FileTypeIcon } from "../../fileTypes";
 import type { DriveApiFile } from "../drive/driveTypes";
 import {
-  DEFAULT_DRIVE_SEARCH_FILTERS,
   type DriveSearchFilters,
   openDriveItemInNewTab,
   searchDriveItems,
@@ -91,11 +92,96 @@ function formatDate(dateIso?: string): string {
   });
 }
 
-function isDefaultFilters(filters: DriveSearchFilters): boolean {
+type FilterSelectProps<T extends string> = {
+  label: string;
+  ariaLabel: string;
+  value: T;
+  options: T[];
+  labels: Record<T, string>;
+  iconMimeTypes?: Partial<Record<T, string>>;
+  onOpenChange: (open: boolean) => void;
+  onChange: (value: T) => void;
+  onCloseAutoFocus: (event: Event) => void;
+};
+
+function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
   return (
-    filters.type === DEFAULT_DRIVE_SEARCH_FILTERS.type &&
-    filters.owner === DEFAULT_DRIVE_SEARCH_FILTERS.owner &&
-    filters.modified === DEFAULT_DRIVE_SEARCH_FILTERS.modified
+    <label class="drive-search-filter">
+      <span>{props.label}</span>
+      <Select<T>
+        value={props.value}
+        options={props.options}
+        optionValue={(option) => option}
+        optionTextValue={(option) => props.labels[option]}
+        onOpenChange={props.onOpenChange}
+        onChange={(next) => {
+          if (next) {
+            props.onChange(next);
+          }
+        }}
+        itemComponent={(itemProps) => {
+          const option = itemProps.item.rawValue as T;
+          const iconMimeType = props.iconMimeTypes?.[option];
+
+          return (
+            <Select.Item item={itemProps.item} class="drive-search-filter-type-item">
+              <Show when={iconMimeType !== undefined}>
+                <span class="drive-search-filter-type-item-icon" aria-hidden="true">
+                  <FileTypeIcon
+                    mimeType={iconMimeType ?? "application/octet-stream"}
+                  />
+                </span>
+              </Show>
+
+              <Select.ItemLabel>{props.labels[option]}</Select.ItemLabel>
+
+              <Select.ItemIndicator class="drive-search-filter-type-item-indicator">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M5 13l4 4L19 7"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                  />
+                </svg>
+              </Select.ItemIndicator>
+            </Select.Item>
+          );
+        }}
+      >
+        <Select.Trigger
+          class="drive-search-filter-type-trigger"
+          aria-label={props.ariaLabel}
+        >
+          <Select.Value class="drive-search-filter-type-value">
+            {(state) => (state.selectedOption() ? props.labels[state.selectedOption() as T] : "")}
+          </Select.Value>
+          <Select.Icon>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M7 10l5 5 5-5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </Select.Icon>
+        </Select.Trigger>
+
+        <Select.Portal>
+          <Select.Content
+            class="drive-search-filter-type-content drive-search-filter-menu-content"
+            onCloseAutoFocus={props.onCloseAutoFocus}
+          >
+            <Select.Listbox class="drive-search-filter-type-listbox" />
+          </Select.Content>
+        </Select.Portal>
+      </Select>
+    </label>
   );
 }
 
@@ -106,8 +192,6 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
   const [isTypeMenuOpen, setIsTypeMenuOpen] = createSignal(false);
   const [isOwnerMenuOpen, setIsOwnerMenuOpen] = createSignal(false);
   const [isModifiedMenuOpen, setIsModifiedMenuOpen] = createSignal(false);
-  let rootRef: HTMLDivElement | undefined;
-  let inputRef: HTMLInputElement | undefined;
   let filtersRef: HTMLDivElement | undefined;
   let suppressAutoClose = false;
 
@@ -124,25 +208,13 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
     props.onFiltersChange(nextFilters);
   };
 
-  const shouldKeepPanelOpen = (target: EventTarget | null): boolean => {
-    if (!(target instanceof Element)) {
-      return false;
-    }
-
-    if (rootRef?.contains(target)) {
-      return true;
-    }
-
-    if (inputRef === target) {
-      return true;
-    }
-
-    if (filtersRef?.contains(target)) {
-      return true;
-    }
-
-    return Boolean(target.closest(".drive-search-filter-menu-content"));
-  };
+  const shouldKeepPanelOpen = (target: EventTarget | null): boolean =>
+    target instanceof Element
+      ? Boolean(
+          filtersRef?.contains(target) ||
+            target.closest(".drive-search-filter-menu-content"),
+        )
+      : false;
 
   const queryText = createMemo(() => props.value.trim());
 
@@ -152,18 +224,53 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
     () => isTypeMenuOpen() || isOwnerMenuOpen() || isModifiedMenuOpen(),
   );
 
-  const handleMenuOpenChange = (
+  const handleSelectOpenChange = (
     setter: (value: boolean) => void,
     nextOpen: boolean,
   ) => {
     setter(nextOpen);
+
+    if (!nextOpen && props.active && hasQuery()) {
+      keepPanelOpenDuringMenuTransition();
+    }
+  };
+
+  const handleSearchOpenChange = (open: boolean) => {
+    if (!open && (suppressAutoClose || isAnyMenuOpen())) {
+      return;
+    }
+
+    setIsOpen(open);
   };
 
   const returnFocusToInput = (event: Event) => {
     event.preventDefault();
     keepPanelOpenDuringMenuTransition();
-    inputRef?.focus();
   };
+
+  const handleInputChange = (value: string) => {
+    props.onChange(value);
+    if (props.active) {
+      setIsOpen(value.trim().length > 0 || isAnyMenuOpen());
+    }
+  };
+
+  const handleResultSelect = (value: DriveApiFile | DriveApiFile[] | null) => {
+    const selected = Array.isArray(value) ? value[0] : value;
+    if (!selected) {
+      return;
+    }
+
+    setIsOpen(false);
+    void openDriveItemInNewTab({
+      id: selected.id,
+      mimeType: selected.mimeType,
+      webViewLink: selected.webViewLink,
+    });
+  };
+
+  const getSingleOption = (option: DriveApiFile | DriveApiFile[]) =>
+    Array.isArray(option) ? option[0] : option;
 
   createEffect(() => {
     const query = queryText();
@@ -179,7 +286,9 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
     if (query.length === 0) {
       setResults([]);
       setLoading(false);
-      setIsOpen(false);
+      if (!isAnyMenuOpen()) {
+        setIsOpen(false);
+      }
       return;
     }
 
@@ -188,7 +297,7 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
       const found = await searchDriveItems(query, filters, 8);
       setResults(found);
       setLoading(false);
-      setIsOpen(true);
+      setIsOpen(query.length > 0 || isAnyMenuOpen());
     }, 260);
 
     onCleanup(() => {
@@ -198,75 +307,103 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
   });
 
   return (
-    <div class="drive-search" ref={rootRef}>
-      <div class="drive-search-input-wrap">
-        <span class="drive-search-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <circle
-              cx="11"
-              cy="11"
-              r="7"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            />
-            <path
-              d="M20 20l-4.2-4.2"
-              fill="none"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-width="2"
-            />
-          </svg>
-        </span>
+    <Search
+      class="drive-search"
+      options={results()}
+      open={props.active && (isOpen() || isAnyMenuOpen())}
+      allowsEmptyCollection
+      triggerMode="focus"
+      optionValue={(option) => getSingleOption(option)?.id ?? ""}
+      optionLabel={(option) => getSingleOption(option)?.name ?? ""}
+      optionTextValue={(option) => getSingleOption(option)?.name ?? ""}
+      onOpenChange={handleSearchOpenChange}
+      onInputChange={handleInputChange}
+      onChange={handleResultSelect}
+      itemComponent={(itemProps) => {
+        const result = itemProps.item.rawValue as DriveApiFile;
+        return (
+          <Search.Item item={itemProps.item} class="drive-search-result-item">
+            <span class="drive-search-result-icon" aria-hidden="true">
+              <FileTypeIcon mimeType={result.mimeType} />
+            </span>
+            <span class="drive-search-result-main">
+              <Search.ItemLabel
+                class="drive-search-result-name"
+                title={result.name}
+              >
+                {result.name}
+              </Search.ItemLabel>
+              <Search.ItemDescription class="drive-search-result-meta">
+                {(result.owners?.[0]?.displayName ?? "") +
+                  (result.modifiedTime
+                    ? ` • ${formatDate(result.modifiedTime)}`
+                    : "")}
+              </Search.ItemDescription>
+            </span>
+          </Search.Item>
+        );
+      }}
+    >
+      <Search.Control class="drive-search-input-wrap" aria-label="Поиск в Google Drive">
+        <Search.Indicator
+          loadingComponent={
+            <Search.Icon class="drive-search-icon drive-search-icon-loading" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="8"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-dasharray="40"
+                  stroke-dashoffset="24"
+                />
+              </svg>
+            </Search.Icon>
+          }
+        >
+          <Search.Icon class="drive-search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              />
+              <path
+                d="M20 20l-4.2-4.2"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-width="2"
+              />
+            </svg>
+          </Search.Icon>
+        </Search.Indicator>
 
-        <input
+        <Search.Input
           class="drive-search-input"
-          ref={inputRef}
-          type="search"
           placeholder="Поиск в Google Drive"
           value={props.value}
-          onFocus={() => {
-            if (props.active && hasQuery()) {
-              setIsOpen(true);
-            }
-          }}
-          onBlur={(event) => {
-            if (suppressAutoClose) {
-              return;
-            }
-
-            if (
-              isAnyMenuOpen() &&
-              event.relatedTarget instanceof Node &&
-              rootRef?.contains(event.relatedTarget)
-            ) {
-              return;
-            }
-
-            if (shouldKeepPanelOpen(event.relatedTarget)) {
-              return;
-            }
-
-            // Wait one tick because menu focus can be moved via portal after blur.
-            window.setTimeout(() => {
-              if (shouldKeepPanelOpen(document.activeElement)) {
-                return;
-              }
-
-              setIsOpen(false);
-            }, 0);
-          }}
-          onInput={(event) => props.onChange(event.currentTarget.value)}
           disabled={!props.active}
         />
 
         <Show when={props.value.length > 0}>
-          <button
+          <Button
             type="button"
             class="drive-search-clear-btn"
             aria-label="Очистить поиск"
-            onClick={() => props.onChange("")}
+            onClick={() => {
+              props.onChange("");
+              setResults([]);
+              if (!isAnyMenuOpen()) {
+                setIsOpen(false);
+              }
+            }}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path
@@ -277,295 +414,66 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
                 stroke-width="2"
               />
             </svg>
-          </button>
+          </Button>
         </Show>
-      </div>
+      </Search.Control>
 
-      <Show when={props.active && isOpen()}>
-        <div class="drive-search-panel">
-          <div
-            class="drive-search-filters"
-            ref={filtersRef}
-            tabindex="-1"
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget) {
-                event.currentTarget.focus();
-              }
-            }}
-            onFocusOut={(event) => {
-              if (suppressAutoClose) {
-                return;
-              }
+      <Search.Content class="drive-search-panel" onCloseAutoFocus={returnFocusToInput}>
+        <div
+          class="drive-search-filters"
+          ref={filtersRef}
+          tabIndex={-1}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              event.currentTarget.focus();
+            }
+          }}
+          onFocusOut={(event) => {
+            if (suppressAutoClose) {
+              return;
+            }
 
-              if (
-                isAnyMenuOpen() &&
-                event.relatedTarget instanceof Node &&
-                rootRef?.contains(event.relatedTarget)
-              ) {
-                return;
-              }
+            if (shouldKeepPanelOpen(event.relatedTarget)) {
+              return;
+            }
 
-              if (shouldKeepPanelOpen(event.relatedTarget)) {
-                return;
-              }
+            setIsOpen(false);
+          }}
+        >
+          <FilterSelect
+            label="Тип"
+            ariaLabel="Фильтр по типу"
+            value={props.filters.type}
+            options={TYPE_OPTIONS}
+            labels={TYPE_LABEL}
+            iconMimeTypes={TYPE_MIME}
+            onOpenChange={(open) => handleSelectOpenChange(setIsTypeMenuOpen, open)}
+            onChange={(type) => updateFilters({ ...props.filters, type })}
+            onCloseAutoFocus={returnFocusToInput}
+          />
 
-              setIsOpen(false);
-            }}
-          >
-            <label class="drive-search-filter">
-              <span>Тип</span>
-              <DropdownMenu
-                sameWidth
-                gutter={4}
-                onOpenChange={(open) =>
-                  handleMenuOpenChange(setIsTypeMenuOpen, open)
-                }
-              >
-                <DropdownMenu.Trigger
-                  class="drive-search-filter-type-trigger"
-                  aria-label="Фильтр по типу"
-                >
-                  <span class="drive-search-filter-type-value">
-                    {TYPE_LABEL[props.filters.type]}
-                  </span>
-                  <DropdownMenu.Icon>
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M7 10l5 5 5-5"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </DropdownMenu.Icon>
-                </DropdownMenu.Trigger>
+          <FilterSelect
+            label="Люди"
+            ariaLabel="Фильтр по владельцу"
+            value={props.filters.owner}
+            options={OWNER_OPTIONS}
+            labels={OWNER_LABEL}
+            onOpenChange={(open) => handleSelectOpenChange(setIsOwnerMenuOpen, open)}
+            onChange={(owner) => updateFilters({ ...props.filters, owner })}
+            onCloseAutoFocus={returnFocusToInput}
+          />
 
-                <DropdownMenu.Portal>
-                  <DropdownMenu.Content
-                    class="drive-search-filter-type-content drive-search-filter-menu-content"
-                    onCloseAutoFocus={returnFocusToInput}
-                  >
-                    <DropdownMenu.RadioGroup
-                      value={props.filters.type}
-                      onChange={(value) =>
-                        updateFilters({
-                          ...props.filters,
-                          type: value as DriveSearchFilters["type"],
-                        })
-                      }
-                    >
-                      <For each={TYPE_OPTIONS}>
-                        {(option) => (
-                          <DropdownMenu.RadioItem
-                            class="drive-search-filter-type-item"
-                            value={option}
-                            textValue={TYPE_LABEL[option]}
-                            closeOnSelect
-                          >
-                            <span
-                              class="drive-search-filter-type-item-icon"
-                              aria-hidden="true"
-                            >
-                              <Show
-                                when={TYPE_MIME[option]}
-                                fallback={
-                                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path
-                                      d="M6 7h12M6 12h12M6 17h12"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      stroke-linecap="round"
-                                      stroke-width="1.8"
-                                    />
-                                  </svg>
-                                }
-                              >
-                                <FileTypeIcon
-                                  mimeType={
-                                    TYPE_MIME[option] ??
-                                    "application/octet-stream"
-                                  }
-                                />
-                              </Show>
-                            </span>
-                            <DropdownMenu.ItemLabel>
-                              {TYPE_LABEL[option]}
-                            </DropdownMenu.ItemLabel>
-                            <DropdownMenu.ItemIndicator class="drive-search-filter-type-item-indicator">
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path
-                                  d="M5 13l4 4L19 7"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                />
-                              </svg>
-                            </DropdownMenu.ItemIndicator>
-                          </DropdownMenu.RadioItem>
-                        )}
-                      </For>
-                    </DropdownMenu.RadioGroup>
-                  </DropdownMenu.Content>
-                </DropdownMenu.Portal>
-              </DropdownMenu>
-            </label>
-
-            <label class="drive-search-filter">
-              <span>Люди</span>
-              <DropdownMenu
-                sameWidth
-                gutter={4}
-                onOpenChange={(open) =>
-                  handleMenuOpenChange(setIsOwnerMenuOpen, open)
-                }
-              >
-                <DropdownMenu.Trigger
-                  class="drive-search-filter-type-trigger"
-                  aria-label="Фильтр по владельцу"
-                >
-                  <span class="drive-search-filter-type-value">
-                    {OWNER_LABEL[props.filters.owner]}
-                  </span>
-                  <DropdownMenu.Icon>
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M7 10l5 5 5-5"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </DropdownMenu.Icon>
-                </DropdownMenu.Trigger>
-
-                <DropdownMenu.Portal>
-                  <DropdownMenu.Content
-                    class="drive-search-filter-type-content drive-search-filter-menu-content"
-                    onCloseAutoFocus={returnFocusToInput}
-                  >
-                    <DropdownMenu.RadioGroup
-                      value={props.filters.owner}
-                      onChange={(value) =>
-                        updateFilters({
-                          ...props.filters,
-                          owner: value as DriveSearchFilters["owner"],
-                        })
-                      }
-                    >
-                      <For each={OWNER_OPTIONS}>
-                        {(option) => (
-                          <DropdownMenu.RadioItem
-                            class="drive-search-filter-type-item"
-                            value={option}
-                            textValue={OWNER_LABEL[option]}
-                            closeOnSelect
-                          >
-                            <DropdownMenu.ItemLabel>
-                              {OWNER_LABEL[option]}
-                            </DropdownMenu.ItemLabel>
-                            <DropdownMenu.ItemIndicator class="drive-search-filter-type-item-indicator">
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path
-                                  d="M5 13l4 4L19 7"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                />
-                              </svg>
-                            </DropdownMenu.ItemIndicator>
-                          </DropdownMenu.RadioItem>
-                        )}
-                      </For>
-                    </DropdownMenu.RadioGroup>
-                  </DropdownMenu.Content>
-                </DropdownMenu.Portal>
-              </DropdownMenu>
-            </label>
-
-            <label class="drive-search-filter">
-              <span>Изменено</span>
-              <DropdownMenu
-                sameWidth
-                gutter={4}
-                onOpenChange={(open) =>
-                  handleMenuOpenChange(setIsModifiedMenuOpen, open)
-                }
-              >
-                <DropdownMenu.Trigger
-                  class="drive-search-filter-type-trigger"
-                  aria-label="Фильтр по дате изменения"
-                >
-                  <span class="drive-search-filter-type-value">
-                    {MODIFIED_LABEL[props.filters.modified]}
-                  </span>
-                  <DropdownMenu.Icon>
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        d="M7 10l5 5 5-5"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </DropdownMenu.Icon>
-                </DropdownMenu.Trigger>
-
-                <DropdownMenu.Portal>
-                  <DropdownMenu.Content
-                    class="drive-search-filter-type-content drive-search-filter-menu-content"
-                    onCloseAutoFocus={returnFocusToInput}
-                  >
-                    <DropdownMenu.RadioGroup
-                      value={props.filters.modified}
-                      onChange={(value) =>
-                        updateFilters({
-                          ...props.filters,
-                          modified: value as DriveSearchFilters["modified"],
-                        })
-                      }
-                    >
-                      <For each={MODIFIED_OPTIONS}>
-                        {(option) => (
-                          <DropdownMenu.RadioItem
-                            class="drive-search-filter-type-item"
-                            value={option}
-                            textValue={MODIFIED_LABEL[option]}
-                            closeOnSelect
-                          >
-                            <DropdownMenu.ItemLabel>
-                              {MODIFIED_LABEL[option]}
-                            </DropdownMenu.ItemLabel>
-                            <DropdownMenu.ItemIndicator class="drive-search-filter-type-item-indicator">
-                              <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path
-                                  d="M5 13l4 4L19 7"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                />
-                              </svg>
-                            </DropdownMenu.ItemIndicator>
-                          </DropdownMenu.RadioItem>
-                        )}
-                      </For>
-                    </DropdownMenu.RadioGroup>
-                  </DropdownMenu.Content>
-                </DropdownMenu.Portal>
-              </DropdownMenu>
-            </label>
-          </div>
+          <FilterSelect
+            label="Изменено"
+            ariaLabel="Фильтр по дате изменения"
+            value={props.filters.modified}
+            options={MODIFIED_OPTIONS}
+            labels={MODIFIED_LABEL}
+            onOpenChange={(open) => handleSelectOpenChange(setIsModifiedMenuOpen, open)}
+            onChange={(modified) => updateFilters({ ...props.filters, modified })}
+            onCloseAutoFocus={returnFocusToInput}
+          />
+        </div>
 
           <div class="drive-search-results">
             <Show
@@ -580,55 +488,14 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
                 when={!loading()}
                 fallback={<p class="drive-search-empty">Поиск...</p>}
               >
-                <Show
-                  when={results().length > 0}
-                  fallback={
-                    <p class="drive-search-empty">Ничего не найдено.</p>
-                  }
-                >
-                  <For each={results()}>
-                    {(result) => (
-                      <button
-                        type="button"
-                        class="drive-search-result-item"
-                        onClick={() => {
-                          setIsOpen(false);
-                          void openDriveItemInNewTab({
-                            id: result.id,
-                            mimeType: result.mimeType,
-                            webViewLink: result.webViewLink,
-                          });
-                        }}
-                      >
-                        <span
-                          class="drive-search-result-icon"
-                          aria-hidden="true"
-                        >
-                          <FileTypeIcon mimeType={result.mimeType} />
-                        </span>
-                        <span class="drive-search-result-main">
-                          <span
-                            class="drive-search-result-name"
-                            title={result.name}
-                          >
-                            {result.name}
-                          </span>
-                          <span class="drive-search-result-meta">
-                            {(result.owners?.[0]?.displayName ?? "") +
-                              (result.modifiedTime
-                                ? ` • ${formatDate(result.modifiedTime)}`
-                                : "")}
-                          </span>
-                        </span>
-                      </button>
-                    )}
-                  </For>
-                </Show>
+                <Search.Listbox class="drive-search-listbox" />
+                <Search.NoResult class="drive-search-empty">
+                  Ничего не найдено.
+                </Search.NoResult>
               </Show>
             </Show>
           </div>
-        </div>
-      </Show>
-    </div>
+      </Search.Content>
+    </Search>
   );
 }
