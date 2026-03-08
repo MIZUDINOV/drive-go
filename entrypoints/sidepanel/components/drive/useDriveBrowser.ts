@@ -7,6 +7,8 @@ import {
 } from "./driveTypes";
 import {
   listMyDriveFolder,
+  type DriveSearchFilters,
+  DEFAULT_DRIVE_SEARCH_FILTERS,
 } from "../../services/driveApi";
 
 function mapApiFile(file: DriveApiFile): DriveItem {
@@ -29,6 +31,9 @@ export function useDriveBrowser() {
   const [error, setError] = createSignal("");
   const [nextPageToken, setNextPageToken] = createSignal<string>();
   const [loadedFolderId, setLoadedFolderId] = createSignal<string>();
+  const [filters, setFilters] = createSignal<DriveSearchFilters>(
+    DEFAULT_DRIVE_SEARCH_FILTERS,
+  );
   let requestSeq = 0;
   const [breadcrumbs, setBreadcrumbs] = createSignal<BreadcrumbItem[]>([
     { id: ROOT_FOLDER_ID, name: "Мой диск" },
@@ -51,6 +56,7 @@ export function useDriveBrowser() {
       const response = await listMyDriveFolder(
         folderId,
         reset ? undefined : nextPageToken(),
+        { filters: filters() },
       );
 
       if (requestId !== requestSeq) {
@@ -130,6 +136,8 @@ export function useDriveBrowser() {
     items,
     loading,
     error,
+    filters,
+    setFilters,
     nextPageToken,
     loadedFolderId,
     breadcrumbs,

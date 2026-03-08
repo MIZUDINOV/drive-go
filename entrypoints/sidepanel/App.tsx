@@ -4,7 +4,6 @@ import { Button } from "@kobalte/core/button";
 import { TabIcon, type TabIconName } from "./tabIcons";
 import { DriveBrowser } from "./components/drive/DriveBrowser";
 import { DriveSearchBar } from "./components/search/DriveSearchBar";
-import { CreateButton } from "./components/CreateButton";
 import { UploadPopover } from "./components/upload/UploadPopover";
 import { DragDropOverlay } from "./components/upload/DragDropOverlay";
 import { addFilesToUploadQueue } from "./services/uploadManager";
@@ -136,8 +135,6 @@ function App() {
               onFiltersChange={setSearchFilters}
             />
 
-            <CreateButton currentFolderId={currentFolderId()} />
-
             <UploadPopover />
           </div>
         </header>
@@ -146,7 +143,12 @@ function App() {
           <For each={tabs}>
             {(tab) => (
               <Tabs.Content class="content-card" value={tab.id}>
-                <h2>{tab.title}</h2>
+                <Show
+                  when={tab.id === "my-drive"}
+                  fallback={<h2>{tab.title}</h2>}
+                >
+                  {/* Заголовок будет отображён как часть DriveBrowser */}
+                </Show>
 
                 <Show
                   when={tab.id === "my-drive"}
