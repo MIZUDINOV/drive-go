@@ -1,9 +1,13 @@
 import { For, Show, createSignal } from "solid-js";
 import { Tabs } from "@kobalte/core/tabs";
-import { TextField } from "@kobalte/core/text-field";
 import { Button } from "@kobalte/core/button";
 import { TabIcon, type TabIconName } from "./tabIcons";
 import { DriveBrowser } from "./components/drive/DriveBrowser";
+import { DriveSearchBar } from "./components/search/DriveSearchBar";
+import {
+  DEFAULT_DRIVE_SEARCH_FILTERS,
+  type DriveSearchFilters,
+} from "./services/driveApi";
 import "./App.css";
 
 type TabItem = {
@@ -64,6 +68,10 @@ function formatSize(size?: string) {
 function App() {
   const [isMenuCollapsed, setIsMenuCollapsed] = createSignal(true);
   const [activeTabId, setActiveTabId] = createSignal(tabs[0].id);
+  const [searchQuery, setSearchQuery] = createSignal("");
+  const [searchFilters, setSearchFilters] = createSignal<DriveSearchFilters>(
+    DEFAULT_DRIVE_SEARCH_FILTERS,
+  );
 
   return (
     <Tabs
@@ -111,16 +119,13 @@ function App() {
           <h1 class="brand">Google Drive Mini</h1>
 
           <div class="search-block">
-            <TextField class="search-field">
-              <TextField.Label class="sr-only">
-                Глобальный поиск
-              </TextField.Label>
-              <TextField.Input
-                class="search-input"
-                type="search"
-                placeholder="Глобальный поиск"
-              />
-            </TextField>
+            <DriveSearchBar
+              value={searchQuery()}
+              filters={searchFilters()}
+              active={activeTabId() === "my-drive"}
+              onChange={setSearchQuery}
+              onFiltersChange={setSearchFilters}
+            />
 
             <Button
               class="upload-icon-btn"
@@ -155,7 +160,10 @@ function App() {
                     <p>Содержимое раздела появится на следующем шаге.</p>
                   }
                 >
-                  <DriveBrowser formatDate={formatDate} formatSize={formatSize} />
+                  <DriveBrowser
+                    formatDate={formatDate}
+                    formatSize={formatSize}
+                  />
                 </Show>
               </Tabs.Content>
             )}

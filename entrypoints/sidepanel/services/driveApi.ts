@@ -9,8 +9,91 @@ type DriveListResult = {
   nextPageToken?: string;
 };
 
+export type DriveSearchFilters = {
+  type: "all" | "folders" | "documents" | "spreadsheets" | "presentations" | "pdf" | "images";
+  owner: "all" | "me";
+  modified: "any" | "7d" | "30d" | "365d";
+};
+
+export const DEFAULT_DRIVE_SEARCH_FILTERS: DriveSearchFilters = {
+  type: "all",
+  owner: "all",
+  modified: "any",
+};
+
+type DriveListOptions = {
+  searchQuery?: string;
+  filters?: DriveSearchFilters;
+};
+
 const DRIVE_FIELDS =
   "nextPageToken,files(id,name,mimeType,modifiedTime,size,iconLink,thumbnailLink,webViewLink,owners(displayName))";
+
+function escapeQueryValue(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+function getModifiedSinceIso(filter: DriveSearchFilters["modified"]): string | null {
+  if (filter === "any") {
+    return null;
+  }
+
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const days = filter === "7d" ? 7 : filter === "30d" ? 30 : 365;
+  return new Date(now - days * dayMs).toISOString();
+}
+
+function getTypeCondition(type: DriveSearchFilters["type"]): string | null {
+  switch (type) {
+    case "folders":
+      return "mimeType = 'application/vnd.google-apps.folder'";
+    case "documents":
+      return "mimeType = 'application/vnd.google-apps.document'";
+    case "spreadsheets":
+      return "mimeType = 'application/vnd.google-apps.spreadsheet'";
+    case "presentations":
+      return "mimeType = 'application/vnd.google-apps.presentation'";
+    case "pdf":
+      return "mimeType = 'application/pdf'";
+    case "images":
+      return "mimeType contains 'image/'";
+    default:
+      return null;
+  }
+}
+
+function buildDriveQuery(
+  folderId: string | null,
+  searchQuery: string,
+  filters: DriveSearchFilters,
+): string {
+  const parts: string[] = ["trashed=false"];
+
+  if (folderId) {
+    parts.push(`'${escapeQueryValue(folderId)}' in parents`);
+  }
+
+  if (searchQuery.trim()) {
+    parts.push(`name contains '${escapeQueryValue(searchQuery.trim())}'`);
+  }
+
+  const typeCondition = getTypeCondition(filters.type);
+  if (typeCondition) {
+    parts.push(typeCondition);
+  }
+
+  if (filters.owner === "me") {
+    parts.push("'me' in owners");
+  }
+
+  const modifiedSinceIso = getModifiedSinceIso(filters.modified);
+  if (modifiedSinceIso) {
+    parts.push(`modifiedTime > '${modifiedSinceIso}'`);
+  }
+
+  return parts.join(" and ");
+}
 
 function getDriveItemOpenUrl(item: Pick<DriveItem, "id" | "mimeType" | "webViewLink">): string {
   if (item.webViewLink) {
@@ -18,6 +101,8 @@ function getDriveItemOpenUrl(item: Pick<DriveItem, "id" | "mimeType" | "webViewL
   }
 
   switch (item.mimeType) {
+    case "application/vnd.google-apps.folder":
+      return `https://drive.google.com/drive/folders/${item.id}`;
     case "application/vnd.google-apps.document":
       return `https://docs.google.com/document/d/${item.id}/edit`;
     case "application/vnd.google-apps.spreadsheet":
@@ -55,14 +140,17 @@ async function getAccessToken(): Promise<Browser.identity.GetAuthTokenResult> {
 export async function listMyDriveFolder(
   folderId: string,
   pageToken?: string,
+  options?: DriveListOptions,
 ): Promise<DriveListMyDriveResponse> {
   const normalizedFolderId = folderId.trim() ? folderId.trim() : "root";
+  const searchQuery = options?.searchQuery ?? "";
+  const filters = options?.filters ?? DEFAULT_DRIVE_SEARCH_FILTERS;
 
   try {
     const token = await getAccessToken();
     const params = new URLSearchParams({
       pageSize: "50",
-      q: `trashed=false and '${normalizedFolderId}' in parents`,
+      q: buildDriveQuery(normalizedFolderId, searchQuery, filters),
       fields: DRIVE_FIELDS,
       orderBy: "folder,name_natural",
     });
@@ -101,5 +189,47 @@ export async function listMyDriveFolder(
       error:
         unknownError instanceof Error ? unknownError.message : "Unknown error",
     };
+  }
+}
+
+export async function searchDriveItems(
+  searchQuery: string,
+  filters: DriveSearchFilters,
+  pageSize = 8,
+): Promise<DriveApiFile[]> {
+  const trimmedQuery = searchQuery.trim();
+  const hasFilter =
+    filters.type !== "all" ||
+    filters.owner !== "all" ||
+    filters.modified !== "any";
+
+  if (!trimmedQuery && !hasFilter) {
+    return [];
+  }
+
+  try {
+    const token = await getAccessToken();
+    const params = new URLSearchParams({
+      pageSize: String(pageSize),
+      q: buildDriveQuery(null, trimmedQuery, filters),
+      fields: DRIVE_FIELDS,
+      orderBy: "modifiedTime desc,name_natural",
+    });
+
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files?${params.toString()}`,
+      {
+        headers: { Authorization: `Bearer ${token.token}` },
+      },
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = (await response.json()) as DriveListResult;
+    return data.files ?? [];
+  } catch {
+    return [];
   }
 }
