@@ -233,3 +233,56 @@ export async function searchDriveItems(
     return [];
   }
 }
+
+type CreateFolderResult =
+  | { ok: true; folder: DriveApiFile }
+  | { ok: false; error: string };
+
+export async function createFolder(
+  folderName: string,
+  parentId?: string,
+): Promise<CreateFolderResult> {
+  if (!folderName.trim()) {
+    return { ok: false, error: "Имя папки не может быть пустым" };
+  }
+
+  try {
+    const token = await getAccessToken();
+    const metadata = {
+      name: folderName.trim(),
+      mimeType: "application/vnd.google-apps.folder",
+      ...(parentId && { parents: [parentId] }),
+    };
+
+    const response = await fetch(
+      "https://www.googleapis.com/drive/v3/files?fields=id,name,mimeType,modifiedTime,iconLink,webViewLink",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(metadata),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        ok: false,
+        error: `Ошибка создания папки ${response.status}: ${errorText}`,
+      };
+    }
+
+    const folder = (await response.json()) as DriveApiFile;
+    return { ok: true, folder };
+  } catch (unknownError: unknown) {
+    return {
+      ok: false,
+      error:
+        unknownError instanceof Error
+          ? unknownError.message
+          : "Неизвестная ошибка",
+    };
+  }
+}

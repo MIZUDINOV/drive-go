@@ -7,6 +7,7 @@ export type FileKind =
   | "sheet"
   | "excel"
   | "slide"
+  | "form"
   | "archive"
   | "image"
   | "text"
@@ -35,6 +36,7 @@ const exactMimeTypeToKind = new Map<string, FileKind>([
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     "slide",
   ],
+  ["application/vnd.google-apps.form", "form"],
   ["application/zip", "archive"],
   ["application/x-zip-compressed", "archive"],
   ["application/x-rar-compressed", "archive"],
@@ -125,7 +127,18 @@ const fileTypeIconByKind = new Map<FileKind, () => JSX.Element>([
       <svg class="drive-file-icon" viewBox="0 0 16 16" aria-hidden="true">
         <path
           fill="#f29900"
-          d="M1.778 0h12.444C15.2 0 16 .8 16 1.778v12.444C16 15.2 15.2 16 14.222 16H1.778C.8 16 0 15.2 0 14.222V1.778C0 .8.8 0 1.778 0zm2.666 10.667h2.223V8.89h2.222V7.556H6.667V5.333H4.444v5.334zm5.334 0h1.333V5.333H9.778v5.334z"
+          d="M14.213 0H1.77C.79 0 0 .8 0 1.778v12.444C0 15.2.791 16 1.769 16h12.444c.978 0 1.778-.8 1.778-1.778V1.778C15.991.8 15.191 0 14.213 0zm0 11.556H1.77V4.444h12.444v7.112z"
+        />
+      </svg>
+    ),
+  ],
+  [
+    "form",
+    () => (
+      <svg class="drive-file-icon" viewBox="0 0 16 16" aria-hidden="true">
+        <path
+          fill="#7B1FA2"
+          d="M14.222 0H1.778C.8 0 0 .8 0 1.778v12.444C0 15.2.8 16 1.778 16h12.444C15.2 16 16 15.2 16 14.222V1.778C16 .8 15.2 0 14.222 0zM5.333 12.444H3.556v-1.777h1.777v1.777zm0-3.555H3.556V7.11h1.777V8.89zm0-3.556H3.556V3.556h1.777v1.777zm7.111 7.111H6.222v-1.777h6.222v1.777zm0-3.555H6.222V7.11h6.222V8.89zm0-3.556H6.222V3.556h6.222v1.777z"
         />
       </svg>
     ),

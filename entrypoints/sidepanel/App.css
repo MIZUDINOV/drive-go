@@ -129,7 +129,7 @@
 
 .search-block {
   display: grid;
-  grid-template-columns: 1fr 38px;
+  grid-template-columns: 1fr auto 38px;
   gap: 8px;
   align-items: center;
   min-width: 0;
@@ -571,7 +571,7 @@
 .drive-items-list,
 .drive-grid-layout {
   overflow: auto;
-  max-height: calc(100vh - 290px);
+  max-height: calc(100vh - 230px);
 }
 
 .drive-grid-layout {
@@ -720,6 +720,216 @@
 .drive-grid-preview .drive-file-icon-folder {
   width: 44px;
   height: 44px;
+}
+
+/* CreateButton styles */
+.create-button {
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.create-button:hover {
+  background: var(--surface-hover);
+}
+
+.create-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.create-label {
+  white-space: nowrap;
+}
+
+.create-menu-content {
+  min-width: 260px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px;
+  background: #fff;
+  box-shadow: 0 12px 26px rgba(16, 34, 56, 0.16);
+  z-index: 50;
+}
+
+.create-menu-item {
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+.create-menu-item:hover,
+.create-menu-item[data-highlighted] {
+  background: #f2f7ff;
+  outline: none;
+}
+
+.create-menu-item-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.create-menu-item-icon svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
+.create-menu-item-icon .drive-file-icon,
+.create-menu-item-icon .drive-file-icon-folder {
+  width: 24px;
+  height: 24px;
+}
+
+.create-menu-item-label {
+  font-size: 14px;
+  color: var(--text-main);
+}
+
+/* Dialog styles */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.dialog-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 420px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 24px 48px rgba(16, 34, 56, 0.24);
+  z-index: 101;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.dialog-title {
+  margin: 0;
+  padding: 20px 20px 16px;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.dialog-body {
+  padding: 0 20px 20px;
+}
+
+.folder-name-field {
+  width: 100%;
+}
+
+.folder-name-input {
+  width: 100%;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--text-main);
+  background: var(--surface);
+}
+
+.folder-name-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.dialog-error {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fee;
+  color: #c33;
+  font-size: 12px;
+}
+
+.dialog-footer {
+  padding: 12px 20px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dialog-btn {
+  height: 38px;
+  padding: 0 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+}
+
+.dialog-btn-cancel {
+  background: transparent;
+  color: var(--text-main);
+}
+
+.dialog-btn-cancel:hover:not(:disabled) {
+  background: #f1f3f4;
+}
+
+.dialog-btn-create {
+  background: var(--accent);
+  color: #fff;
+}
+
+.dialog-btn-create:hover:not(:disabled) {
+  background: #1557d3;
+}
+
+.dialog-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .drive-grid-preview .drive-file-icon {

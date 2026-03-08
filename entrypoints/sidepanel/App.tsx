@@ -4,6 +4,7 @@ import { Button } from "@kobalte/core/button";
 import { TabIcon, type TabIconName } from "./tabIcons";
 import { DriveBrowser } from "./components/drive/DriveBrowser";
 import { DriveSearchBar } from "./components/search/DriveSearchBar";
+import { CreateButton } from "./components/CreateButton";
 import {
   DEFAULT_DRIVE_SEARCH_FILTERS,
   type DriveSearchFilters,
@@ -126,6 +127,8 @@ function App() {
               onChange={setSearchQuery}
               onFiltersChange={setSearchFilters}
             />
+
+            <CreateButton />
 
             <Button
               class="upload-icon-btn"
