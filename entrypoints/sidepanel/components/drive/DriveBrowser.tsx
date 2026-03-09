@@ -1,4 +1,12 @@
-import { For, Show, createEffect, createMemo, createSignal, JSX, onCleanup } from "solid-js";
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createSignal,
+  JSX,
+  onCleanup,
+} from "solid-js";
 import { Breadcrumbs } from "@kobalte/core/breadcrumbs";
 import { SegmentedControl } from "@kobalte/core/segmented-control";
 import { Button } from "@kobalte/core/button";
@@ -27,6 +35,7 @@ import {
   addSharedItemToStarred,
   removeSharedItem,
 } from "../../services/sharedApi";
+import { removeFromStarred } from "../../services/starredApi";
 import { type DriveItemMenuConfig } from "./DriveItemMenu";
 import { DriveItemsContent } from "./DriveItemsContent";
 
@@ -116,7 +125,10 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
           const iconMimeType = props.iconMimeTypes?.[option];
 
           return (
-            <Select.Item item={itemProps.item} class="drive-browser-filter-item">
+            <Select.Item
+              item={itemProps.item}
+              class="drive-browser-filter-item"
+            >
               <Show when={iconMimeType !== undefined}>
                 <span class="drive-browser-filter-item-icon" aria-hidden="true">
                   <FileTypeIcon
@@ -163,9 +175,11 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
 export function DriveBrowser(props: DriveBrowserProps) {
   const SHARED_TOAST_REGION_ID = "shared-drive-actions";
   const RECENT_TOAST_REGION_ID = "recent-drive-actions";
+  const STARRED_TOAST_REGION_ID = "starred-drive-actions";
   const scope = props.scope ?? "my-drive";
   const isSharedScope = scope === "shared";
   const isRecentScope = scope === "recent";
+  const isStarredScope = scope === "starred";
   const browserState = useDriveBrowser({ scope });
   const [viewMode, setViewMode] = createSignal<DriveViewMode>("list");
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
@@ -210,8 +224,38 @@ export function DriveBrowser(props: DriveBrowserProps) {
   };
 
   const menuConfig = createMemo<DriveItemMenuConfig | undefined>(() => {
-    if (!isSharedScope && !isRecentScope) {
+    if (!isSharedScope && !isRecentScope && !isStarredScope) {
       return undefined;
+    }
+
+    if (isStarredScope) {
+      return {
+        actions: ["open", "share", "copy-link", "remove-star"],
+        onRemoveStar: async (item) => {
+          const result = await removeFromStarred(item.id);
+          if (!result.ok) {
+            showActionToast(
+              "Не удалось убрать пометку",
+              result.error,
+              "error",
+              STARRED_TOAST_REGION_ID,
+            );
+            return false;
+          }
+
+          showActionToast(
+            "Убрано из помеченных",
+            `Файл \"${item.name}\" удален из Избранного Google Drive.`,
+            "success",
+            STARRED_TOAST_REGION_ID,
+          );
+
+          browserState.removeItemLocally(item.id);
+
+          // Обновляем список локально без полного перезапроса.
+          return false;
+        },
+      };
     }
 
     if (isRecentScope) {
@@ -291,7 +335,10 @@ export function DriveBrowser(props: DriveBrowserProps) {
   createEffect(() => {
     const loadTarget = browserState.currentFolderId();
 
-    if (!browserState.loading() && browserState.loadedFolderId() !== loadTarget) {
+    if (
+      !browserState.loading() &&
+      browserState.loadedFolderId() !== loadTarget
+    ) {
       void browserState.loadFolder(loadTarget, true);
     }
   });
@@ -312,7 +359,9 @@ export function DriveBrowser(props: DriveBrowserProps) {
       return;
     }
 
-    props.onFolderChange(scope === "my-drive" ? browserState.currentFolderId() : null);
+    props.onFolderChange(
+      scope === "my-drive" ? browserState.currentFolderId() : null,
+    );
   });
 
   createEffect(() => {
@@ -479,8 +528,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
                   index() === browserState.breadcrumbs().length - 1;
 
                 const canNavigate = () => !isLast();
-                const canShowDropdown = () =>
-                  isLast() && scope === "my-drive";
+                const canShowDropdown = () => isLast() && scope === "my-drive";
 
                 const typeOptions = () =>
                   isRecentScope
@@ -502,7 +550,9 @@ export function DriveBrowser(props: DriveBrowserProps) {
                         <Show
                           when={canShowDropdown()}
                           fallback={
-                            <span class="folder-breadcrumb-link">{crumb.name}</span>
+                            <span class="folder-breadcrumb-link">
+                              {crumb.name}
+                            </span>
                           }
                         >
                           <DropdownMenu>
@@ -686,7 +736,9 @@ export function DriveBrowser(props: DriveBrowserProps) {
             ? "Нет файлов, открытых для вас."
             : isRecentScope
               ? "Недавних файлов пока нет."
-              : "В этой папке пока нет файлов и папок."
+              : isStarredScope
+                ? "Помеченных файлов пока нет."
+                : "В этой папке пока нет файлов и папок."
         }
       />
 
@@ -772,6 +824,16 @@ export function DriveBrowser(props: DriveBrowserProps) {
           <Toast.Region
             class="drive-toast-region"
             regionId={RECENT_TOAST_REGION_ID}
+            limit={4}
+          >
+            <Toast.List class="drive-toast-list" />
+          </Toast.Region>
+        </Show>
+
+        <Show when={isStarredScope}>
+          <Toast.Region
+            class="drive-toast-region"
+            regionId={STARRED_TOAST_REGION_ID}
             limit={4}
           >
             <Toast.List class="drive-toast-list" />

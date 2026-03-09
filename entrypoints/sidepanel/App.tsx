@@ -201,6 +201,14 @@ function App() {
                   />
                 </Show>
 
+                <Show when={tab.id === "starred"}>
+                  <DriveBrowser
+                    scope="starred"
+                    formatDate={formatDate}
+                    formatSize={formatSize}
+                  />
+                </Show>
+
                 <Show when={tab.id === "activity"}>
                   <ActivityBrowser />
                 </Show>
@@ -209,6 +217,7 @@ function App() {
                   when={
                     tab.id !== "my-drive" &&
                     tab.id !== "recent" &&
+                    tab.id !== "starred" &&
                     tab.id !== "activity" &&
                     tab.id !== "shared"
                   }

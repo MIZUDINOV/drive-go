@@ -16,12 +16,14 @@ export type DriveItemMenuAction =
   | "share"
   | "copy-link"
   | "add-star"
+  | "remove-star"
   | "remove-shared";
 
 export type DriveItemMenuConfig = {
   actions: DriveItemMenuAction[];
   trashLabel?: string;
   onAddStar?: (item: DriveItem) => Promise<boolean>;
+  onRemoveStar?: (item: DriveItem) => Promise<boolean>;
   onRemoveShared?: (item: DriveItem) => Promise<boolean>;
 };
 
@@ -44,6 +46,7 @@ type MenuItemsProps = {
   onShareClick: () => void;
   onCopyLink: () => void;
   onAddStarClick: () => void;
+  onRemoveStarClick: () => void;
   onRemoveSharedClick: () => void;
 };
 
@@ -85,6 +88,18 @@ function DropdownMenuItems(props: MenuItemsProps) {
         >
           <span class="material-symbols-rounded drive-item-menu-icon">star</span>
           <DropdownMenu.ItemLabel>Добавить в помеченные</DropdownMenu.ItemLabel>
+        </DropdownMenu.Item>
+      </Show>
+
+      <Show when={hasAction(props.actions, "remove-star")}>
+        <DropdownMenu.Item
+          class="drive-item-menu-item"
+          onSelect={props.onRemoveStarClick}
+        >
+          <span class="material-symbols-rounded drive-item-menu-icon">
+            star_outline
+          </span>
+          <DropdownMenu.ItemLabel>Убрать из помеченных</DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
 
@@ -180,6 +195,18 @@ function ContextMenuItems(props: MenuItemsProps) {
         >
           <span class="material-symbols-rounded drive-item-menu-icon">star</span>
           <ContextMenu.ItemLabel>Добавить в помеченные</ContextMenu.ItemLabel>
+        </ContextMenu.Item>
+      </Show>
+
+      <Show when={hasAction(props.actions, "remove-star")}>
+        <ContextMenu.Item
+          class="drive-item-menu-item"
+          onSelect={props.onRemoveStarClick}
+        >
+          <span class="material-symbols-rounded drive-item-menu-icon">
+            star_outline
+          </span>
+          <ContextMenu.ItemLabel>Убрать из помеченных</ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>
 
@@ -295,6 +322,17 @@ export function DriveItemContextMenu(props: DriveItemContextMenuProps) {
     }
   };
 
+  const handleRemoveStar = async () => {
+    if (!props.menuConfig?.onRemoveStar) {
+      return;
+    }
+
+    const success = await props.menuConfig.onRemoveStar(props.item);
+    if (success) {
+      handleSuccess();
+    }
+  };
+
   return (
     <>
       <ContextMenu>
@@ -314,6 +352,7 @@ export function DriveItemContextMenu(props: DriveItemContextMenuProps) {
               onShareClick={() => setIsShareDialogOpen(true)}
               onCopyLink={handleCopyLink}
               onAddStarClick={() => void handleAddStar()}
+              onRemoveStarClick={() => void handleRemoveStar()}
               onRemoveSharedClick={() => void handleRemoveShared()}
             />
           </ContextMenu.Content>
@@ -409,6 +448,17 @@ export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
     }
   };
 
+  const handleRemoveStar = async () => {
+    if (!props.menuConfig?.onRemoveStar) {
+      return;
+    }
+
+    const success = await props.menuConfig.onRemoveStar(props.item);
+    if (success) {
+      handleSuccess();
+    }
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -436,6 +486,7 @@ export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
               onShareClick={() => setIsShareDialogOpen(true)}
               onCopyLink={handleCopyLink}
               onAddStarClick={() => void handleAddStar()}
+              onRemoveStarClick={() => void handleRemoveStar()}
               onRemoveSharedClick={() => void handleRemoveShared()}
             />
           </DropdownMenu.Content>
