@@ -17,6 +17,8 @@
   padding: 10px;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .sidebar-top {
@@ -62,7 +64,9 @@
   display: grid;
   gap: 6px;
   align-content: start;
-  height: 100%;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .tab-item {
@@ -132,6 +136,58 @@
   display: none;
   opacity: 0;
   transition: opacity 150ms ease-out;
+}
+
+/* Sidebar bottom */
+.sidebar-bottom {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 10px;
+  height: 36px;
+  padding: 0 10px;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.3);
+  text-align: left;
+  transition: all 200ms ease-out;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.settings-btn:hover {
+  background: var(--surface-hover);
+  transform: translateX(2px);
+}
+
+.settings-btn:focus {
+  outline: none;
+}
+
+.settings-btn:focus-visible {
+  outline: none;
+}
+
+.collapsed .settings-btn {
+  justify-content: center;
+  padding: 0;
+}
+
+.settings-btn .material-symbols-rounded {
+  font-size: 20px;
+  line-height: 1;
+  width: 18px;
+  height: 18px;
 }
 
 /* Tooltip styles */

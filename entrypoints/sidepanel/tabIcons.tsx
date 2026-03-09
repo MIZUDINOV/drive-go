@@ -1,6 +1,6 @@
 import { type JSX } from "solid-js";
 
-export type TabIconName = "drive" | "clock" | "shared" | "star" | "pulse" | "trash";
+export type TabIconName = "drive" | "clock" | "shared" | "star" | "pulse" | "trash" | "settings";
 
 const tabIconbyName = new Map<TabIconName, string>([
   ["drive", "storage"],
@@ -9,6 +9,7 @@ const tabIconbyName = new Map<TabIconName, string>([
   ["star", "star"],
   ["pulse", "notifications"],
   ["trash", "delete"],
+  ["settings", "settings"],
 ]);
 
 export function TabIcon(props: { name: TabIconName; isSelected?: boolean }): JSX.Element {

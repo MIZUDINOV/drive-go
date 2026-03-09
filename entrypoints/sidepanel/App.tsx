@@ -4,6 +4,7 @@ import { Button } from "@kobalte/core/button";
 import { Tooltip } from "@kobalte/core/tooltip";
 import { TabIcon, type TabIconName } from "./tabIcons";
 import { DriveBrowser } from "./components/drive/DriveBrowser";
+import { ActivityBrowser } from "./components/activity/ActivityBrowser";
 import { DriveSearchBar } from "./components/search/DriveSearchBar";
 import { UploadPopover } from "./components/upload/UploadPopover";
 import { DragDropOverlay } from "./components/upload/DragDropOverlay";
@@ -122,6 +123,28 @@ function App() {
             )}
           </For>
         </Tabs.List>
+
+        <div class="sidebar-bottom">
+          <Tooltip placement="right" gutter={8} disabled={!isMenuCollapsed()}>
+            <Button
+              class="settings-btn"
+              onClick={() => {
+                const optionsUrl = browser.runtime.getURL('/options.html');
+                window.open(optionsUrl, 'google-drive-go-options');
+              }}
+              title="Настройки"
+            >
+              <span class="material-symbols-rounded">settings</span>
+              <span class="tab-label">Настройки</span>
+            </Button>
+            <Tooltip.Portal>
+              <Tooltip.Content class="tab-tooltip">
+                <Tooltip.Arrow />
+                <span>Настройки</span>
+              </Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip>
+        </div>
       </aside>
 
       <section class="content-area">
@@ -145,21 +168,24 @@ function App() {
           <For each={tabs}>
             {(tab) => (
               <Tabs.Content class="content-card" value={tab.id}>
-                <Show when={tab.id !== "my-drive"}>
+                <Show when={tab.id !== "my-drive" && tab.id !== "activity"}>
                   <h2>{tab.title}</h2>
                 </Show>
 
-                <Show
-                  when={tab.id === "my-drive"}
-                  fallback={
-                    <p>Содержимое раздела появится на следующем шаге.</p>
-                  }
-                >
+                <Show when={tab.id === "my-drive"}>
                   <DriveBrowser
                     formatDate={formatDate}
                     formatSize={formatSize}
                     onFolderChange={setCurrentFolderId}
                   />
+                </Show>
+
+                <Show when={tab.id === "activity"}>
+                  <ActivityBrowser />
+                </Show>
+
+                <Show when={tab.id !== "my-drive" && tab.id !== "activity"}>
+                  <p>Содержимое раздела появится на следующем шаге.</p>
                 </Show>
               </Tabs.Content>
             )}

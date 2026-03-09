@@ -456,3 +456,51 @@ export async function listAllFolders(): Promise<DriveApiFile[]> {
     return [];
   }
 }
+
+/**
+ * Получить информацию о файле с данными пользователей
+ * Используется для получения displayName, email и photoLink из Drive API
+ */
+export async function getFileWithUserInfo(
+  fileId: string,
+): Promise<{
+  lastModifyingUser?: {
+    displayName?: string;
+    emailAddress?: string;
+    photoLink?: string;
+  };
+  owners?: Array<{
+    displayName?: string;
+    emailAddress?: string;
+    photoLink?: string;
+  }>;
+} | null> {
+  try {
+    const token = await getAccessToken();
+    const params = new URLSearchParams({
+      fields: "lastModifyingUser(displayName,emailAddress,photoLink),owners(displayName,emailAddress,photoLink)",
+      supportsAllDrives: "true",
+    });
+    
+    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?${params.toString()}`;
+    console.log(`[getFileWithUserInfo] GET ${url}`);
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token.token}` },
+    });
+
+    if (!response.ok) {
+      console.error(`[getFileWithUserInfo] Error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`[getFileWithUserInfo] Response: ${errorText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log(`[getFileWithUserInfo] Response for ${fileId}:`, data);
+    return data;
+  } catch (error) {
+    console.error("[getFileWithUserInfo] Exception:", error);
+    return null;
+  }
+}
