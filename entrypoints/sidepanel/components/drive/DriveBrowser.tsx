@@ -162,8 +162,10 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
 
 export function DriveBrowser(props: DriveBrowserProps) {
   const SHARED_TOAST_REGION_ID = "shared-drive-actions";
+  const RECENT_TOAST_REGION_ID = "recent-drive-actions";
   const scope = props.scope ?? "my-drive";
   const isSharedScope = scope === "shared";
+  const isRecentScope = scope === "recent";
   const browserState = useDriveBrowser({ scope });
   const [viewMode, setViewMode] = createSignal<DriveViewMode>("list");
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
@@ -173,10 +175,11 @@ export function DriveBrowser(props: DriveBrowserProps) {
   let fileInputRef: HTMLInputElement | undefined;
   let hasFilterEffectInitialized = false;
 
-  const showSharedToast = (
+  const showActionToast = (
     title: string,
     description: string,
     tone: "success" | "error",
+    regionId: string,
   ) => {
     toaster.show(
       (toastProps) => (
@@ -202,13 +205,40 @@ export function DriveBrowser(props: DriveBrowserProps) {
           </Toast.ProgressTrack>
         </Toast>
       ),
-      { region: SHARED_TOAST_REGION_ID },
+      { region: regionId },
     );
   };
 
   const menuConfig = createMemo<DriveItemMenuConfig | undefined>(() => {
-    if (!isSharedScope) {
+    if (!isSharedScope && !isRecentScope) {
       return undefined;
+    }
+
+    if (isRecentScope) {
+      return {
+        actions: ["open", "share", "add-star", "copy-link"],
+        onAddStar: async (item) => {
+          const result = await addSharedItemToStarred(item.id);
+          if (!result.ok) {
+            showActionToast(
+              "Не удалось добавить в помеченные",
+              result.error,
+              "error",
+              RECENT_TOAST_REGION_ID,
+            );
+            return false;
+          }
+
+          showActionToast(
+            "Добавлено в помеченные",
+            `Файл \"${item.name}\" добавлен в Избранное Google Drive.`,
+            "success",
+            RECENT_TOAST_REGION_ID,
+          );
+
+          return false;
+        },
+      };
     }
 
     return {
@@ -216,14 +246,20 @@ export function DriveBrowser(props: DriveBrowserProps) {
       onAddStar: async (item) => {
         const result = await addSharedItemToStarred(item.id);
         if (!result.ok) {
-          showSharedToast("Не удалось добавить в помеченные", result.error, "error");
+          showActionToast(
+            "Не удалось добавить в помеченные",
+            result.error,
+            "error",
+            SHARED_TOAST_REGION_ID,
+          );
           return false;
         }
 
-        showSharedToast(
+        showActionToast(
           "Добавлено в помеченные",
           `Файл \"${item.name}\" добавлен в Избранное Google Drive.`,
           "success",
+          SHARED_TOAST_REGION_ID,
         );
 
         // Для shared не перезагружаем список после добавления в избранное.
@@ -232,14 +268,20 @@ export function DriveBrowser(props: DriveBrowserProps) {
       onRemoveShared: async (item) => {
         const result = await removeSharedItem(item.id);
         if (!result.ok) {
-          showSharedToast("Не удалось удалить из доступа", result.error, "error");
+          showActionToast(
+            "Не удалось удалить из доступа",
+            result.error,
+            "error",
+            SHARED_TOAST_REGION_ID,
+          );
           return false;
         }
 
-        showSharedToast(
+        showActionToast(
           "Удалено из Доступные мне",
           `Файл \"${item.name}\" больше не отображается в этом разделе.`,
           "success",
+          SHARED_TOAST_REGION_ID,
         );
         return true;
       },
@@ -270,11 +312,11 @@ export function DriveBrowser(props: DriveBrowserProps) {
       return;
     }
 
-    props.onFolderChange(isSharedScope ? null : browserState.currentFolderId());
+    props.onFolderChange(scope === "my-drive" ? browserState.currentFolderId() : null);
   });
 
   createEffect(() => {
-    if (isSharedScope) {
+    if (scope !== "my-drive") {
       return;
     }
 
@@ -414,6 +456,18 @@ export function DriveBrowser(props: DriveBrowserProps) {
     },
   ];
 
+  const typeOptions = () =>
+    isRecentScope
+      ? ([
+          "all",
+          "documents",
+          "spreadsheets",
+          "presentations",
+          "pdf",
+          "images",
+        ] as DriveSearchFilters["type"][])
+      : TYPE_OPTIONS;
+
   return (
     <section class="drive-browser">
       <div class="folder-header">
@@ -425,7 +479,20 @@ export function DriveBrowser(props: DriveBrowserProps) {
                   index() === browserState.breadcrumbs().length - 1;
 
                 const canNavigate = () => !isLast();
-                const canShowDropdown = () => isLast() && !isSharedScope;
+                const canShowDropdown = () =>
+                  isLast() && scope === "my-drive";
+
+                const typeOptions = () =>
+                  isRecentScope
+                    ? ([
+                        "all",
+                        "documents",
+                        "spreadsheets",
+                        "presentations",
+                        "pdf",
+                        "images",
+                      ] as DriveSearchFilters["type"][])
+                    : TYPE_OPTIONS;
 
                 return (
                   <>
@@ -548,7 +615,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
             label="Тип"
             ariaLabel="Фильтр по типу"
             value={browserState.filters().type}
-            options={TYPE_OPTIONS}
+            options={typeOptions()}
             labels={TYPE_LABEL}
             iconMimeTypes={TYPE_MIME}
             onChange={(type) =>
@@ -617,7 +684,9 @@ export function DriveBrowser(props: DriveBrowserProps) {
         emptyText={
           isSharedScope
             ? "Нет файлов, открытых для вас."
-            : "В этой папке пока нет файлов и папок."
+            : isRecentScope
+              ? "Недавних файлов пока нет."
+              : "В этой папке пока нет файлов и папок."
         }
       />
 
@@ -632,7 +701,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
         </Button>
       </Show>
 
-      <Show when={!isSharedScope}>
+      <Show when={scope === "my-drive"}>
         <>
           <input
             ref={fileInputRef}
@@ -689,13 +758,25 @@ export function DriveBrowser(props: DriveBrowserProps) {
       </Show>
 
       <Portal>
-        <Toast.Region
-          class="drive-toast-region"
-          regionId={SHARED_TOAST_REGION_ID}
-          limit={4}
-        >
-          <Toast.List class="drive-toast-list" />
-        </Toast.Region>
+        <Show when={isSharedScope}>
+          <Toast.Region
+            class="drive-toast-region"
+            regionId={SHARED_TOAST_REGION_ID}
+            limit={4}
+          >
+            <Toast.List class="drive-toast-list" />
+          </Toast.Region>
+        </Show>
+
+        <Show when={isRecentScope}>
+          <Toast.Region
+            class="drive-toast-region"
+            regionId={RECENT_TOAST_REGION_ID}
+            limit={4}
+          >
+            <Toast.List class="drive-toast-list" />
+          </Toast.Region>
+        </Show>
       </Portal>
     </section>
   );

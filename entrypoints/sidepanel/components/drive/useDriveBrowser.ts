@@ -11,14 +11,16 @@ import {
   DEFAULT_DRIVE_SEARCH_FILTERS,
 } from "../../services/driveApi";
 import { listSharedWithMe } from "../../services/sharedApi";
+import { listRecentFiles } from "../../services/recentApi";
 
-export type DriveBrowserScope = "my-drive" | "shared";
+export type DriveBrowserScope = "my-drive" | "shared" | "recent";
 
 type UseDriveBrowserOptions = {
   scope?: DriveBrowserScope;
 };
 
 const SHARED_ROOT_ID = "shared-root";
+const RECENT_ROOT_ID = "recent-root";
 
 function mapApiFile(file: DriveApiFile): DriveItem {
   return {
@@ -37,6 +39,7 @@ function mapApiFile(file: DriveApiFile): DriveItem {
 export function useDriveBrowser(options?: UseDriveBrowserOptions) {
   const scope = options?.scope ?? "my-drive";
   const isSharedScope = scope === "shared";
+  const isRecentScope = scope === "recent";
   const [items, setItems] = createSignal<DriveItem[]>([]);
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal("");
@@ -48,14 +51,26 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
   let requestSeq = 0;
   const [breadcrumbs, setBreadcrumbs] = createSignal<BreadcrumbItem[]>([
     {
-      id: isSharedScope ? SHARED_ROOT_ID : ROOT_FOLDER_ID,
-      name: isSharedScope ? "Доступные мне" : "Мой диск",
+      id: isSharedScope
+        ? SHARED_ROOT_ID
+        : isRecentScope
+          ? RECENT_ROOT_ID
+          : ROOT_FOLDER_ID,
+      name: isSharedScope
+        ? "Доступные мне"
+        : isRecentScope
+          ? "Недавние"
+          : "Мой диск",
     },
   ]);
 
   const currentFolderId = () =>
     breadcrumbs()[breadcrumbs().length - 1]?.id ??
-    (isSharedScope ? SHARED_ROOT_ID : ROOT_FOLDER_ID);
+    (isSharedScope
+      ? SHARED_ROOT_ID
+      : isRecentScope
+        ? RECENT_ROOT_ID
+        : ROOT_FOLDER_ID);
 
   const loadFolder = async (folderId: string, reset: boolean) => {
     const requestId = ++requestSeq;
@@ -74,11 +89,15 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
             folderId,
             filters: filters(),
           })
-        : await listMyDriveFolder(
-            folderId,
-            reset ? undefined : nextPageToken(),
-            { filters: filters() },
-          );
+        : isRecentScope
+          ? await listRecentFiles(reset ? undefined : nextPageToken(), {
+              filters: filters(),
+            })
+          : await listMyDriveFolder(
+              folderId,
+              reset ? undefined : nextPageToken(),
+              { filters: filters() },
+            );
 
       if (requestId !== requestSeq) {
         return;
@@ -88,7 +107,13 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
         throw new Error(response.error || "Не удалось загрузить папку");
       }
 
-      const mapped = (response.data?.files ?? []).map(mapApiFile);
+      const mapped = (response.data?.files ?? [])
+        .map(mapApiFile)
+        .filter((item) =>
+          isRecentScope
+            ? item.mimeType !== "application/vnd.google-apps.folder"
+            : true,
+        );
       const loadedId = folderId;
 
       if (reset) {
@@ -109,6 +134,8 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
       );
     } finally {
       if (requestId === requestSeq) {
+        // Prevent auto-load effect from entering an endless retry loop on persistent API errors.
+        setLoadedFolderId(folderId);
         setLoading(false);
       }
     }
