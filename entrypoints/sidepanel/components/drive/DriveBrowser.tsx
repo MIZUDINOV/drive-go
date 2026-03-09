@@ -36,8 +36,14 @@ import {
   removeSharedItem,
 } from "../../services/sharedApi";
 import { removeFromStarred } from "../../services/starredApi";
+import {
+  deleteTrashItemForever,
+  emptyTrash,
+  restoreTrashItem,
+} from "../../services/trashApi";
 import { type DriveItemMenuConfig } from "./DriveItemMenu";
 import { DriveItemsContent } from "./DriveItemsContent";
+import { EmptyTrashDialog } from "./EmptyTrashDialog";
 
 type DriveBrowserProps = {
   formatDate: (dateIso: string) => string;
@@ -176,13 +182,17 @@ export function DriveBrowser(props: DriveBrowserProps) {
   const SHARED_TOAST_REGION_ID = "shared-drive-actions";
   const RECENT_TOAST_REGION_ID = "recent-drive-actions";
   const STARRED_TOAST_REGION_ID = "starred-drive-actions";
+  const TRASH_TOAST_REGION_ID = "trash-drive-actions";
   const scope = props.scope ?? "my-drive";
   const isSharedScope = scope === "shared";
   const isRecentScope = scope === "recent";
   const isStarredScope = scope === "starred";
+  const isTrashScope = scope === "trash";
   const browserState = useDriveBrowser({ scope });
   const [viewMode, setViewMode] = createSignal<DriveViewMode>("list");
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
+  const [isEmptyTrashDialogOpen, setIsEmptyTrashDialogOpen] =
+    createSignal(false);
   const [folderName, setFolderName] = createSignal("Без названия");
   const [isCreating, setIsCreating] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
@@ -224,8 +234,58 @@ export function DriveBrowser(props: DriveBrowserProps) {
   };
 
   const menuConfig = createMemo<DriveItemMenuConfig | undefined>(() => {
-    if (!isSharedScope && !isRecentScope && !isStarredScope) {
+    if (!isSharedScope && !isRecentScope && !isStarredScope && !isTrashScope) {
       return undefined;
+    }
+
+    if (isTrashScope) {
+      return {
+        actions: ["restore", "delete-forever"],
+        onRestore: async (item) => {
+          const result = await restoreTrashItem(item.id);
+          if (!result.ok) {
+            showActionToast(
+              "Не удалось восстановить",
+              result.error,
+              "error",
+              TRASH_TOAST_REGION_ID,
+            );
+            return false;
+          }
+
+          browserState.removeItemLocally(item.id);
+
+          showActionToast(
+            "Восстановлено",
+            `Файл \"${item.name}\" восстановлен из корзины.`,
+            "success",
+            TRASH_TOAST_REGION_ID,
+          );
+          return false;
+        },
+        onDeleteForever: async (item) => {
+          const result = await deleteTrashItemForever(item.id);
+          if (!result.ok) {
+            showActionToast(
+              "Не удалось удалить навсегда",
+              result.error,
+              "error",
+              TRASH_TOAST_REGION_ID,
+            );
+            return false;
+          }
+
+          browserState.removeItemLocally(item.id);
+
+          showActionToast(
+            "Удалено навсегда",
+            `Файл \"${item.name}\" удален безвозвратно.`,
+            "success",
+            TRASH_TOAST_REGION_ID,
+          );
+          return true;
+        },
+      };
     }
 
     if (isStarredScope) {
@@ -388,6 +448,10 @@ export function DriveBrowser(props: DriveBrowserProps) {
 
   const onItemDoubleClick = (item: DriveItem) => {
     if (isFolder(item)) {
+      if (isTrashScope) {
+        return;
+      }
+
       void browserState.openFolder(item);
       return;
     }
@@ -517,6 +581,30 @@ export function DriveBrowser(props: DriveBrowserProps) {
         ] as DriveSearchFilters["type"][])
       : TYPE_OPTIONS;
 
+  const handleEmptyTrash = async (): Promise<boolean> => {
+    const result = await emptyTrash();
+    if (!result.ok) {
+      showActionToast(
+        "Не удалось очистить корзину",
+        result.error,
+        "error",
+        TRASH_TOAST_REGION_ID,
+      );
+      return false;
+    }
+
+    browserState.clearItemsLocally();
+
+    showActionToast(
+      "Корзина очищена",
+      "Все объекты в корзине удалены безвозвратно.",
+      "success",
+      TRASH_TOAST_REGION_ID,
+    );
+
+    return true;
+  };
+
   return (
     <section class="drive-browser">
       <div class="folder-header">
@@ -529,18 +617,6 @@ export function DriveBrowser(props: DriveBrowserProps) {
 
                 const canNavigate = () => !isLast();
                 const canShowDropdown = () => isLast() && scope === "my-drive";
-
-                const typeOptions = () =>
-                  isRecentScope
-                    ? ([
-                        "all",
-                        "documents",
-                        "spreadsheets",
-                        "presentations",
-                        "pdf",
-                        "images",
-                      ] as DriveSearchFilters["type"][])
-                    : TYPE_OPTIONS;
 
                 return (
                   <>
@@ -720,6 +796,30 @@ export function DriveBrowser(props: DriveBrowserProps) {
         </div>
       </header>
 
+      <Show when={isTrashScope}>
+        <section class="trash-info-banner" aria-label="Информация о корзине">
+          <p class="trash-info-text">
+            Объекты в корзине удаляются навсегда через 30 дней после попадания в нее.
+          </p>
+          <Button
+            type="button"
+            class="trash-empty-btn"
+            onClick={() => setIsEmptyTrashDialogOpen(true)}
+            disabled={browserState.loading() || browserState.items().length === 0}
+          >
+            Очистить корзину
+          </Button>
+        </section>
+      </Show>
+
+      <Show when={isTrashScope}>
+        <EmptyTrashDialog
+          open={isEmptyTrashDialogOpen()}
+          onOpenChange={setIsEmptyTrashDialogOpen}
+          onConfirm={handleEmptyTrash}
+        />
+      </Show>
+
       <DriveItemsContent
         items={browserState.items()}
         loading={browserState.loading()}
@@ -738,6 +838,8 @@ export function DriveBrowser(props: DriveBrowserProps) {
               ? "Недавних файлов пока нет."
               : isStarredScope
                 ? "Помеченных файлов пока нет."
+                : isTrashScope
+                  ? "Корзина пуста."
                 : "В этой папке пока нет файлов и папок."
         }
       />
@@ -834,6 +936,16 @@ export function DriveBrowser(props: DriveBrowserProps) {
           <Toast.Region
             class="drive-toast-region"
             regionId={STARRED_TOAST_REGION_ID}
+            limit={4}
+          >
+            <Toast.List class="drive-toast-list" />
+          </Toast.Region>
+        </Show>
+
+        <Show when={isTrashScope}>
+          <Toast.Region
+            class="drive-toast-region"
+            regionId={TRASH_TOAST_REGION_ID}
             limit={4}
           >
             <Toast.List class="drive-toast-list" />

@@ -13,8 +13,14 @@ import {
 import { listSharedWithMe } from "../../services/sharedApi";
 import { listRecentFiles } from "../../services/recentApi";
 import { listStarredItems } from "../../services/starredApi";
+import { listTrashItems } from "../../services/trashApi";
 
-export type DriveBrowserScope = "my-drive" | "shared" | "recent" | "starred";
+export type DriveBrowserScope =
+  | "my-drive"
+  | "shared"
+  | "recent"
+  | "starred"
+  | "trash";
 
 type UseDriveBrowserOptions = {
   scope?: DriveBrowserScope;
@@ -23,6 +29,7 @@ type UseDriveBrowserOptions = {
 const SHARED_ROOT_ID = "shared-root";
 const RECENT_ROOT_ID = "recent-root";
 const STARRED_ROOT_ID = "starred-root";
+const TRASH_ROOT_ID = "trash-root";
 
 function mapApiFile(file: DriveApiFile): DriveItem {
   return {
@@ -43,6 +50,7 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
   const isSharedScope = scope === "shared";
   const isRecentScope = scope === "recent";
   const isStarredScope = scope === "starred";
+  const isTrashScope = scope === "trash";
   const [items, setItems] = createSignal<DriveItem[]>([]);
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal("");
@@ -60,14 +68,18 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
           ? RECENT_ROOT_ID
           : isStarredScope
             ? STARRED_ROOT_ID
-          : ROOT_FOLDER_ID,
+            : isTrashScope
+              ? TRASH_ROOT_ID
+              : ROOT_FOLDER_ID,
       name: isSharedScope
         ? "Доступные мне"
         : isRecentScope
           ? "Недавние"
           : isStarredScope
             ? "Помеченные"
-          : "Мой диск",
+            : isTrashScope
+              ? "Корзина"
+              : "Мой диск",
     },
   ]);
 
@@ -79,7 +91,9 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
         ? RECENT_ROOT_ID
         : isStarredScope
           ? STARRED_ROOT_ID
-        : ROOT_FOLDER_ID);
+          : isTrashScope
+            ? TRASH_ROOT_ID
+            : ROOT_FOLDER_ID);
 
   const loadFolder = async (folderId: string, reset: boolean) => {
     const requestId = ++requestSeq;
@@ -107,11 +121,15 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
                 folderId,
                 filters: filters(),
               })
-          : await listMyDriveFolder(
-              folderId,
-              reset ? undefined : nextPageToken(),
-              { filters: filters() },
-            );
+            : isTrashScope
+              ? await listTrashItems(reset ? undefined : nextPageToken(), {
+                  filters: filters(),
+                })
+              : await listMyDriveFolder(
+                  folderId,
+                  reset ? undefined : nextPageToken(),
+                  { filters: filters() },
+                );
 
       if (requestId !== requestSeq) {
         return;
@@ -199,6 +217,11 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
     setItems((prev) => prev.filter((item) => item.id !== itemId));
   };
 
+  const clearItemsLocally = () => {
+    setItems([]);
+    setNextPageToken(undefined);
+  };
+
   return {
     scope,
     items,
@@ -214,6 +237,7 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
     refresh,
     loadMore,
     removeItemLocally,
+    clearItemsLocally,
     openFolder,
     goUp,
     goToBreadcrumb,

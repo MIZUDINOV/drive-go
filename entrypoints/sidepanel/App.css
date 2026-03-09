@@ -39,7 +39,9 @@
   place-items: center;
   line-height: 0;
   cursor: pointer;
-  transition: background 200ms ease-out, border-color 200ms ease-out;
+  transition:
+    background 200ms ease-out,
+    border-color 200ms ease-out;
 }
 
 .menu-btn:hover {
@@ -619,7 +621,7 @@
 }
 
 .content-card p {
-  margin: 6px 0 0;
+  margin: 0;
   font-size: 13px;
   color: var(--text-muted);
 }
@@ -798,6 +800,47 @@
   align-items: center;
   gap: 8px;
   flex: 0 0 auto;
+}
+
+.trash-info-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #eef2f8;
+  border: 1px solid #d8e0ec;
+}
+
+.trash-info-text {
+  margin: 0;
+  font-size: 13px;
+  color: #2f3f54;
+  line-height: 1.35;
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+}
+
+.trash-empty-btn {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 500;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.trash-empty-btn:hover:not(:disabled) {
+  text-decoration: underline;
+  background: transparent;
+}
+
+.trash-empty-btn:disabled {
+  color: #8b96a8;
+  cursor: not-allowed;
 }
 
 .drive-view-toggle {
@@ -1364,6 +1407,92 @@
 .dialog-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.danger-delete-dialog-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 680px);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 24px 56px rgba(16, 34, 56, 0.28);
+  z-index: 101;
+  animation: slideIn 0.2s ease-out;
+}
+
+.danger-delete-dialog-title {
+  margin: 0;
+  padding: 28px 28px 12px;
+  font-size: clamp(24px, 5vw, 36px);
+  font-weight: 500;
+  color: #202124;
+  line-height: 1.12;
+}
+
+.danger-delete-dialog-body {
+  padding: 0 28px 18px;
+}
+
+.danger-delete-dialog-description {
+  margin: 0;
+  font-size: clamp(16px, 3.1vw, 24px);
+  line-height: 1.35;
+  color: #4a4f54;
+}
+
+.danger-delete-dialog-footer {
+  padding: 0 22px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.danger-delete-cancel-btn {
+  height: 44px;
+  border-radius: 999px;
+  padding: 0 18px;
+  border: none;
+  background: #fce8e6;
+  color: #c5221f;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.danger-delete-cancel-btn:hover:not(:disabled) {
+  background: #f8d9d5;
+}
+
+.danger-delete-cancel-btn-neutral {
+  background: transparent;
+  color: #1967d2;
+}
+
+.danger-delete-cancel-btn-neutral:hover:not(:disabled) {
+  background: #eef3fd;
+}
+
+.danger-delete-confirm-btn {
+  height: 44px;
+  border-radius: 999px;
+  padding: 0 24px;
+  border: 2px solid #c5221f;
+  background: #c5221f;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.danger-delete-confirm-btn:hover:not(:disabled) {
+  background: #b11d1a;
+  border-color: #b11d1a;
+}
+
+.danger-delete-confirm-btn:focus-visible {
+  outline: 4px solid #0b66c3;
+  outline-offset: 2px;
 }
 
 /* Move File Dialog */

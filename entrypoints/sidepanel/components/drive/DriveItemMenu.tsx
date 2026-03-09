@@ -7,9 +7,12 @@ import { MoveFileDialog } from "./MoveFileDialog";
 import { RenameDialog } from "./RenameDialog";
 import { TrashConfirmDialog } from "./TrashConfirmDialog";
 import { ShareDialog } from "./ShareDialog";
+import { DeleteForeverDialog } from "./DeleteForeverDialog";
 
 export type DriveItemMenuAction =
   | "open"
+  | "restore"
+  | "delete-forever"
   | "rename"
   | "move"
   | "trash"
@@ -25,6 +28,8 @@ export type DriveItemMenuConfig = {
   onAddStar?: (item: DriveItem) => Promise<boolean>;
   onRemoveStar?: (item: DriveItem) => Promise<boolean>;
   onRemoveShared?: (item: DriveItem) => Promise<boolean>;
+  onRestore?: (item: DriveItem) => Promise<boolean>;
+  onDeleteForever?: (item: DriveItem) => Promise<boolean>;
 };
 
 const DEFAULT_ACTIONS: DriveItemMenuAction[] = [
@@ -48,6 +53,8 @@ type MenuItemsProps = {
   onAddStarClick: () => void;
   onRemoveStarClick: () => void;
   onRemoveSharedClick: () => void;
+  onRestoreClick: () => void;
+  onDeleteForeverClick: () => void;
 };
 
 function hasAction(
@@ -66,6 +73,30 @@ function DropdownMenuItems(props: MenuItemsProps) {
             open_in_new
           </span>
           <DropdownMenu.ItemLabel>Открыть</DropdownMenu.ItemLabel>
+        </DropdownMenu.Item>
+      </Show>
+
+      <Show when={hasAction(props.actions, "restore")}>
+        <DropdownMenu.Item
+          class="drive-item-menu-item"
+          onSelect={props.onRestoreClick}
+        >
+          <span class="material-symbols-rounded drive-item-menu-icon">
+            history
+          </span>
+          <DropdownMenu.ItemLabel>Восстановить</DropdownMenu.ItemLabel>
+        </DropdownMenu.Item>
+      </Show>
+
+      <Show when={hasAction(props.actions, "delete-forever")}>
+        <DropdownMenu.Item
+          class="drive-item-menu-item"
+          onSelect={props.onDeleteForeverClick}
+        >
+          <span class="material-symbols-rounded drive-item-menu-icon">
+            delete_forever
+          </span>
+          <DropdownMenu.ItemLabel>Удалить навсегда</DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
 
@@ -173,6 +204,30 @@ function ContextMenuItems(props: MenuItemsProps) {
             open_in_new
           </span>
           <ContextMenu.ItemLabel>Открыть</ContextMenu.ItemLabel>
+        </ContextMenu.Item>
+      </Show>
+
+      <Show when={hasAction(props.actions, "restore")}>
+        <ContextMenu.Item
+          class="drive-item-menu-item"
+          onSelect={props.onRestoreClick}
+        >
+          <span class="material-symbols-rounded drive-item-menu-icon">
+            history
+          </span>
+          <ContextMenu.ItemLabel>Восстановить</ContextMenu.ItemLabel>
+        </ContextMenu.Item>
+      </Show>
+
+      <Show when={hasAction(props.actions, "delete-forever")}>
+        <ContextMenu.Item
+          class="drive-item-menu-item"
+          onSelect={props.onDeleteForeverClick}
+        >
+          <span class="material-symbols-rounded drive-item-menu-icon">
+            delete_forever
+          </span>
+          <ContextMenu.ItemLabel>Удалить навсегда</ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>
 
@@ -286,6 +341,8 @@ export function DriveItemContextMenu(props: DriveItemContextMenuProps) {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = createSignal(false);
   const [isTrashDialogOpen, setIsTrashDialogOpen] = createSignal(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = createSignal(false);
+  const [isDeleteForeverDialogOpen, setIsDeleteForeverDialogOpen] =
+    createSignal(false);
 
   const handleSuccess = () => {
     if (props.onMoveSuccess) {
@@ -333,6 +390,25 @@ export function DriveItemContextMenu(props: DriveItemContextMenuProps) {
     }
   };
 
+  const handleRestore = async () => {
+    if (!props.menuConfig?.onRestore) {
+      return;
+    }
+
+    const success = await props.menuConfig.onRestore(props.item);
+    if (success) {
+      handleSuccess();
+    }
+  };
+
+  const handleDeleteForever = async () => {
+    if (!props.menuConfig?.onDeleteForever) {
+      return false;
+    }
+
+    return props.menuConfig.onDeleteForever(props.item);
+  };
+
   return (
     <>
       <ContextMenu>
@@ -354,6 +430,8 @@ export function DriveItemContextMenu(props: DriveItemContextMenuProps) {
               onAddStarClick={() => void handleAddStar()}
               onRemoveStarClick={() => void handleRemoveStar()}
               onRemoveSharedClick={() => void handleRemoveShared()}
+              onRestoreClick={() => void handleRestore()}
+              onDeleteForeverClick={() => setIsDeleteForeverDialogOpen(true)}
             />
           </ContextMenu.Content>
         </ContextMenu.Portal>
@@ -394,6 +472,15 @@ export function DriveItemContextMenu(props: DriveItemContextMenuProps) {
           onOpenChange={setIsShareDialogOpen}
         />
       </Show>
+
+      <Show when={hasAction(actions(), "delete-forever")}>
+        <DeleteForeverDialog
+          item={props.item}
+          open={isDeleteForeverDialogOpen()}
+          onOpenChange={setIsDeleteForeverDialogOpen}
+          onConfirm={handleDeleteForever}
+        />
+      </Show>
     </>
   );
 }
@@ -412,6 +499,8 @@ export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = createSignal(false);
   const [isTrashDialogOpen, setIsTrashDialogOpen] = createSignal(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = createSignal(false);
+  const [isDeleteForeverDialogOpen, setIsDeleteForeverDialogOpen] =
+    createSignal(false);
 
   const handleSuccess = () => {
     if (props.onMoveSuccess) {
@@ -459,6 +548,25 @@ export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
     }
   };
 
+  const handleRestore = async () => {
+    if (!props.menuConfig?.onRestore) {
+      return;
+    }
+
+    const success = await props.menuConfig.onRestore(props.item);
+    if (success) {
+      handleSuccess();
+    }
+  };
+
+  const handleDeleteForever = async () => {
+    if (!props.menuConfig?.onDeleteForever) {
+      return false;
+    }
+
+    return props.menuConfig.onDeleteForever(props.item);
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -488,6 +596,8 @@ export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
               onAddStarClick={() => void handleAddStar()}
               onRemoveStarClick={() => void handleRemoveStar()}
               onRemoveSharedClick={() => void handleRemoveShared()}
+              onRestoreClick={() => void handleRestore()}
+              onDeleteForeverClick={() => setIsDeleteForeverDialogOpen(true)}
             />
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
@@ -526,6 +636,15 @@ export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
           item={props.item}
           open={isShareDialogOpen()}
           onOpenChange={setIsShareDialogOpen}
+        />
+      </Show>
+
+      <Show when={hasAction(actions(), "delete-forever")}>
+        <DeleteForeverDialog
+          item={props.item}
+          open={isDeleteForeverDialogOpen()}
+          onOpenChange={setIsDeleteForeverDialogOpen}
+          onConfirm={handleDeleteForever}
         />
       </Show>
     </>
