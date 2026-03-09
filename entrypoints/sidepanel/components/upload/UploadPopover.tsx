@@ -1,6 +1,7 @@
 import { For, Show } from "solid-js";
 import { Popover } from "@kobalte/core/popover";
 import { Button } from "@kobalte/core/button";
+import { Tooltip } from "@kobalte/core/tooltip";
 import type { UploadTask } from "../../services/uploadTypes";
 import {
   uploadStore,
@@ -95,62 +96,56 @@ function UploadTaskItem(props: UploadTaskItemProps) {
 
       <div class="upload-task-actions">
         <Show when={canCancel()}>
-          <Button
-            class="upload-task-action-btn"
-            type="button"
-            onClick={() => cancelUploadTask(props.task.id)}
-            title="Отменить"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M6 6l12 12M6 18L18 6"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-            </svg>
-          </Button>
+          <Tooltip placement="bottom" gutter={4}>
+            <Button
+              class="upload-task-action-btn"
+              type="button"
+              onClick={() => cancelUploadTask(props.task.id)}
+            >
+              <span class="material-symbols-rounded">close</span>
+            </Button>
+            <Tooltip.Portal>
+              <Tooltip.Content class="tab-tooltip">
+                <Tooltip.Arrow />
+                <span>Отменить</span>
+              </Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip>
         </Show>
         <Show when={canRetry()}>
-          <Button
-            class="upload-task-action-btn"
-            type="button"
-            onClick={() => retryUploadTask(props.task.id)}
-            title="Повторить"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M4 12a8 8 0 0 1 14.3-4.9M20 12a8 8 0 0 1-14.3 4.9"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-              <path
-                d="M18 7l.3 5 5-.3M6 17l-.3-5-5 .3"
-                fill="currentColor"
-              />
-            </svg>
-          </Button>
+          <Tooltip placement="bottom" gutter={4}>
+            <Button
+              class="upload-task-action-btn"
+              type="button"
+              onClick={() => retryUploadTask(props.task.id)}
+            >
+              <span class="material-symbols-rounded">refresh</span>
+            </Button>
+            <Tooltip.Portal>
+              <Tooltip.Content class="tab-tooltip">
+                <Tooltip.Arrow />
+
+                <span>Повторить</span>
+              </Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip>
         </Show>
         <Show when={canRemove()}>
-          <Button
-            class="upload-task-action-btn"
-            type="button"
-            onClick={() => removeUploadTask(props.task.id)}
-            title="Удалить"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M6 6l12 12M6 18L18 6"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-            </svg>
-          </Button>
+          <Tooltip placement="bottom" gutter={4}>
+            <Button
+              class="upload-task-action-btn"
+              type="button"
+              onClick={() => removeUploadTask(props.task.id)}
+            >
+              <span class="material-symbols-rounded">close</span>
+            </Button>
+            <Tooltip.Portal>
+              <Tooltip.Content class="tab-tooltip">
+                <Tooltip.Arrow />
+                <span>Удалить</span>
+              </Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip>
         </Show>
       </div>
     </div>
@@ -169,17 +164,7 @@ export function UploadPopover() {
   return (
     <Popover placement="bottom-end">
       <Popover.Trigger class="upload-icon-btn" type="button" aria-label="Очередь загрузок">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 17h16v2H4z" fill="currentColor" />
-          <path
-            d="M12 4v9m0 0-3.5-3.5M12 13l3.5-3.5"
-            fill="none"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="1.9"
-          />
-        </svg>
+        <span class="material-symbols-rounded">upload_file</span>
         <Show when={uploadStore.tasks.length > 0}>
           <span class="upload-count">{uploadStore.tasks.length}</span>
         </Show>
@@ -190,13 +175,21 @@ export function UploadPopover() {
           <div class="upload-popover-header">
             <h3 class="upload-popover-title">Загрузки</h3>
             <Show when={hasCompletedTasks()}>
-              <Button
-                class="upload-popover-clear-btn"
-                type="button"
-                onClick={clearCompletedTasks}
-              >
-                Очистить
-              </Button>
+              <Tooltip placement="bottom" gutter={4}>
+                <Button
+                  class="upload-popover-clear-btn"
+                  type="button"
+                  onClick={clearCompletedTasks}
+                >
+                  Очистить
+                </Button>
+                <Tooltip.Portal>
+                  <Tooltip.Content class="tab-tooltip">
+                    <Tooltip.Arrow />
+                    <span>Очистить завершённые</span>
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip>
             </Show>
           </div>
 

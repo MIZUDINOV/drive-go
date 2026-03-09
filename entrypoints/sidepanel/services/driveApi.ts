@@ -140,7 +140,7 @@ export async function openDriveItemInNewTab(
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-async function getAccessToken(): Promise<Browser.identity.GetAuthTokenResult> {
+export async function getAccessToken(): Promise<Browser.identity.GetAuthTokenResult> {
   try {
     return await browser.identity.getAuthToken({ interactive: false });
   } catch {

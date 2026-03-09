@@ -9,10 +9,14 @@ type UploadStore = {
   isProcessing: boolean;
 };
 
+type QueueSettledListener = (successfulParentIds: Array<string | null>) => void;
+
 const [uploadStore, setUploadStore] = createStore<UploadStore>({
   tasks: [],
   isProcessing: false,
 });
+
+const queueSettledListeners = new Set<QueueSettledListener>();
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -54,6 +58,7 @@ async function processUploadQueue(): Promise<void> {
   }
 
   setUploadStore("isProcessing", true);
+  const successfulParentIds = new Set<string | null>();
 
   while (true) {
     // Находим первую pending задачу
@@ -112,6 +117,7 @@ async function processUploadQueue(): Promise<void> {
           progress: 100,
           uploadedBytes: task.size,
         });
+        successfulParentIds.add(task.parentId ?? null);
       } else {
         setUploadStore("tasks", taskIndex, {
           status: "error",
@@ -130,6 +136,21 @@ async function processUploadQueue(): Promise<void> {
   }
 
   setUploadStore("isProcessing", false);
+
+  if (successfulParentIds.size > 0) {
+    const parentIds = Array.from(successfulParentIds);
+    queueSettledListeners.forEach((listener) => listener(parentIds));
+  }
+}
+
+export function subscribeToUploadQueueSettled(
+  listener: QueueSettledListener,
+): () => void {
+  queueSettledListeners.add(listener);
+
+  return () => {
+    queueSettledListeners.delete(listener);
+  };
 }
 
 /**

@@ -159,16 +159,7 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
             {(state) => (state.selectedOption() ? props.labels[state.selectedOption() as T] : "")}
           </Select.Value>
           <Select.Icon>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M7 10l5 5 5-5"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
+            <span class="material-symbols-rounded">expand_more</span>
           </Select.Icon>
         </Select.Trigger>
 

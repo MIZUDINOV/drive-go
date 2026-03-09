@@ -1,6 +1,7 @@
 import { For, Show, createSignal } from "solid-js";
 import { Tabs } from "@kobalte/core/tabs";
 import { Button } from "@kobalte/core/button";
+import { Tooltip } from "@kobalte/core/tooltip";
 import { TabIcon, type TabIconName } from "./tabIcons";
 import { DriveBrowser } from "./components/drive/DriveBrowser";
 import { DriveSearchBar } from "./components/search/DriveSearchBar";
@@ -11,7 +12,7 @@ import {
   DEFAULT_DRIVE_SEARCH_FILTERS,
   type DriveSearchFilters,
 } from "./services/driveApi";
-import "material-symbols/outlined.css";
+import "material-symbols/rounded.css";
 import "./App.css";
 
 type TabItem = {
@@ -97,27 +98,27 @@ function App() {
             aria-label="Переключить меню"
             onClick={() => setIsMenuCollapsed((prev) => !prev)}
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M4 7h16M4 12h16M4 17h16"
-                fill="none"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-width="1.9"
-              />
-            </svg>
+            <span class="material-symbols-rounded">menu</span>
           </Button>
         </div>
 
         <Tabs.List class="tab-list" aria-label="Разделы Google Drive">
           <For each={tabs}>
             {(tab) => (
-              <Tabs.Trigger class="tab-item" value={tab.id}>
-                <span class="tab-icon">
-                  <TabIcon name={tab.icon} />
-                </span>
-                <span class="tab-label">{tab.title}</span>
-              </Tabs.Trigger>
+              <Tooltip placement="right" gutter={8} disabled={!isMenuCollapsed()}>
+                <Tabs.Trigger class="tab-item" value={tab.id}>
+                  <span class="tab-icon">
+                    <TabIcon name={tab.icon} isSelected={activeTabId() === tab.id} />
+                  </span>
+                  <span class="tab-label">{tab.title}</span>
+                </Tabs.Trigger>
+                <Tooltip.Portal>
+                  <Tooltip.Content class="tab-tooltip">
+                    <Tooltip.Arrow />
+                    <span>{tab.title}</span>
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip>
             )}
           </For>
         </Tabs.List>
@@ -144,11 +145,8 @@ function App() {
           <For each={tabs}>
             {(tab) => (
               <Tabs.Content class="content-card" value={tab.id}>
-                <Show
-                  when={tab.id === "my-drive"}
-                  fallback={<h2>{tab.title}</h2>}
-                >
-                  {/* Заголовок будет отображён как часть DriveBrowser */}
+                <Show when={tab.id !== "my-drive"}>
+                  <h2>{tab.title}</h2>
                 </Show>
 
                 <Show

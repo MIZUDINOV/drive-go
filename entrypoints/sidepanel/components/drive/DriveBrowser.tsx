@@ -1,4 +1,4 @@
-import { For, Show, createEffect, createSignal, JSX } from "solid-js";
+import { For, Show, createEffect, createSignal, JSX, onCleanup } from "solid-js";
 import { Breadcrumbs } from "@kobalte/core/breadcrumbs";
 import { SegmentedControl } from "@kobalte/core/segmented-control";
 import { Button } from "@kobalte/core/button";
@@ -6,6 +6,7 @@ import { Select } from "@kobalte/core/select";
 import { DropdownMenu } from "@kobalte/core/dropdown-menu";
 import { Dialog } from "@kobalte/core/dialog";
 import { TextField } from "@kobalte/core/text-field";
+import { Tooltip } from "@kobalte/core/tooltip";
 import { FileTypeIcon } from "../../fileTypes";
 import { useDriveBrowser } from "./useDriveBrowser";
 import { DriveItemContextMenu, DriveItemMenuButton } from "./DriveItemMenu";
@@ -18,7 +19,10 @@ import {
   type DriveSearchFilters,
   DEFAULT_DRIVE_SEARCH_FILTERS,
 } from "../../services/driveApi";
-import { addFilesToUploadQueue } from "../../services/uploadManager";
+import {
+  addFilesToUploadQueue,
+  subscribeToUploadQueueSettled,
+} from "../../services/uploadManager";
 
 type DriveBrowserProps = {
   formatDate: (dateIso: string) => string;
@@ -118,16 +122,7 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
               <Select.ItemLabel>{props.labels[option]}</Select.ItemLabel>
 
               <Select.ItemIndicator class="drive-browser-filter-item-indicator">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    d="M5 13l4 4L19 7"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                  />
-                </svg>
+                <span class="material-symbols-rounded">done</span>
               </Select.ItemIndicator>
             </Select.Item>
           );
@@ -141,16 +136,7 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
             {(state) => (state.selectedOption() ? props.labels[state.selectedOption() as T] : "")}
           </Select.Value>
           <Select.Icon>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M7 10l5 5 5-5"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
+            <span class="material-symbols-rounded">expand_more</span>
           </Select.Icon>
         </Select.Trigger>
 
@@ -181,11 +167,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
   const [isCreating, setIsCreating] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   let fileInputRef: HTMLInputElement | undefined;
-
-  // Filter menu states
-  const [isTypeMenuOpen, setIsTypeMenuOpen] = createSignal(false);
-  const [isOwnerMenuOpen, setIsOwnerMenuOpen] = createSignal(false);
-  const [isModifiedMenuOpen, setIsModifiedMenuOpen] = createSignal(false);
+  let hasFilterEffectInitialized = false;
 
   createEffect(() => {
     if (
@@ -199,6 +181,12 @@ export function DriveBrowser(props: DriveBrowserProps) {
   // Reload when filters change
   createEffect(() => {
     browserState.filters();
+
+    if (!hasFilterEffectInitialized) {
+      hasFilterEffectInitialized = true;
+      return;
+    }
+
     void browserState.loadFolder(browserState.currentFolderId(), true);
   });
 
@@ -208,6 +196,24 @@ export function DriveBrowser(props: DriveBrowserProps) {
     if (props.onFolderChange) {
       props.onFolderChange(folderId);
     }
+  });
+
+  createEffect(() => {
+    const unsubscribe = subscribeToUploadQueueSettled((successfulParentIds) => {
+      const currentFolderId = browserState.currentFolderId();
+
+      if (!successfulParentIds.includes(currentFolderId)) {
+        return;
+      }
+
+      if (browserState.loading()) {
+        return;
+      }
+
+      void browserState.refresh();
+    });
+
+    onCleanup(unsubscribe);
   });
 
   const onItemDoubleClick = (item: DriveItem) => {
@@ -295,17 +301,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
       id: "upload",
       label: "Загрузить файлы",
       icon: () => (
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 17h16v2H4z" fill="currentColor" />
-          <path
-            d="M12 4v9m0 0l-3.5-3.5M12 13l3.5-3.5"
-            fill="none"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="1.9"
-          />
-        </svg>
+        <span class="material-symbols-rounded">upload_file</span>
       ),
       action: openFileDialog,
     },
@@ -382,20 +378,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
                           class="folder-breadcrumb-dropdown-trigger"
                         >
                           {crumb.name}
-                          <svg
-                            viewBox="0 0 24 24"
-                            aria-hidden="true"
-                            class="dropdown-icon"
-                          >
-                            <path
-                              d="M7 10l5 5 5-5"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                            />
-                          </svg>
+                          <span class="material-symbols-rounded dropdown-icon">expand_more</span>
                         </DropdownMenu.Trigger>
 
                         <DropdownMenu.Portal>
@@ -434,77 +417,42 @@ export function DriveBrowser(props: DriveBrowserProps) {
           }}
           aria-label="Режим отображения"
         >
-          <SegmentedControl.Item
-            class="drive-view-toggle-item"
-            value="list"
-            aria-label="Режим списка"
-            title="Список"
-          >
-            <SegmentedControl.ItemInput class="drive-view-toggle-input" />
-            <SegmentedControl.ItemLabel class="drive-view-toggle-item-label">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M6 7h12M6 12h12M6 17h12"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-width="1.8"
-                />
-              </svg>
-            </SegmentedControl.ItemLabel>
-          </SegmentedControl.Item>
-          <SegmentedControl.Item
-            class="drive-view-toggle-item"
-            value="grid"
-            aria-label="Режим плиток"
-            title="Плитка"
-          >
-            <SegmentedControl.ItemInput class="drive-view-toggle-input" />
-            <SegmentedControl.ItemLabel class="drive-view-toggle-item-label">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <rect
-                  x="5"
-                  y="5"
-                  width="5.5"
-                  height="5.5"
-                  rx="1"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.7"
-                />
-                <rect
-                  x="13.5"
-                  y="5"
-                  width="5.5"
-                  height="5.5"
-                  rx="1"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.7"
-                />
-                <rect
-                  x="5"
-                  y="13.5"
-                  width="5.5"
-                  height="5.5"
-                  rx="1"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.7"
-                />
-                <rect
-                  x="13.5"
-                  y="13.5"
-                  width="5.5"
-                  height="5.5"
-                  rx="1"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.7"
-                />
-              </svg>
-            </SegmentedControl.ItemLabel>
-          </SegmentedControl.Item>
+          <Tooltip placement="bottom" gutter={4}>
+            <SegmentedControl.Item
+              class="drive-view-toggle-item"
+              value="list"
+              aria-label="Режим списка"
+            >
+              <SegmentedControl.ItemInput class="drive-view-toggle-input" />
+              <SegmentedControl.ItemLabel class="drive-view-toggle-item-label">
+                <span class="material-symbols-rounded">list</span>
+              </SegmentedControl.ItemLabel>
+            </SegmentedControl.Item>
+            <Tooltip.Portal>
+              <Tooltip.Content class="tab-tooltip">
+                <Tooltip.Arrow />
+                <span>Список</span>
+              </Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip>
+          <Tooltip placement="bottom" gutter={4}>
+            <SegmentedControl.Item
+              class="drive-view-toggle-item"
+              value="grid"
+              aria-label="Режим плиток"
+            >
+              <SegmentedControl.ItemInput class="drive-view-toggle-input" />
+              <SegmentedControl.ItemLabel class="drive-view-toggle-item-label">
+                <span class="material-symbols-rounded">grid_view</span>
+              </SegmentedControl.ItemLabel>
+            </SegmentedControl.Item>
+            <Tooltip.Portal>
+              <Tooltip.Content class="tab-tooltip">
+                <Tooltip.Arrow />
+                <span>Плитка</span>
+              </Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip>
         </SegmentedControl>
       </div>
 
@@ -603,8 +551,6 @@ export function DriveBrowser(props: DriveBrowserProps) {
                           >
                             <article
                               class="drive-item drive-item-grid drive-item-grid-folder"
-                              role="button"
-                              tabIndex={0}
                               onClick={(event) => {
                                 if (event.detail === 2) {
                                   onItemDoubleClick(item);
@@ -647,8 +593,6 @@ export function DriveBrowser(props: DriveBrowserProps) {
                         >
                           <article
                             class="drive-item drive-item-grid"
-                            role="button"
-                            tabIndex={0}
                             onClick={(event) => {
                               if (event.detail === 2) {
                                 onItemDoubleClick(item);
@@ -723,8 +667,6 @@ export function DriveBrowser(props: DriveBrowserProps) {
                   >
                     <article
                       class="drive-item drive-item-list"
-                      role="button"
-                      tabIndex={0}
                       onClick={(event) => {
                         if (event.detail === 2) {
                           onItemDoubleClick(item);
