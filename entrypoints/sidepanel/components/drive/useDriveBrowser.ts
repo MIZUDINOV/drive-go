@@ -10,6 +10,15 @@ import {
   type DriveSearchFilters,
   DEFAULT_DRIVE_SEARCH_FILTERS,
 } from "../../services/driveApi";
+import { listSharedWithMe } from "../../services/sharedApi";
+
+export type DriveBrowserScope = "my-drive" | "shared";
+
+type UseDriveBrowserOptions = {
+  scope?: DriveBrowserScope;
+};
+
+const SHARED_ROOT_ID = "shared-root";
 
 function mapApiFile(file: DriveApiFile): DriveItem {
   return {
@@ -25,7 +34,9 @@ function mapApiFile(file: DriveApiFile): DriveItem {
   };
 }
 
-export function useDriveBrowser() {
+export function useDriveBrowser(options?: UseDriveBrowserOptions) {
+  const scope = options?.scope ?? "my-drive";
+  const isSharedScope = scope === "shared";
   const [items, setItems] = createSignal<DriveItem[]>([]);
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal("");
@@ -36,10 +47,15 @@ export function useDriveBrowser() {
   );
   let requestSeq = 0;
   const [breadcrumbs, setBreadcrumbs] = createSignal<BreadcrumbItem[]>([
-    { id: ROOT_FOLDER_ID, name: "Мой диск" },
+    {
+      id: isSharedScope ? SHARED_ROOT_ID : ROOT_FOLDER_ID,
+      name: isSharedScope ? "Доступные мне" : "Мой диск",
+    },
   ]);
 
-  const currentFolderId = () => breadcrumbs()[breadcrumbs().length - 1]?.id ?? ROOT_FOLDER_ID;
+  const currentFolderId = () =>
+    breadcrumbs()[breadcrumbs().length - 1]?.id ??
+    (isSharedScope ? SHARED_ROOT_ID : ROOT_FOLDER_ID);
 
   const loadFolder = async (folderId: string, reset: boolean) => {
     const requestId = ++requestSeq;
@@ -53,11 +69,16 @@ export function useDriveBrowser() {
     setError("");
 
     try {
-      const response = await listMyDriveFolder(
-        folderId,
-        reset ? undefined : nextPageToken(),
-        { filters: filters() },
-      );
+      const response = isSharedScope
+        ? await listSharedWithMe(reset ? undefined : nextPageToken(), {
+            folderId,
+            filters: filters(),
+          })
+        : await listMyDriveFolder(
+            folderId,
+            reset ? undefined : nextPageToken(),
+            { filters: filters() },
+          );
 
       if (requestId !== requestSeq) {
         return;
@@ -68,10 +89,11 @@ export function useDriveBrowser() {
       }
 
       const mapped = (response.data?.files ?? []).map(mapApiFile);
+      const loadedId = folderId;
 
       if (reset) {
         setItems(mapped);
-        setLoadedFolderId(folderId);
+        setLoadedFolderId(loadedId);
       } else {
         setItems((prev) => [...prev, ...mapped]);
       }
@@ -133,6 +155,7 @@ export function useDriveBrowser() {
   };
 
   return {
+    scope,
     items,
     loading,
     error,

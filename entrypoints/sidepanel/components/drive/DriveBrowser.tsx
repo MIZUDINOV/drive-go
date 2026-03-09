@@ -1,4 +1,4 @@
-import { For, Show, createEffect, createSignal, JSX, onCleanup } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, JSX, onCleanup } from "solid-js";
 import { Breadcrumbs } from "@kobalte/core/breadcrumbs";
 import { SegmentedControl } from "@kobalte/core/segmented-control";
 import { Button } from "@kobalte/core/button";
@@ -7,12 +7,12 @@ import { DropdownMenu } from "@kobalte/core/dropdown-menu";
 import { Dialog } from "@kobalte/core/dialog";
 import { TextField } from "@kobalte/core/text-field";
 import { Tooltip } from "@kobalte/core/tooltip";
+import { Toast, toaster } from "@kobalte/core/toast";
+import { Portal } from "solid-js/web";
 import { FileTypeIcon } from "../../fileTypes";
-import { useDriveBrowser } from "./useDriveBrowser";
-import { DriveItemContextMenu, DriveItemMenuButton } from "./DriveItemMenu";
+import { useDriveBrowser, type DriveBrowserScope } from "./useDriveBrowser";
 import type { DriveItem, DriveViewMode } from "./driveTypes";
 import { isFolder } from "./driveTypes";
-import { DriveItemsSkeleton } from "./DriveItemsSkeleton";
 import {
   openDriveItemInNewTab,
   createFolder,
@@ -23,14 +23,20 @@ import {
   addFilesToUploadQueue,
   subscribeToUploadQueueSettled,
 } from "../../services/uploadManager";
+import {
+  addSharedItemToStarred,
+  removeSharedItem,
+} from "../../services/sharedApi";
+import { type DriveItemMenuConfig } from "./DriveItemMenu";
+import { DriveItemsContent } from "./DriveItemsContent";
 
 type DriveBrowserProps = {
   formatDate: (dateIso: string) => string;
   formatSize: (size?: string) => string;
   onFolderChange?: (folderId: string | null) => void;
+  scope?: DriveBrowserScope;
 };
 
-// Filter constants
 const TYPE_OPTIONS: DriveSearchFilters["type"][] = [
   "all",
   "folders",
@@ -133,7 +139,11 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
           aria-label={props.ariaLabel}
         >
           <Select.Value class="drive-browser-filter-value">
-            {(state) => (state.selectedOption() ? props.labels[state.selectedOption() as T] : "")}
+            {(state) =>
+              state.selectedOption()
+                ? props.labels[state.selectedOption() as T]
+                : ""
+            }
           </Select.Value>
           <Select.Icon>
             <span class="material-symbols-rounded">expand_more</span>
@@ -150,17 +160,11 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
   );
 }
 
-function buildMetaLine(
-  item: DriveItem,
-  formatDate: (dateIso: string) => string,
-  formatSize: (size?: string) => string,
-): string {
-  const owner = item.ownerName || "Вы";
-  return `${formatDate(item.modifiedTime)} • ${formatSize(item.size)} • ${owner}`;
-}
-
 export function DriveBrowser(props: DriveBrowserProps) {
-  const browserState = useDriveBrowser();
+  const SHARED_TOAST_REGION_ID = "shared-drive-actions";
+  const scope = props.scope ?? "my-drive";
+  const isSharedScope = scope === "shared";
+  const browserState = useDriveBrowser({ scope });
   const [viewMode, setViewMode] = createSignal<DriveViewMode>("list");
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
   const [folderName, setFolderName] = createSignal("Без названия");
@@ -169,16 +173,87 @@ export function DriveBrowser(props: DriveBrowserProps) {
   let fileInputRef: HTMLInputElement | undefined;
   let hasFilterEffectInitialized = false;
 
+  const showSharedToast = (
+    title: string,
+    description: string,
+    tone: "success" | "error",
+  ) => {
+    toaster.show(
+      (toastProps) => (
+        <Toast
+          toastId={toastProps.toastId}
+          class={`drive-toast drive-toast-${tone}`}
+          duration={4000}
+          priority={tone === "error" ? "high" : "low"}
+        >
+          <div class="drive-toast-main">
+            <Toast.Title class="drive-toast-title">{title}</Toast.Title>
+            <Toast.Description class="drive-toast-description">
+              {description}
+            </Toast.Description>
+          </div>
+
+          <Toast.CloseButton class="drive-toast-close" aria-label="Закрыть">
+            <span class="material-symbols-rounded">close</span>
+          </Toast.CloseButton>
+
+          <Toast.ProgressTrack class="drive-toast-progress-track">
+            <Toast.ProgressFill class="drive-toast-progress-fill" />
+          </Toast.ProgressTrack>
+        </Toast>
+      ),
+      { region: SHARED_TOAST_REGION_ID },
+    );
+  };
+
+  const menuConfig = createMemo<DriveItemMenuConfig | undefined>(() => {
+    if (!isSharedScope) {
+      return undefined;
+    }
+
+    return {
+      actions: ["open", "share", "add-star", "remove-shared"],
+      onAddStar: async (item) => {
+        const result = await addSharedItemToStarred(item.id);
+        if (!result.ok) {
+          showSharedToast("Не удалось добавить в помеченные", result.error, "error");
+          return false;
+        }
+
+        showSharedToast(
+          "Добавлено в помеченные",
+          `Файл \"${item.name}\" добавлен в Избранное Google Drive.`,
+          "success",
+        );
+
+        // Для shared не перезагружаем список после добавления в избранное.
+        return false;
+      },
+      onRemoveShared: async (item) => {
+        const result = await removeSharedItem(item.id);
+        if (!result.ok) {
+          showSharedToast("Не удалось удалить из доступа", result.error, "error");
+          return false;
+        }
+
+        showSharedToast(
+          "Удалено из Доступные мне",
+          `Файл \"${item.name}\" больше не отображается в этом разделе.`,
+          "success",
+        );
+        return true;
+      },
+    };
+  });
+
   createEffect(() => {
-    if (
-      !browserState.loading() &&
-      browserState.loadedFolderId() !== browserState.currentFolderId()
-    ) {
-      void browserState.loadFolder(browserState.currentFolderId(), true);
+    const loadTarget = browserState.currentFolderId();
+
+    if (!browserState.loading() && browserState.loadedFolderId() !== loadTarget) {
+      void browserState.loadFolder(loadTarget, true);
     }
   });
 
-  // Reload when filters change
   createEffect(() => {
     browserState.filters();
 
@@ -190,15 +265,19 @@ export function DriveBrowser(props: DriveBrowserProps) {
     void browserState.loadFolder(browserState.currentFolderId(), true);
   });
 
-  // Уведомляем родителя об изменении папки
   createEffect(() => {
-    const folderId = browserState.currentFolderId();
-    if (props.onFolderChange) {
-      props.onFolderChange(folderId);
+    if (!props.onFolderChange) {
+      return;
     }
+
+    props.onFolderChange(isSharedScope ? null : browserState.currentFolderId());
   });
 
   createEffect(() => {
+    if (isSharedScope) {
+      return;
+    }
+
     const unsubscribe = subscribeToUploadQueueSettled((successfulParentIds) => {
       const currentFolderId = browserState.currentFolderId();
 
@@ -300,9 +379,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
     {
       id: "upload",
       label: "Загрузить файлы",
-      icon: () => (
-        <span class="material-symbols-rounded">upload_file</span>
-      ),
+      icon: () => <span class="material-symbols-rounded">upload_file</span>,
       action: openFileDialog,
     },
     {
@@ -337,12 +414,6 @@ export function DriveBrowser(props: DriveBrowserProps) {
     },
   ];
 
-  const hasPreview = (item: DriveItem) =>
-    !isFolder(item) && Boolean(item.thumbnailLink);
-
-  const folders = () => browserState.items().filter((item) => isFolder(item));
-  const files = () => browserState.items().filter((item) => !isFolder(item));
-
   return (
     <section class="drive-browser">
       <div class="folder-header">
@@ -352,53 +423,68 @@ export function DriveBrowser(props: DriveBrowserProps) {
               {(crumb, index) => {
                 const isLast = () =>
                   index() === browserState.breadcrumbs().length - 1;
+
+                const canNavigate = () => !isLast();
+                const canShowDropdown = () => isLast() && !isSharedScope;
+
                 return (
                   <>
                     <Show
-                      when={isLast()}
+                      when={canNavigate()}
                       fallback={
-                        <>
-                          <Breadcrumbs.Link
-                            href="#"
-                            class="folder-breadcrumb-link"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              void browserState.goToBreadcrumb(index());
-                            }}
-                          >
-                            {crumb.name}
-                          </Breadcrumbs.Link>
-                          <Breadcrumbs.Separator class="folder-breadcrumb-separator"></Breadcrumbs.Separator>
-                        </>
+                        <Show
+                          when={canShowDropdown()}
+                          fallback={
+                            <span class="folder-breadcrumb-link">{crumb.name}</span>
+                          }
+                        >
+                          <DropdownMenu>
+                            <DropdownMenu.Trigger
+                              as={Button}
+                              class="folder-breadcrumb-dropdown-trigger"
+                            >
+                              {crumb.name}
+                              <span class="material-symbols-rounded dropdown-icon">
+                                expand_more
+                              </span>
+                            </DropdownMenu.Trigger>
+
+                            <DropdownMenu.Portal>
+                              <DropdownMenu.Content class="create-menu-content">
+                                <For each={createOptions}>
+                                  {(option) => (
+                                    <DropdownMenu.Item
+                                      class="create-menu-item"
+                                      onSelect={option.action}
+                                    >
+                                      <span class="create-menu-item-icon">
+                                        {option.icon()}
+                                      </span>
+                                      <span class="create-menu-item-label">
+                                        {option.label}
+                                      </span>
+                                    </DropdownMenu.Item>
+                                  )}
+                                </For>
+                              </DropdownMenu.Content>
+                            </DropdownMenu.Portal>
+                          </DropdownMenu>
+                        </Show>
                       }
                     >
-                      <DropdownMenu>
-                        <DropdownMenu.Trigger
-                          as={Button}
-                          class="folder-breadcrumb-dropdown-trigger"
+                      <>
+                        <Breadcrumbs.Link
+                          href="#"
+                          class="folder-breadcrumb-link"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            void browserState.goToBreadcrumb(index());
+                          }}
                         >
                           {crumb.name}
-                          <span class="material-symbols-rounded dropdown-icon">expand_more</span>
-                        </DropdownMenu.Trigger>
-
-                        <DropdownMenu.Portal>
-                          <DropdownMenu.Content class="create-menu-content">
-                            {createOptions.map((option) => (
-                              <DropdownMenu.Item
-                                class="create-menu-item"
-                                onSelect={option.action}
-                              >
-                                <span class="create-menu-item-icon">
-                                  {option.icon()}
-                                </span>
-                                <span class="create-menu-item-label">
-                                  {option.label}
-                                </span>
-                              </DropdownMenu.Item>
-                            ))}
-                          </DropdownMenu.Content>
-                        </DropdownMenu.Portal>
-                      </DropdownMenu>
+                        </Breadcrumbs.Link>
+                        <Breadcrumbs.Separator class="folder-breadcrumb-separator" />
+                      </>
                     </Show>
                   </>
                 );
@@ -517,202 +603,23 @@ export function DriveBrowser(props: DriveBrowserProps) {
         </div>
       </header>
 
-      <Show
-        when={!browserState.error()}
-        fallback={<p class="drive-error">Ошибка: {browserState.error()}</p>}
-      >
-        <Show
-          when={browserState.items().length > 0 || browserState.loading()}
-          fallback={
-            <p class="drive-empty">
-              {browserState.loading()
-                ? "Загрузка..."
-                : "В этой папке пока нет файлов и папок."}
-            </p>
-          }
-        >
-          <Show
-            when={!browserState.loading()}
-            fallback={<DriveItemsSkeleton viewMode={viewMode()} />}
-          >
-            <Show
-              when={viewMode() === "list"}
-              fallback={
-                <div class="drive-grid-layout">
-                  <Show when={folders().length > 0}>
-                    <div class="drive-grid-folders-row">
-                      <For each={folders()}>
-                        {(item) => (
-                          <DriveItemContextMenu
-                            item={item}
-                            currentFolderId={browserState.currentFolderId()}
-                            onOpen={() => onItemDoubleClick(item)}
-                            onMoveSuccess={browserState.refresh}
-                          >
-                            <article
-                              class="drive-item drive-item-grid drive-item-grid-folder"
-                              onClick={(event) => {
-                                if (event.detail === 2) {
-                                  onItemDoubleClick(item);
-                              }
-                            }}
-                          >
-                            <div class="drive-grid-tile-top">
-                              <div class="drive-grid-title-wrap">
-                                <span class="name-icon" aria-hidden="true">
-                                  <FileTypeIcon mimeType={item.mimeType} />
-                                </span>
-                                <div class="drive-item-title" title={item.name}>
-                                  {item.name}
-                                </div>
-                              </div>
-
-                              <DriveItemMenuButton
-                                item={item}
-                                currentFolderId={browserState.currentFolderId()}
-                                onOpen={() => onItemDoubleClick(item)}
-                                onMoveSuccess={browserState.refresh}
-                              />
-                            </div>
-                          </article>
-                        </DriveItemContextMenu>
-                      )}
-                    </For>
-                  </div>
-                </Show>
-
-                <Show when={files().length > 0}>
-                  <div class="drive-items-grid">
-                    <For each={files()}>
-                      {(item) => (
-                        <DriveItemContextMenu
-                          item={item}
-                          currentFolderId={browserState.currentFolderId()}
-                          onOpen={() => onItemDoubleClick(item)}
-                          onMoveSuccess={browserState.refresh}
-                        >
-                          <article
-                            class="drive-item drive-item-grid"
-                            onClick={(event) => {
-                              if (event.detail === 2) {
-                                onItemDoubleClick(item);
-                              }
-                            }}
-                          >
-                            <div class="drive-grid-tile-top">
-                              <div class="drive-grid-title-wrap">
-                                <span class="name-icon" aria-hidden="true">
-                                  <FileTypeIcon mimeType={item.mimeType} />
-                                </span>
-                                <div class="drive-item-title" title={item.name}>
-                                  {item.name}
-                                </div>
-                              </div>
-
-                              <DriveItemMenuButton
-                                item={item}
-                                currentFolderId={browserState.currentFolderId()}
-                                onOpen={() => onItemDoubleClick(item)}
-                                onMoveSuccess={browserState.refresh}
-                              />
-                            </div>
-
-                            <div class="drive-grid-preview">
-                              <Show
-                                when={hasPreview(item)}
-                                fallback={
-                                  <span
-                                    class="drive-grid-preview-fallback"
-                                    aria-hidden="true"
-                                  >
-                                    <FileTypeIcon mimeType={item.mimeType} />
-                                  </span>
-                                }
-                              >
-                                <img
-                                  class="drive-grid-preview-image"
-                                  src={item.thumbnailLink}
-                                  alt=""
-                                  loading="lazy"
-                                  onError={(event) => {
-                                    event.currentTarget.style.display = "none";
-                                  }}
-                                />
-                              </Show>
-                            </div>
-
-                            {/* <div
-                            class="drive-item-meta"
-                            title={buildMetaLine(item, props.formatDate, props.formatSize)}
-                          >
-                            {buildMetaLine(item, props.formatDate, props.formatSize)}
-                          </div> */}
-                          </article>
-                        </DriveItemContextMenu>
-                      )}
-                    </For>
-                  </div>
-                </Show>
-              </div>
-            }
-          >
-            <div class="drive-items-list">
-              <For each={browserState.items()}>
-                {(item) => (
-                  <DriveItemContextMenu
-                    item={item}
-                    currentFolderId={browserState.currentFolderId()}
-                    onOpen={() => onItemDoubleClick(item)}
-                    onMoveSuccess={browserState.refresh}
-                  >
-                    <article
-                      class="drive-item drive-item-list"
-                      onClick={(event) => {
-                        if (event.detail === 2) {
-                          onItemDoubleClick(item);
-                        }
-                      }}
-                    >
-                      <div class="drive-item-main">
-                        <span class="name-icon" aria-hidden="true">
-                          <FileTypeIcon mimeType={item.mimeType} />
-                        </span>
-                        <div class="drive-item-text">
-                          <div class="drive-item-title" title={item.name}>
-                            {item.name}
-                          </div>
-                          <div
-                            class="drive-item-meta"
-                            title={buildMetaLine(
-                              item,
-                              props.formatDate,
-                              props.formatSize,
-                            )}
-                          >
-                            {buildMetaLine(
-                              item,
-                              props.formatDate,
-                              props.formatSize,
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <DriveItemMenuButton
-                        item={item}
-                        currentFolderId={browserState.currentFolderId()}
-                        onOpen={() => onItemDoubleClick(item)}
-                        onMoveSuccess={browserState.refresh}
-                      />
-                    </article>
-                  </DriveItemContextMenu>
-                )}
-              </For>
-            </div>
-          </Show>
-          </Show>
-        </Show>
-      </Show>
+      <DriveItemsContent
+        items={browserState.items()}
+        loading={browserState.loading()}
+        error={browserState.error()}
+        viewMode={viewMode()}
+        currentFolderId={browserState.currentFolderId()}
+        formatDate={props.formatDate}
+        formatSize={props.formatSize}
+        onItemOpen={onItemDoubleClick}
+        onItemsChanged={browserState.refresh}
+        menuConfig={menuConfig()}
+        emptyText={
+          isSharedScope
+            ? "Нет файлов, открытых для вас."
+            : "В этой папке пока нет файлов и папок."
+        }
+      />
 
       <Show when={Boolean(browserState.nextPageToken())}>
         <Button
@@ -725,57 +632,71 @@ export function DriveBrowser(props: DriveBrowserProps) {
         </Button>
       </Show>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        class="upload-file-input"
-        onChange={handleFileSelect}
-      />
+      <Show when={!isSharedScope}>
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            class="upload-file-input"
+            onChange={handleFileSelect}
+          />
 
-      <Dialog open={isDialogOpen()} onOpenChange={setIsDialogOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay class="dialog-overlay" />
-          <Dialog.Content class="dialog-content">
-            <Dialog.Title class="dialog-title">Новая папка</Dialog.Title>
+          <Dialog open={isDialogOpen()} onOpenChange={setIsDialogOpen}>
+            <Dialog.Portal>
+              <Dialog.Overlay class="dialog-overlay" />
+              <Dialog.Content class="dialog-content">
+                <Dialog.Title class="dialog-title">Новая папка</Dialog.Title>
 
-            <div class="dialog-body">
-              <TextField
-                value={folderName()}
-                onChange={setFolderName}
-                class="folder-name-field"
-              >
-                <TextField.Input
-                  class="folder-name-input"
-                  autofocus
-                  onFocus={(e) => e.currentTarget.select()}
-                />
-              </TextField>
+                <div class="dialog-body">
+                  <TextField
+                    value={folderName()}
+                    onChange={setFolderName}
+                    class="folder-name-field"
+                  >
+                    <TextField.Input
+                      class="folder-name-input"
+                      autofocus
+                      onFocus={(e) => e.currentTarget.select()}
+                    />
+                  </TextField>
 
-              <Show when={error()}>
-                <div class="dialog-error">{error()}</div>
-              </Show>
-            </div>
+                  <Show when={error()}>
+                    <div class="dialog-error">{error()}</div>
+                  </Show>
+                </div>
 
-            <div class="dialog-footer">
-              <Button
-                class="dialog-btn dialog-btn-cancel"
-                onClick={() => setIsDialogOpen(false)}
-                disabled={isCreating()}
-              >
-                Отмена
-              </Button>
-              <Button
-                class="dialog-btn dialog-btn-create"
-                onClick={handleCreateFolder}
-                disabled={isCreating() || !folderName().trim()}
-              >
-                {isCreating() ? "Создание..." : "Создать"}
-              </Button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog>
+                <div class="dialog-footer">
+                  <Button
+                    class="dialog-btn dialog-btn-cancel"
+                    onClick={() => setIsDialogOpen(false)}
+                    disabled={isCreating()}
+                  >
+                    Отмена
+                  </Button>
+                  <Button
+                    class="dialog-btn dialog-btn-create"
+                    onClick={handleCreateFolder}
+                    disabled={isCreating() || !folderName().trim()}
+                  >
+                    {isCreating() ? "Создание..." : "Создать"}
+                  </Button>
+                </div>
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog>
+        </>
+      </Show>
+
+      <Portal>
+        <Toast.Region
+          class="drive-toast-region"
+          regionId={SHARED_TOAST_REGION_ID}
+          limit={4}
+        >
+          <Toast.List class="drive-toast-list" />
+        </Toast.Region>
+      </Portal>
     </section>
   );
 }

@@ -78,7 +78,9 @@ function App() {
   const [searchFilters, setSearchFilters] = createSignal<DriveSearchFilters>(
     DEFAULT_DRIVE_SEARCH_FILTERS,
   );
-  const [currentFolderId, setCurrentFolderId] = createSignal<string | null>(null);
+  const [currentFolderId, setCurrentFolderId] = createSignal<string | null>(
+    null,
+  );
 
   const handleFilesDrop = (files: File[]) => {
     addFilesToUploadQueue(files, currentFolderId());
@@ -106,10 +108,17 @@ function App() {
         <Tabs.List class="tab-list" aria-label="Разделы Google Drive">
           <For each={tabs}>
             {(tab) => (
-              <Tooltip placement="right" gutter={8} disabled={!isMenuCollapsed()}>
+              <Tooltip
+                placement="right"
+                gutter={8}
+                disabled={!isMenuCollapsed()}
+              >
                 <Tabs.Trigger class="tab-item" value={tab.id}>
                   <span class="tab-icon">
-                    <TabIcon name={tab.icon} isSelected={activeTabId() === tab.id} />
+                    <TabIcon
+                      name={tab.icon}
+                      isSelected={activeTabId() === tab.id}
+                    />
                   </span>
                   <span class="tab-label">{tab.title}</span>
                 </Tabs.Trigger>
@@ -129,8 +138,8 @@ function App() {
             <Button
               class="settings-btn"
               onClick={() => {
-                const optionsUrl = browser.runtime.getURL('/options.html');
-                window.open(optionsUrl, 'google-drive-go-options');
+                const optionsUrl = browser.runtime.getURL("/options.html");
+                window.open(optionsUrl, "google-drive-go-options");
               }}
               title="Настройки"
             >
@@ -168,10 +177,6 @@ function App() {
           <For each={tabs}>
             {(tab) => (
               <Tabs.Content class="content-card" value={tab.id}>
-                <Show when={tab.id !== "my-drive" && tab.id !== "activity"}>
-                  <h2>{tab.title}</h2>
-                </Show>
-
                 <Show when={tab.id === "my-drive"}>
                   <DriveBrowser
                     formatDate={formatDate}
@@ -180,11 +185,25 @@ function App() {
                   />
                 </Show>
 
+                <Show when={tab.id === "shared"}>
+                  <DriveBrowser
+                    scope="shared"
+                    formatDate={formatDate}
+                    formatSize={formatSize}
+                  />
+                </Show>
+
                 <Show when={tab.id === "activity"}>
                   <ActivityBrowser />
                 </Show>
 
-                <Show when={tab.id !== "my-drive" && tab.id !== "activity"}>
+                <Show
+                  when={
+                    tab.id !== "my-drive" &&
+                    tab.id !== "activity" &&
+                    tab.id !== "shared"
+                  }
+                >
                   <p>Содержимое раздела появится на следующем шаге.</p>
                 </Show>
               </Tabs.Content>
