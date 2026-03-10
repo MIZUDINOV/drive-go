@@ -457,6 +457,36 @@ export async function listAllFolders(): Promise<DriveApiFile[]> {
   }
 }
 
+export async function listMyOwnedFolders(): Promise<DriveApiFile[]> {
+  try {
+    const token = await getAccessToken();
+    const params = new URLSearchParams({
+      pageSize: "100",
+      q: "mimeType = 'application/vnd.google-apps.folder' and trashed=false and 'me' in owners",
+      fields: "files(id,name,mimeType,iconLink)",
+      orderBy: "name_natural",
+      supportsAllDrives: "false",
+      includeItemsFromAllDrives: "false",
+    });
+
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files?${params.toString()}`,
+      {
+        headers: { Authorization: `Bearer ${token.token}` },
+      },
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = (await response.json()) as DriveListResult;
+    return data.files ?? [];
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Получить информацию о файле с данными пользователей
  * Используется для получения displayName, email и photoLink из Drive API

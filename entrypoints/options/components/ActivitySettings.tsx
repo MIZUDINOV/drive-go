@@ -1,5 +1,9 @@
-import { createSignal, For, onMount, Show } from "solid-js";
+import { createSignal, For, onMount, Show, createEffect } from "solid-js";
+import { Toast, toaster } from "@kobalte/core/toast";
 import { Switch } from "@kobalte/core/switch";
+import { Skeleton } from "@kobalte/core/skeleton";
+import { Alert } from "@kobalte/core/alert";
+import { OptionsSelect } from "./OptionsSelect";
 import {
   getSettings,
   saveSettings,
@@ -53,43 +57,111 @@ const activityTypes: ActivityTypeConfig[] = [
   },
 ];
 
+const SYNC_INTERVAL_OPTIONS = [1, 5, 10, 15, 30] as const;
+type SyncIntervalOption = (typeof SYNC_INTERVAL_OPTIONS)[number];
+
+const SYNC_INTERVAL_LABEL: Record<SyncIntervalOption, string> = {
+  1: "Каждую минуту",
+  5: "Каждые 5 минут",
+  10: "Каждые 10 минут",
+  15: "Каждые 15 минут",
+  30: "Каждые 30 минут",
+};
+
+const AUTO_CLEANUP_OPTIONS = [7, 14, 30, 90] as const;
+type AutoCleanupOption = (typeof AUTO_CLEANUP_OPTIONS)[number];
+
+const AUTO_CLEANUP_LABEL: Record<AutoCleanupOption, string> = {
+  7: "7 дней",
+  14: "14 дней",
+  30: "30 дней",
+  90: "90 дней",
+};
+
+let lastToastId: number | undefined = undefined;
+let lastToastResetTimer: ReturnType<typeof setTimeout> | undefined;
+
 export function ActivitySettings() {
-  const [settings, setSettings] = createSignal<ActivitySettingsType | null>(null);
+  const [settings, setSettings] = createSignal<ActivitySettingsType | null>(
+    null,
+  );
   const [isSaving, setIsSaving] = createSignal(false);
   const [saveSuccess, setSaveSuccess] = createSignal(false);
+  const [saveError, setSaveError] = createSignal<string | null>(null);
+  // Флаг, чтобы не запускать автосохранение при первой загрузке
+  let isFirstLoad = true;
+  // id последнего тоста для обновления (используем ref вне компонента, как в примере Kobalte)
 
   onMount(async () => {
     const loaded = await getSettings();
     setSettings(loaded);
   });
 
+  // Автосохранение настроек при изменении
+  createEffect(() => {
+    const current = settings();
+    if (!current) return;
+    if (isFirstLoad) {
+      isFirstLoad = false;
+      return;
+    }
+    setIsSaving(true);
+    setSaveError(null);
+    saveSettings(current)
+      .then(() => {
+        // Показываем только один тост сохранения, переиспользуя предыдущий id.
+        const toastContent = (toastProps: { toastId: number }) => (
+          <Toast
+            toastId={toastProps.toastId}
+            class="toast-success"
+            duration={2000}
+          >
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="material-symbols-rounded" style="font-size:20px;">
+                check_circle
+              </span>
+              <span>Настройки сохранены</span>
+            </div>
+            <Toast.ProgressTrack>
+              <Toast.ProgressFill />
+            </Toast.ProgressTrack>
+          </Toast>
+        );
+        if (lastToastId !== undefined) {
+          toaster.update(lastToastId, toastContent);
+        } else {
+          lastToastId = toaster.show(toastContent);
+        }
+
+        if (lastToastResetTimer) {
+          clearTimeout(lastToastResetTimer);
+        }
+        const activeToastId = lastToastId;
+        lastToastResetTimer = setTimeout(() => {
+          if (lastToastId === activeToastId) {
+            lastToastId = undefined;
+          }
+          lastToastResetTimer = undefined;
+        }, 2200);
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 1500);
+      })
+      .catch((error) => {
+        setSaveError("Ошибка сохранения настроек");
+        console.error("Failed to save settings:", error);
+      })
+      .finally(() => {
+        setIsSaving(false);
+      });
+  });
+
   const handleTypeToggle = (type: ActivityType, enabled: boolean) => {
     const current = settings();
     if (!current) return;
-
     const enabledTypes = enabled
       ? [...current.enabledTypes, type]
       : current.enabledTypes.filter((t: ActivityType) => t !== type);
-
     setSettings({ ...current, enabledTypes });
-  };
-
-  const handleSave = async () => {
-    const current = settings();
-    if (!current) return;
-
-    setIsSaving(true);
-    setSaveSuccess(false);
-
-    try {
-      await saveSettings(current);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (error) {
-      console.error("Failed to save settings:", error);
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   return (
@@ -99,7 +171,19 @@ export function ActivitySettings() {
         Выберите типы уведомлений, которые вы хотите отслеживать
       </p>
 
-      <Show when={settings()}>
+      <Show
+        when={settings()}
+        fallback={
+          <div
+            class="options-loading-skeletons"
+            aria-label="Загрузка настроек активности"
+          >
+            <Skeleton class="options-skeleton" height={120} radius={12} />
+            <Skeleton class="options-skeleton" height={96} radius={12} />
+            <Skeleton class="options-skeleton" height={180} radius={12} />
+          </div>
+        }
+      >
         <div class="options-settings-block">
           <h3>Типы активности</h3>
           <div class="options-activity-types">
@@ -117,7 +201,9 @@ export function ActivitySettings() {
                   <Switch
                     class="options-switch"
                     checked={settings()!.enabledTypes.includes(typeConfig.type)}
-                    onChange={(enabled) => handleTypeToggle(typeConfig.type, enabled)}
+                    onChange={(enabled) =>
+                      handleTypeToggle(typeConfig.type, enabled)
+                    }
                   >
                     <Switch.Input class="options-switch-input" />
                     <Switch.Control class="options-switch-control">
@@ -139,21 +225,18 @@ export function ActivitySettings() {
                 Как часто проверять новые уведомления
               </div>
             </div>
-            <select
-              class="options-select"
+            <OptionsSelect<SyncIntervalOption>
+              ariaLabel="Интервал обновления"
               value={settings()!.syncIntervalMinutes}
-              onChange={(e) =>
+              options={[...SYNC_INTERVAL_OPTIONS]}
+              getLabel={(value) => SYNC_INTERVAL_LABEL[value]}
+              onChange={(value) =>
                 setSettings({
                   ...settings()!,
-                  syncIntervalMinutes: Number(e.currentTarget.value) as 5 | 10 | 15 | 30,
+                  syncIntervalMinutes: value,
                 })
               }
-            >
-              <option value="5">Каждые 5 минут</option>
-              <option value="10">Каждые 10 минут</option>
-              <option value="15">Каждые 15 минут</option>
-              <option value="30">Каждые 30 минут</option>
-            </select>
+            />
           </div>
         </div>
 
@@ -188,41 +271,19 @@ export function ActivitySettings() {
                 Удалять уведомления старше указанного срока
               </div>
             </div>
-            <select
-              class="options-select"
+            <OptionsSelect<AutoCleanupOption>
+              ariaLabel="Автоочистка"
               value={settings()!.autoCleanupDays}
-              onChange={(e) =>
+              options={[...AUTO_CLEANUP_OPTIONS]}
+              getLabel={(value) => AUTO_CLEANUP_LABEL[value]}
+              onChange={(value) =>
                 setSettings({
                   ...settings()!,
-                  autoCleanupDays: Number(e.currentTarget.value) as 7 | 14 | 30 | 90,
+                  autoCleanupDays: value,
                 })
               }
-            >
-              <option value="7">7 дней</option>
-              <option value="14">14 дней</option>
-              <option value="30">30 дней</option>
-              <option value="90">90 дней</option>
-            </select>
+            />
           </div>
-        </div>
-
-        <div class="options-actions">
-          <button
-            class="options-btn options-btn-primary"
-            onClick={handleSave}
-            disabled={isSaving()}
-          >
-            <Show when={isSaving()} fallback="Сохранить изменения">
-              Сохранение...
-            </Show>
-          </button>
-
-          <Show when={saveSuccess()}>
-            <div class="options-save-success">
-              <span class="material-symbols-rounded">check_circle</span>
-              Настройки сохранены
-            </div>
-          </Show>
         </div>
       </Show>
     </div>

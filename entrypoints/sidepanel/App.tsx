@@ -1,4 +1,4 @@
-import { For, Show, createSignal } from "solid-js";
+import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 import { Tabs } from "@kobalte/core/tabs";
 import { Button } from "@kobalte/core/button";
 import { Tooltip } from "@kobalte/core/tooltip";
@@ -13,6 +13,10 @@ import {
   DEFAULT_DRIVE_SEARCH_FILTERS,
   type DriveSearchFilters,
 } from "./services/driveApi";
+import {
+  MESSAGE_ENQUEUE_UPLOAD,
+  type UploadBridgeMessage,
+} from "../shared/contextMenuUpload";
 import "material-symbols/rounded.css";
 import "./App.css";
 
@@ -30,6 +34,17 @@ const tabs: TabItem[] = [
   { id: "activity", title: "Активность", icon: "pulse" },
   { id: "trash", title: "Корзина", icon: "trash" },
 ];
+
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return bytes;
+}
 
 function formatDate(dateIso: string) {
   if (!dateIso) {
@@ -85,6 +100,29 @@ function App() {
   const handleFilesDrop = (files: File[]) => {
     addFilesToUploadQueue(files, currentFolderId());
   };
+
+  onMount(() => {
+    const listener = (message: unknown) => {
+      const payload = message as UploadBridgeMessage;
+      if (!payload || payload.type !== MESSAGE_ENQUEUE_UPLOAD) {
+        return;
+      }
+
+      const fileBytes = base64ToUint8Array(payload.payload.base64);
+      const fileBuffer = new ArrayBuffer(fileBytes.length);
+      new Uint8Array(fileBuffer).set(fileBytes);
+      const file = new File([fileBuffer], payload.payload.name, {
+        type: payload.payload.mimeType,
+      });
+
+      addFilesToUploadQueue([file], payload.payload.parentId);
+    };
+
+    browser.runtime.onMessage.addListener(listener);
+    onCleanup(() => {
+      browser.runtime.onMessage.removeListener(listener);
+    });
+  });
 
   return (
     <Tabs
