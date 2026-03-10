@@ -3,7 +3,9 @@ import { Dialog } from "@kobalte/core/dialog";
 import { Button } from "@kobalte/core/button";
 import { TextField } from "@kobalte/core/text-field";
 import type { DriveItem } from "./driveTypes";
+import { isFolder } from "./driveTypes";
 import { renameFile } from "../../services/driveApi";
+import { markSavePathsFoldersDirty } from "../../../shared/savePathsSettings";
 
 type RenameDialogProps = {
   item: DriveItem | null;
@@ -59,6 +61,10 @@ export function RenameDialog(props: RenameDialogProps) {
     setIsRenaming(false);
 
     if (result.ok) {
+      if (isFolder(item)) {
+        await markSavePathsFoldersDirty();
+      }
+
       props.onOpenChange(false);
       props.onRenameSuccess();
     } else {

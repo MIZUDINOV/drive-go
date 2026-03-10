@@ -11,6 +11,10 @@ import {
   type UploadBridgeMessage,
 } from "./shared/contextMenuUpload";
 import { getTargetParentFolderId } from "./shared/savePathsSettings";
+import {
+  MESSAGE_PLAY_NOTIFICATION_SOUND,
+  type PlayNotificationSoundMessage,
+} from "./shared/activityNotifications";
 
 const DEFAULT_SYNC_INTERVAL_MINUTES = 5;
 const MAX_ACTIVITIES = 100; // Хранить только последние N активностей
@@ -19,7 +23,10 @@ const STORAGE_KEY = {
   ACTIVITIES: "activities",
   LAST_SYNC: "lastSyncTime",
   READ_IDS: "readActivityIds",
+  NOTIFIED_IDS: "notifiedActivityIds",
 };
+
+const MAX_NOTIFIED_IDS = 2000;
 
 let syncTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -72,6 +79,7 @@ async function getActivitySettingsFromStorage(): Promise<ActivitySettings> {
     syncIntervalMinutes: DEFAULT_SYNC_INTERVAL_MINUTES,
     autoCleanupDays: 30,
     playSound: false,
+    notificationSound: "chime",
   };
 
   return new Promise((resolve) => {
@@ -109,6 +117,79 @@ async function scheduleNextSyncFromSettings(): Promise<void> {
 function filterByEnabledTypes(items: ActivityItem[], enabledTypes: ActivityType[]): ActivityItem[] {
   const enabledSet = new Set(enabledTypes);
   return items.filter((item) => enabledSet.has(item.type));
+}
+
+function applyAutoCleanupByDays(items: ActivityItem[], days: number): ActivityItem[] {
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+
+  return items.filter((item) => {
+    const itemTime = new Date(item.timestamp).getTime();
+    if (Number.isNaN(itemTime)) {
+      return true;
+    }
+
+    return itemTime > cutoff;
+  });
+}
+
+function getActivityTypeLabel(type: ActivityType): string {
+  const labels: Record<ActivityType, string> = {
+    comment: "Комментарий",
+    reply: "Ответ",
+    mention: "Упоминание",
+    share: "Общий доступ",
+    edit: "Изменение",
+    create: "Создание",
+    move: "Перемещение",
+    rename: "Переименование",
+    delete: "Удаление",
+    restore: "Восстановление",
+    permission_change: "Изменение прав",
+  };
+
+  return labels[type];
+}
+
+async function notifyAboutNewActivities(
+  newItems: ActivityItem[],
+  settings: ActivitySettings,
+): Promise<void> {
+  if (!settings.notificationsEnabled || newItems.length === 0 || !browser.notifications?.create) {
+    return;
+  }
+
+  const title =
+    newItems.length === 1
+      ? `Google Drive: ${getActivityTypeLabel(newItems[0].type)}`
+      : `Google Drive: ${newItems.length} новых событий`;
+
+  const message =
+    newItems.length === 1
+      ? `${newItems[0].target.fileName}`
+      : "Откройте вкладку Активность, чтобы посмотреть детали.";
+
+  await browser.notifications.create(`activity-${Date.now()}`, {
+    type: "basic",
+    iconUrl: browser.runtime.getURL("/icon/128.png"),
+    title,
+    message,
+    silent: !settings.playSound,
+  });
+
+  if (settings.playSound) {
+    const soundMessage: PlayNotificationSoundMessage = {
+      type: MESSAGE_PLAY_NOTIFICATION_SOUND,
+      payload: {
+        sound: settings.notificationSound,
+      },
+    };
+
+    try {
+      await browser.runtime.sendMessage(soundMessage);
+    } catch {
+      // Если UI-контекст не активен, остаётся системный звук нотификации.
+    }
+  }
 }
 
 async function setupContextMenus(): Promise<void> {
@@ -372,21 +453,39 @@ async function syncActivities(): Promise<void> {
     console.log(`[Background] Fetched ${parsed.length} activities (${filteredParsed.length} после фильтра)`);
 
     // Получить текущие данные из storage
-    const storage = await browser.storage.local.get(STORAGE_KEY.ACTIVITIES);
+    const storage = await browser.storage.local.get([
+      STORAGE_KEY.ACTIVITIES,
+      STORAGE_KEY.NOTIFIED_IDS,
+    ]);
     const existingActivities = (storage[STORAGE_KEY.ACTIVITIES] || []) as ActivityItem[];
+    const notifiedIds = new Set(
+      ((storage[STORAGE_KEY.NOTIFIED_IDS] as string[]) || []),
+    );
+    const existingIds = new Set(existingActivities.map((item) => item.id));
+    const newItems = filteredParsed.filter(
+      (item) => !existingIds.has(item.id) && !notifiedIds.has(item.id),
+    );
 
     // Объединить: новые + старые, удалить дубликаты, сохранить MAX_ACTIVITIES
     const merged = mergeActivities(existingActivities, filteredParsed);
     const filteredMerged = filterByEnabledTypes(merged, settings.enabledTypes);
-    const limited = filteredMerged.slice(0, MAX_ACTIVITIES);
+    const cleaned = applyAutoCleanupByDays(filteredMerged, settings.autoCleanupDays);
+    const limited = cleaned.slice(0, MAX_ACTIVITIES);
 
     // Сохранить в storage
+    const nextNotifiedIds = [
+      ...new Set([...notifiedIds, ...newItems.map((item) => item.id)]),
+    ].slice(-MAX_NOTIFIED_IDS);
+
     await browser.storage.local.set({
       [STORAGE_KEY.ACTIVITIES]: limited,
       [STORAGE_KEY.LAST_SYNC]: new Date().toISOString(),
+      [STORAGE_KEY.NOTIFIED_IDS]: nextNotifiedIds,
     });
 
     console.log(`[Background] Saved ${limited.length} activities to storage`);
+
+    await notifyAboutNewActivities(newItems, settings);
 
     // Обновить icon badge с количеством непрочитанных
     await updateBadge(limited);

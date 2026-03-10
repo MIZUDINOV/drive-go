@@ -12,10 +12,15 @@ export function OptionsSelect<T extends string | number>(props: OptionsSelectPro
   return (
     <Select<T>
       value={props.value}
+      disallowEmptySelection
       options={props.options}
       optionValue={(option) => String(option)}
       optionTextValue={(option) => props.getLabel(option)}
-      onChange={(next) => props.onChange(next)}
+      onChange={(next) => {
+        if (next !== null && next !== undefined) {
+          props.onChange(next);
+        }
+      }}
       itemComponent={(itemProps) => (
         <Select.Item item={itemProps.item} class="options-kb-select-item">
           <Select.ItemLabel>{props.getLabel(itemProps.item.rawValue as T)}</Select.ItemLabel>
@@ -27,7 +32,10 @@ export function OptionsSelect<T extends string | number>(props: OptionsSelectPro
     >
       <Select.Trigger class="options-select options-kb-select-trigger" aria-label={props.ariaLabel}>
         <Select.Value class="options-kb-select-value">
-          {(state) => props.getLabel(state.selectedOption() as T)}
+          {(state) => {
+            const selected = state.selectedOption() as T | undefined;
+            return props.getLabel(selected ?? props.value);
+          }}
         </Select.Value>
         <Select.Icon class="options-kb-select-icon">
           <span class="material-symbols-rounded">expand_more</span>

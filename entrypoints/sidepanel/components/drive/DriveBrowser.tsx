@@ -41,6 +41,7 @@ import {
   emptyTrash,
   restoreTrashItem,
 } from "../../services/trashApi";
+import { markSavePathsFoldersDirty as markFolderPathsDirty } from "../../../shared/savePathsSettings";
 import { type DriveItemMenuConfig } from "./DriveItemMenu";
 import { DriveItemsContent } from "./DriveItemsContent";
 import { EmptyTrashDialog } from "./EmptyTrashDialog";
@@ -255,6 +256,10 @@ export function DriveBrowser(props: DriveBrowserProps) {
 
           browserState.removeItemLocally(item.id);
 
+          if (isFolder(item)) {
+            await markFolderPathsDirty();
+          }
+
           showActionToast(
             "Восстановлено",
             `Файл \"${item.name}\" восстановлен из корзины.`,
@@ -276,6 +281,10 @@ export function DriveBrowser(props: DriveBrowserProps) {
           }
 
           browserState.removeItemLocally(item.id);
+
+          if (isFolder(item)) {
+            await markFolderPathsDirty();
+          }
 
           showActionToast(
             "Удалено навсегда",
@@ -471,6 +480,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
     setIsCreating(false);
 
     if (result.ok) {
+      await markFolderPathsDirty();
       setIsDialogOpen(false);
       setFolderName("Без названия");
       await browserState.refresh();
@@ -594,6 +604,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
     }
 
     browserState.clearItemsLocally();
+    await markFolderPathsDirty();
 
     showActionToast(
       "Корзина очищена",

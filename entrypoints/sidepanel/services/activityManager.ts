@@ -28,6 +28,7 @@ const DEFAULT_SETTINGS: ActivitySettings = {
   syncIntervalMinutes: 5,
   autoCleanupDays: 30,
   playSound: false,
+  notificationSound: "chime",
 };
 
 const STORAGE_KEYS = {

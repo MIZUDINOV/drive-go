@@ -17,6 +17,10 @@ import {
   MESSAGE_ENQUEUE_UPLOAD,
   type UploadBridgeMessage,
 } from "../shared/contextMenuUpload";
+import {
+  MESSAGE_PLAY_NOTIFICATION_SOUND,
+  type PlayNotificationSoundMessage,
+} from "../shared/activityNotifications";
 import "material-symbols/rounded.css";
 import "./App.css";
 
@@ -44,6 +48,52 @@ function base64ToUint8Array(base64: string): Uint8Array {
   }
 
   return bytes;
+}
+
+function playNotificationSound(
+  sound: "chime" | "bell" | "digital",
+): void {
+  const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextCtor) {
+    return;
+  }
+
+  const context = new AudioContextCtor();
+  const now = context.currentTime;
+
+  const playTone = (freq: number, startOffset: number, duration: number) => {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency.value = freq;
+
+    gain.gain.setValueAtTime(0.0001, now + startOffset);
+    gain.gain.exponentialRampToValueAtTime(0.12, now + startOffset + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + startOffset + duration);
+
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+
+    oscillator.start(now + startOffset);
+    oscillator.stop(now + startOffset + duration + 0.03);
+  };
+
+  if (sound === "bell") {
+    playTone(880, 0, 0.22);
+    playTone(1320, 0.12, 0.28);
+  } else if (sound === "digital") {
+    playTone(720, 0, 0.08);
+    playTone(960, 0.1, 0.08);
+    playTone(1240, 0.2, 0.1);
+  } else {
+    playTone(660, 0, 0.16);
+    playTone(990, 0.18, 0.2);
+  }
+
+  setTimeout(() => {
+    void context.close();
+  }, 900);
 }
 
 function formatDate(dateIso: string) {
@@ -103,19 +153,23 @@ function App() {
 
   onMount(() => {
     const listener = (message: unknown) => {
-      const payload = message as UploadBridgeMessage;
-      if (!payload || payload.type !== MESSAGE_ENQUEUE_UPLOAD) {
+      const uploadMessage = message as UploadBridgeMessage;
+      if (uploadMessage?.type === MESSAGE_ENQUEUE_UPLOAD) {
+        const fileBytes = base64ToUint8Array(uploadMessage.payload.base64);
+        const fileBuffer = new ArrayBuffer(fileBytes.length);
+        new Uint8Array(fileBuffer).set(fileBytes);
+        const file = new File([fileBuffer], uploadMessage.payload.name, {
+          type: uploadMessage.payload.mimeType,
+        });
+
+        addFilesToUploadQueue([file], uploadMessage.payload.parentId);
         return;
       }
 
-      const fileBytes = base64ToUint8Array(payload.payload.base64);
-      const fileBuffer = new ArrayBuffer(fileBytes.length);
-      new Uint8Array(fileBuffer).set(fileBytes);
-      const file = new File([fileBuffer], payload.payload.name, {
-        type: payload.payload.mimeType,
-      });
-
-      addFilesToUploadQueue([file], payload.payload.parentId);
+      const soundMessage = message as PlayNotificationSoundMessage;
+      if (soundMessage?.type === MESSAGE_PLAY_NOTIFICATION_SOUND) {
+        playNotificationSound(soundMessage.payload.sound);
+      }
     };
 
     browser.runtime.onMessage.addListener(listener);

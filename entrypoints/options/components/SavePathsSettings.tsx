@@ -4,6 +4,7 @@ import { Alert } from "@kobalte/core/alert";
 import type { DriveApiFile } from "../../sidepanel/components/drive/driveTypes";
 import { listMyOwnedFolders } from "../../sidepanel/services/driveApi";
 import {
+  consumeSavePathsFoldersDirtyFlag,
   getSavePathsSettings,
   saveSavePathsSettings,
   type SavePathsSettings,
@@ -48,6 +49,29 @@ const DEFAULT_SETTINGS: SavePathsSettings = {
   pdfFolderId: null,
 };
 
+// Кэш живет, пока открыта страница настроек (контекст options).
+let cachedOwnedFolders: DriveApiFile[] | null = null;
+let cachedOwnedFoldersRequest: Promise<DriveApiFile[]> | null = null;
+
+async function getOwnedFoldersCached(forceRefresh = false): Promise<DriveApiFile[]> {
+  if (!forceRefresh && cachedOwnedFolders) {
+    return cachedOwnedFolders;
+  }
+
+  if (!cachedOwnedFoldersRequest) {
+    cachedOwnedFoldersRequest = listMyOwnedFolders()
+      .then((items) => {
+        cachedOwnedFolders = items;
+        return items;
+      })
+      .finally(() => {
+        cachedOwnedFoldersRequest = null;
+      });
+  }
+
+  return cachedOwnedFoldersRequest;
+}
+
 export function SavePathsSettings() {
   const [settings, setSettings] = createSignal<SavePathsSettings>(DEFAULT_SETTINGS);
   const [folders, setFolders] = createSignal<DriveApiFile[]>([]);
@@ -66,14 +90,22 @@ export function SavePathsSettings() {
   const baseOptions = createMemo(() => ["root", ...folders().map((folder) => folder.id)]);
 
   onMount(async () => {
-    const [loadedSettings, loadedFolders] = await Promise.all([
-      getSavePathsSettings(),
-      listMyOwnedFolders(),
-    ]);
+    try {
+      const [loadedSettings, shouldRefreshFolders] = await Promise.all([
+        getSavePathsSettings(),
+        consumeSavePathsFoldersDirtyFlag(),
+      ]);
 
-    setSettings(loadedSettings);
-    setFolders(loadedFolders);
-    setIsLoading(false);
+      const loadedFolders = await getOwnedFoldersCached(shouldRefreshFolders);
+
+      setSettings(loadedSettings);
+      setFolders(loadedFolders);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Не удалось загрузить папки";
+      setSaveError(message);
+    } finally {
+      setIsLoading(false);
+    }
   });
 
   createEffect(() => {

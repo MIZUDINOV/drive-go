@@ -2,7 +2,9 @@ import { createSignal, Show } from "solid-js";
 import { Dialog } from "@kobalte/core/dialog";
 import { Button } from "@kobalte/core/button";
 import type { DriveItem } from "./driveTypes";
+import { isFolder } from "./driveTypes";
 import { trashFile } from "../../services/driveApi";
+import { markSavePathsFoldersDirty } from "../../../shared/savePathsSettings";
 
 type TrashConfirmDialogProps = {
   item: DriveItem | null;
@@ -27,6 +29,10 @@ export function TrashConfirmDialog(props: TrashConfirmDialogProps) {
     setIsTrashing(false);
 
     if (result.ok) {
+      if (isFolder(item)) {
+        await markSavePathsFoldersDirty();
+      }
+
       props.onOpenChange(false);
       props.onTrashSuccess();
     } else {

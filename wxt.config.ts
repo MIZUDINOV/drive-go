@@ -5,7 +5,7 @@ export default defineConfig({
   modules: ["@wxt-dev/module-solid"],
   manifestVersion: 3,
   manifest: {
-    permissions: ["identity", "storage", "contextMenus", "tabs", "activeTab"],
+    permissions: ["identity", "storage", "contextMenus", "tabs", "activeTab", "notifications"],
     host_permissions: ["https://www.googleapis.com/*"],
     action: {
       default_title: "Google Drive Go",

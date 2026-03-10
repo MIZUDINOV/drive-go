@@ -1,6 +1,7 @@
 import { createSignal, For, onMount, Show, createEffect } from "solid-js";
 import { Toast, toaster } from "@kobalte/core/toast";
 import { Switch } from "@kobalte/core/switch";
+import { Button } from "@kobalte/core/button";
 import { Skeleton } from "@kobalte/core/skeleton";
 import { Alert } from "@kobalte/core/alert";
 import { OptionsSelect } from "./OptionsSelect";
@@ -77,6 +78,59 @@ const AUTO_CLEANUP_LABEL: Record<AutoCleanupOption, string> = {
   30: "30 дней",
   90: "90 дней",
 };
+
+const NOTIFICATION_SOUND_OPTIONS = ["chime", "bell", "digital"] as const;
+type NotificationSoundOption = (typeof NOTIFICATION_SOUND_OPTIONS)[number];
+
+const NOTIFICATION_SOUND_LABEL: Record<NotificationSoundOption, string> = {
+  chime: "Chime",
+  bell: "Bell",
+  digital: "Digital",
+};
+
+function playPreviewSound(sound: NotificationSoundOption): void {
+  const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextCtor) {
+    return;
+  }
+
+  const context = new AudioContextCtor();
+  const now = context.currentTime;
+
+  const playTone = (freq: number, startOffset: number, duration: number) => {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency.value = freq;
+
+    gain.gain.setValueAtTime(0.0001, now + startOffset);
+    gain.gain.exponentialRampToValueAtTime(0.12, now + startOffset + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + startOffset + duration);
+
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+
+    oscillator.start(now + startOffset);
+    oscillator.stop(now + startOffset + duration + 0.03);
+  };
+
+  if (sound === "bell") {
+    playTone(880, 0, 0.22);
+    playTone(1320, 0.12, 0.28);
+  } else if (sound === "digital") {
+    playTone(720, 0, 0.08);
+    playTone(960, 0.1, 0.08);
+    playTone(1240, 0.2, 0.1);
+  } else {
+    playTone(660, 0, 0.16);
+    playTone(990, 0.18, 0.2);
+  }
+
+  setTimeout(() => {
+    void context.close();
+  }, 900);
+}
 
 let lastToastId: number | undefined = undefined;
 let lastToastResetTimer: ReturnType<typeof setTimeout> | undefined;
@@ -263,6 +317,60 @@ export function ActivitySettings() {
               </Switch.Control>
             </Switch>
           </div>
+
+          <div class="options-setting-row">
+            <div class="options-setting-label">
+              <div>Звуковые уведомления</div>
+              <div class="options-setting-hint">
+                Воспроизводить звук при новых событиях
+              </div>
+            </div>
+            <Switch
+              class="options-switch"
+              checked={settings()!.playSound}
+              onChange={(enabled) =>
+                setSettings({ ...settings()!, playSound: enabled })
+              }
+            >
+              <Switch.Input class="options-switch-input" />
+              <Switch.Control class="options-switch-control">
+                <Switch.Thumb class="options-switch-thumb" />
+              </Switch.Control>
+            </Switch>
+          </div>
+
+          <Show when={settings()!.playSound}>
+            <div class="options-setting-row">
+              <div class="options-setting-label">
+                <div>Тип звука</div>
+                <div class="options-setting-hint">
+                  Выберите звук уведомления об изменениях
+                </div>
+              </div>
+              <div class="options-sound-picker">
+                <OptionsSelect<NotificationSoundOption>
+                  ariaLabel="Тип звука"
+                  value={settings()!.notificationSound}
+                  options={[...NOTIFICATION_SOUND_OPTIONS]}
+                  getLabel={(value) => NOTIFICATION_SOUND_LABEL[value]}
+                  onChange={(value) => {
+                    setSettings({
+                      ...settings()!,
+                      notificationSound: value,
+                    });
+                    playPreviewSound(value);
+                  }}
+                />
+                <Button
+                  class="options-sound-preview-btn"
+                  aria-label="Прослушать звук"
+                  onClick={() => playPreviewSound(settings()!.notificationSound)}
+                >
+                  <span class="material-symbols-rounded">play_arrow</span>
+                </Button>
+              </div>
+            </div>
+          </Show>
 
           <div class="options-setting-row">
             <div class="options-setting-label">

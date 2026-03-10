@@ -85,6 +85,7 @@ export type ActivitySettings = {
   syncIntervalMinutes: 1 | 5 | 10 | 15 | 30;
   autoCleanupDays: 7 | 14 | 30 | 90;
   playSound: boolean;
+  notificationSound: "chime" | "bell" | "digital";
 };
 
 /**

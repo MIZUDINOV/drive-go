@@ -8,6 +8,7 @@ export type SavePathsSettings = {
 };
 
 const STORAGE_KEY = "save_paths_settings";
+const FOLDERS_DIRTY_KEY = "save_paths_folders_dirty";
 
 export const DEFAULT_SAVE_PATHS_SETTINGS: SavePathsSettings = {
   screenshotFolderId: null,
@@ -45,4 +46,27 @@ export async function getTargetParentFolderId(
   if (target === "selectionText") return settings.selectionTextFolderId;
   if (target === "pdf") return settings.pdfFolderId;
   return settings.imageFolderId;
+}
+
+export async function markSavePathsFoldersDirty(): Promise<void> {
+  return new Promise((resolve) => {
+    browser.storage.local.set({ [FOLDERS_DIRTY_KEY]: true }, resolve);
+  });
+}
+
+export async function consumeSavePathsFoldersDirtyFlag(): Promise<boolean> {
+  return new Promise((resolve) => {
+    browser.storage.local.get([FOLDERS_DIRTY_KEY], (result) => {
+      const isDirty = Boolean(result[FOLDERS_DIRTY_KEY]);
+
+      if (!isDirty) {
+        resolve(false);
+        return;
+      }
+
+      browser.storage.local.set({ [FOLDERS_DIRTY_KEY]: false }, () => {
+        resolve(true);
+      });
+    });
+  });
 }

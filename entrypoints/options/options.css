@@ -472,3 +472,30 @@ body {
 .options-alert .material-symbols-rounded {
   font-size: 18px;
 }
+
+.options-sound-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.options-sound-preview-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.options-sound-preview-btn:hover {
+  background: var(--surface-hover);
+}
+
+.options-sound-preview-btn .material-symbols-rounded {
+  font-size: 20px;
+}
