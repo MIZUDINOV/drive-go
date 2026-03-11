@@ -11,14 +11,20 @@ import { UploadPopover } from "./components/upload/UploadPopover";
 import { DragDropOverlay } from "./components/upload/DragDropOverlay";
 import { TransfersBrowser } from "./components/transfers/TransfersBrowser";
 import { enqueueFilesForUpload } from "./services/transferQueueClient";
+import { subscribeActivityNotificationSound } from "./services/activitySoundStream";
+import {
+  activityUnreadCount$,
+  disposeActivityStreams,
+  startActivityStreams,
+} from "./services/activityManager";
 import {
   DEFAULT_DRIVE_SEARCH_FILTERS,
   type DriveSearchFilters,
 } from "./services/driveApi";
 import {
-  MESSAGE_PLAY_NOTIFICATION_SOUND,
-  type PlayNotificationSoundMessage,
-} from "../shared/activityNotifications";
+  ActivityNotificationSound,
+  type ActivitySettings,
+} from "./services/activityTypes";
 import { PORT_TRANSFER_QUEUE_SIDEPANEL_SESSION } from "../shared/transferQueueMessages";
 import "material-symbols/rounded.css";
 import "./App.css";
@@ -39,38 +45,8 @@ const tabs: TabItem[] = [
   { id: "trash", title: "Корзина", icon: "trash" },
 ];
 
-const ACTIVITY_STORAGE_KEYS = {
-  ACTIVITIES: "activities",
-  READ_IDS: "readActivityIds",
-};
-
-async function getUnreadActivityCount(): Promise<number> {
-  const storage = await browser.storage.local.get([
-    ACTIVITY_STORAGE_KEYS.ACTIVITIES,
-    ACTIVITY_STORAGE_KEYS.READ_IDS,
-  ]);
-
-  const activities = Array.isArray(storage[ACTIVITY_STORAGE_KEYS.ACTIVITIES])
-    ? (storage[ACTIVITY_STORAGE_KEYS.ACTIVITIES] as Array<{ id?: string }>)
-    : [];
-
-  const readIds = new Set(
-    Array.isArray(storage[ACTIVITY_STORAGE_KEYS.READ_IDS])
-      ? (storage[ACTIVITY_STORAGE_KEYS.READ_IDS] as string[])
-      : [],
-  );
-
-  return activities.reduce((count, item) => {
-    if (!item?.id) {
-      return count;
-    }
-
-    return readIds.has(item.id) ? count : count + 1;
-  }, 0);
-}
-
 function playNotificationSound(
-  sound: "chime" | "bell" | "digital",
+  sound: ActivitySettings["notificationSound"],
 ): void {
   const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AudioContextCtor) {
@@ -98,10 +74,10 @@ function playNotificationSound(
     oscillator.stop(now + startOffset + duration + 0.03);
   };
 
-  if (sound === "bell") {
+  if (sound === ActivityNotificationSound.Bell) {
     playTone(880, 0, 0.22);
     playTone(1320, 0.12, 0.28);
-  } else if (sound === "digital") {
+  } else if (sound === ActivityNotificationSound.Digital) {
     playTone(720, 0, 0.08);
     playTone(960, 0.1, 0.08);
     playTone(1240, 0.2, 0.1);
@@ -172,46 +148,25 @@ function App() {
   };
 
   onMount(() => {
-    const refreshUnreadCount = async () => {
-      try {
-        const unread = await getUnreadActivityCount();
-        setActivityUnreadCount(unread);
-      } catch {
-        setActivityUnreadCount(0);
-      }
-    };
+    startActivityStreams();
 
     const sidepanelSessionPort = browser.runtime.connect({
       name: PORT_TRANSFER_QUEUE_SIDEPANEL_SESSION,
     });
 
-    void refreshUnreadCount();
+    const soundSubscription = subscribeActivityNotificationSound((sound) => {
+      playNotificationSound(sound);
+    });
 
-    const listener = (message: unknown) => {
-      const soundMessage = message as PlayNotificationSoundMessage;
-      if (soundMessage?.type === MESSAGE_PLAY_NOTIFICATION_SOUND) {
-        playNotificationSound(soundMessage.payload.sound);
-      }
-    };
+    const unreadSubscription = activityUnreadCount$.subscribe((count) => {
+      setActivityUnreadCount(count);
+    });
 
-    const storageListener: Parameters<
-      typeof browser.storage.onChanged.addListener
-    >[0] = (changes, areaName) => {
-      if (areaName !== "local") {
-        return;
-      }
-
-      if (changes[ACTIVITY_STORAGE_KEYS.ACTIVITIES] || changes[ACTIVITY_STORAGE_KEYS.READ_IDS]) {
-        void refreshUnreadCount();
-      }
-    };
-
-    browser.runtime.onMessage.addListener(listener);
-    browser.storage.onChanged.addListener(storageListener);
     onCleanup(() => {
-      browser.runtime.onMessage.removeListener(listener);
-      browser.storage.onChanged.removeListener(storageListener);
+      soundSubscription.unsubscribe();
+      unreadSubscription.unsubscribe();
       sidepanelSessionPort.disconnect();
+      disposeActivityStreams();
     });
   });
 

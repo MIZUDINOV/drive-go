@@ -1,9 +1,10 @@
-import { For, Show, createEffect, onCleanup, onMount } from "solid-js";
+import { For, Show, onMount } from "solid-js";
 import { Button } from "@kobalte/core/button";
 import {
   activityStore,
   loadActivitiesFromBackground,
   markAllAsRead,
+  requestActivitySyncNow,
 } from "../../services/activityManager";
 import type { ActivityItem } from "../../services/activityTypes";
 import { ActivityItem as ActivityItemComponent } from "./ActivityItem";
@@ -82,25 +83,14 @@ export function ActivityBrowser() {
     void loadActivitiesFromBackground();
   });
 
-  // Слушаем изменения в storage (для синхронизации между табами или обновлениями от background)
-  createEffect(() => {
-    const handleStorageChange: Parameters<
-      typeof browser.storage.onChanged.addListener
-    >[0] = (changes, areaName) => {
-      if (areaName === "local" && changes.activities) {
-        console.log("[ActivityBrowser] Storage changed, reloading activities");
-        void loadActivitiesFromBackground();
-      }
-    };
-
-    browser.storage.onChanged.addListener(handleStorageChange);
-    onCleanup(() =>
-      browser.storage.onChanged.removeListener(handleStorageChange),
-    );
-  });
-
-  const handleRefresh = () => {
-    void loadActivitiesFromBackground();
+  const handleRefresh = async () => {
+    try {
+      await requestActivitySyncNow();
+      await loadActivitiesFromBackground();
+    } catch (error) {
+      console.error("[ActivityBrowser] Manual sync failed:", error);
+      await loadActivitiesFromBackground();
+    }
   };
 
   const handleMarkAllRead = () => {

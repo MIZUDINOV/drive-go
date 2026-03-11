@@ -9,6 +9,9 @@ import {
   getSettings,
   saveSettings,
 } from "../../sidepanel/services/activityManager";
+import {
+  ActivityNotificationSound,
+} from "../../sidepanel/services/activityTypes";
 import type {
   ActivityType,
   ActivitySettings as ActivitySettingsType,
@@ -79,13 +82,17 @@ const AUTO_CLEANUP_LABEL: Record<AutoCleanupOption, string> = {
   90: "90 дней",
 };
 
-const NOTIFICATION_SOUND_OPTIONS = ["chime", "bell", "digital"] as const;
-type NotificationSoundOption = (typeof NOTIFICATION_SOUND_OPTIONS)[number];
+const NOTIFICATION_SOUND_OPTIONS = [
+  ActivityNotificationSound.Chime,
+  ActivityNotificationSound.Bell,
+  ActivityNotificationSound.Digital,
+] as const;
+type NotificationSoundOption = ActivityNotificationSound;
 
 const NOTIFICATION_SOUND_LABEL: Record<NotificationSoundOption, string> = {
-  chime: "Chime",
-  bell: "Bell",
-  digital: "Digital",
+  [ActivityNotificationSound.Chime]: "Chime",
+  [ActivityNotificationSound.Bell]: "Bell",
+  [ActivityNotificationSound.Digital]: "Digital",
 };
 
 function playPreviewSound(sound: NotificationSoundOption): void {
@@ -115,10 +122,10 @@ function playPreviewSound(sound: NotificationSoundOption): void {
     oscillator.stop(now + startOffset + duration + 0.03);
   };
 
-  if (sound === "bell") {
+  if (sound === ActivityNotificationSound.Bell) {
     playTone(880, 0, 0.22);
     playTone(1320, 0.12, 0.28);
-  } else if (sound === "digital") {
+  } else if (sound === ActivityNotificationSound.Digital) {
     playTone(720, 0, 0.08);
     playTone(960, 0.1, 0.08);
     playTone(1240, 0.2, 0.1);

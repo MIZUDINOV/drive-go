@@ -19,6 +19,7 @@ export type ActivityType =
  */
 export type ActivityActor = {
   type: "user" | "anonymous" | "system";
+  identityKey?: string;
   displayName?: string;
   email?: string;
   photoUrl?: string;
@@ -76,6 +77,12 @@ export type ActivityGroup = {
   items: ActivityItem[];
 };
 
+export enum ActivityNotificationSound {
+  Chime = "chime",
+  Bell = "bell",
+  Digital = "digital",
+}
+
 /**
  * Настройки активности
  */
@@ -85,7 +92,7 @@ export type ActivitySettings = {
   syncIntervalMinutes: 1 | 5 | 10 | 15 | 30;
   autoCleanupDays: 7 | 14 | 30 | 90;
   playSound: boolean;
-  notificationSound: "chime" | "bell" | "digital";
+  notificationSound: ActivityNotificationSound;
 };
 
 /**

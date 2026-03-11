@@ -1,6 +1,11 @@
 import { fetchDriveActivity, getAccessToken } from "./sidepanel/services/activityApi";
 import { parseActivities } from "./sidepanel/services/activityManager";
-import type { ActivityItem, ActivitySettings, ActivityType } from "./sidepanel/services/activityTypes";
+import {
+  ActivityNotificationSound,
+  type ActivityItem,
+  type ActivitySettings,
+  type ActivityType,
+} from "./sidepanel/services/activityTypes";
 import {
   CONTEXT_MENU_IMAGE_ID,
   CONTEXT_MENU_PDF_ID,
@@ -10,7 +15,9 @@ import {
 } from "./shared/contextMenuUpload";
 import { getTargetParentFolderId } from "./shared/savePathsSettings";
 import {
+  MESSAGE_ACTIVITY_SYNC_NOW,
   MESSAGE_PLAY_NOTIFICATION_SOUND,
+  type ActivitySyncNowMessage,
   type PlayNotificationSoundMessage,
 } from "./shared/activityNotifications";
 import {
@@ -234,6 +241,7 @@ export default defineBackground(() => {
 
   // Синхронизация активностей при запуске
   void syncActivities();
+  void refreshBadgeFromStorage();
 
   // Планировщик синхронизации с интервалом из настроек
   void scheduleNextSyncFromSettings();
@@ -243,6 +251,10 @@ export default defineBackground(() => {
   >[0] = (changes, areaName) => {
     if (areaName !== "local") {
       return;
+    }
+
+    if (changes[STORAGE_KEY.ACTIVITIES] || changes[STORAGE_KEY.READ_IDS]) {
+      void refreshBadgeFromStorage();
     }
 
     if (changes[ACTIVITY_SETTINGS_KEY]) {
@@ -315,6 +327,12 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
 async function handleTransferQueueRuntimeMessage(
   message: unknown,
 ): Promise<unknown> {
+  const activitySyncMessage = message as ActivitySyncNowMessage;
+  if (activitySyncMessage?.type === MESSAGE_ACTIVITY_SYNC_NOW) {
+    await syncActivities();
+    return { ok: true };
+  }
+
   const transferMessage = message as TransferQueueMessage;
 
   if (transferMessage?.type === MESSAGE_TRANSFER_QUEUE_LIST) {
@@ -445,7 +463,7 @@ async function getActivitySettingsFromStorage(): Promise<ActivitySettings> {
     syncIntervalMinutes: DEFAULT_SYNC_INTERVAL_MINUTES,
     autoCleanupDays: 30,
     playSound: false,
-    notificationSound: "chime",
+    notificationSound: ActivityNotificationSound.Chime,
   };
 
   return new Promise((resolve) => {
@@ -895,4 +913,13 @@ async function updateBadge(activities: ActivityItem[]): Promise<void> {
   } catch (error) {
     console.error("[Background] Failed to update badge:", error);
   }
+}
+
+async function refreshBadgeFromStorage(): Promise<void> {
+  const storage = await browser.storage.local.get(STORAGE_KEY.ACTIVITIES);
+  const activities = Array.isArray(storage[STORAGE_KEY.ACTIVITIES])
+    ? (storage[STORAGE_KEY.ACTIVITIES] as ActivityItem[])
+    : [];
+
+  await updateBadge(activities);
 }

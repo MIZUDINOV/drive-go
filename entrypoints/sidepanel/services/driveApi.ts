@@ -520,8 +520,18 @@ export async function getFileWithUserInfo(
     });
 
     if (!response.ok) {
-      console.error(`[getFileWithUserInfo] Error: ${response.status} ${response.statusText}`);
       const errorText = await response.text();
+
+      // 403/404 для Activity-таргетов встречаются часто (нет доступа, файл удален/перемещен).
+      // Это рабочий сценарий, не считаем его ошибкой уровня error.
+      if (response.status === 403 || response.status === 404) {
+        console.info(
+          `[getFileWithUserInfo] Skip file ${fileId}: ${response.status} ${response.statusText}`,
+        );
+        return null;
+      }
+
+      console.error(`[getFileWithUserInfo] Error: ${response.status} ${response.statusText}`);
       console.error(`[getFileWithUserInfo] Response: ${errorText}`);
       return null;
     }
