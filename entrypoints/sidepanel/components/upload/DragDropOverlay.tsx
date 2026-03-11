@@ -1,4 +1,4 @@
-import { createSignal, onCleanup, Show } from "solid-js";
+import { createSignal, onCleanup, onMount, Show } from "solid-js";
 
 type DragDropOverlayProps = {
   onDrop: (files: File[]) => void;
@@ -53,11 +53,13 @@ export function DragDropOverlay(props: DragDropOverlayProps) {
     }
   };
 
-  // Добавляем глобальные обработчики
-  document.addEventListener("dragenter", handleDragEnter);
-  document.addEventListener("dragleave", handleDragLeave);
-  document.addEventListener("dragover", handleDragOver);
-  document.addEventListener("drop", handleDrop);
+  onMount(() => {
+    // Добавляем глобальные обработчики только после монтирования компонента.
+    document.addEventListener("dragenter", handleDragEnter);
+    document.addEventListener("dragleave", handleDragLeave);
+    document.addEventListener("dragover", handleDragOver);
+    document.addEventListener("drop", handleDrop);
+  });
 
   onCleanup(() => {
     document.removeEventListener("dragenter", handleDragEnter);

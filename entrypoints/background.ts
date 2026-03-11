@@ -7,14 +7,27 @@ import {
   CONTEXT_MENU_ROOT_ID,
   CONTEXT_MENU_SCREENSHOT_ID,
   CONTEXT_MENU_SELECTION_TEXT_ID,
-  MESSAGE_ENQUEUE_UPLOAD,
-  type UploadBridgeMessage,
 } from "./shared/contextMenuUpload";
 import { getTargetParentFolderId } from "./shared/savePathsSettings";
 import {
   MESSAGE_PLAY_NOTIFICATION_SOUND,
   type PlayNotificationSoundMessage,
 } from "./shared/activityNotifications";
+import {
+  MESSAGE_TRANSFER_QUEUE_CANCEL,
+  MESSAGE_TRANSFER_QUEUE_CLEAR_HISTORY,
+  MESSAGE_TRANSFER_QUEUE_ENQUEUE_UPLOAD,
+  MESSAGE_TRANSFER_QUEUE_LIST,
+  MESSAGE_TRANSFER_QUEUE_REMOVE,
+  MESSAGE_TRANSFER_QUEUE_RETRY,
+  PORT_TRANSFER_QUEUE_SIDEPANEL_SESSION,
+  type TransferQueueMessage,
+} from "./shared/transferQueueMessages";
+import { transferQueueEngine } from "./background/services/transferQueueEngine";
+import {
+  getTransferQueueGeneralSettings,
+  isTransferQueueGeneralSettingsStorageKey,
+} from "./shared/transferQueueSettings";
 
 const DEFAULT_SYNC_INTERVAL_MINUTES = 5;
 const MAX_ACTIVITIES = 100; // Хранить только последние N активностей
@@ -29,9 +42,25 @@ const STORAGE_KEY = {
 const MAX_NOTIFIED_IDS = 2000;
 
 let syncTimer: ReturnType<typeof setTimeout> | undefined;
+let backgroundTransfersEnabled = true;
+let sidepanelSessionCount = 0;
+
+function updateTransferQueueProcessingPolicy(): void {
+  const shouldProcess = backgroundTransfersEnabled || sidepanelSessionCount > 0;
+  transferQueueEngine.setProcessingEnabled(shouldProcess);
+}
+
+async function initializeTransferQueuePolicy(): Promise<void> {
+  const settings = await getTransferQueueGeneralSettings();
+  backgroundTransfersEnabled = settings.backgroundTransfersEnabled;
+  updateTransferQueueProcessingPolicy();
+}
 
 export default defineBackground(() => {
   console.log("Hello background!", { id: browser.runtime.id });
+
+  void transferQueueEngine.initialize();
+  void initializeTransferQueuePolicy();
 
   const sidePanelApi = browser.sidePanel;
 
@@ -46,6 +75,32 @@ export default defineBackground(() => {
   browser.contextMenus.onClicked.addListener((info, tab) => {
     void handleContextMenuClick(info, tab);
   });
+  browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    void handleTransferQueueRuntimeMessage(message)
+      .then((response) => {
+        sendResponse(response);
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error ? error.message : "Ошибка обработки сообщения очереди";
+        sendResponse({ ok: false, error: message });
+      });
+
+    return true;
+  });
+  browser.runtime.onConnect.addListener((port) => {
+    if (port.name !== PORT_TRANSFER_QUEUE_SIDEPANEL_SESSION) {
+      return;
+    }
+
+    sidepanelSessionCount += 1;
+    updateTransferQueueProcessingPolicy();
+
+    port.onDisconnect.addListener(() => {
+      sidepanelSessionCount = Math.max(0, sidepanelSessionCount - 1);
+      updateTransferQueueProcessingPolicy();
+    });
+  });
 
   // Синхронизация активностей при запуске
   void syncActivities();
@@ -54,15 +109,91 @@ export default defineBackground(() => {
   void scheduleNextSyncFromSettings();
 
   browser.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName !== "local" || !changes[ACTIVITY_SETTINGS_KEY]) {
+    if (areaName !== "local") {
       return;
     }
 
-    // Мгновенно применяем новые фильтры типов и перестраиваем таймер.
-    void syncActivities();
-    void scheduleNextSyncFromSettings();
+    if (changes[ACTIVITY_SETTINGS_KEY]) {
+      // Мгновенно применяем новые фильтры типов и перестраиваем таймер.
+      void syncActivities();
+      void scheduleNextSyncFromSettings();
+    }
+
+    const changedKeys = Object.keys(changes);
+    const hasTransferSettingsChange = changedKeys.some((key) =>
+      isTransferQueueGeneralSettingsStorageKey(key),
+    );
+
+    if (!hasTransferSettingsChange) {
+      return;
+    }
+
+    void getTransferQueueGeneralSettings().then((settings) => {
+      backgroundTransfersEnabled = settings.backgroundTransfersEnabled;
+      updateTransferQueueProcessingPolicy();
+    });
   });
 });
+
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return new Blob([bytes], { type: mimeType || "application/octet-stream" });
+}
+
+async function handleTransferQueueRuntimeMessage(
+  message: unknown,
+): Promise<unknown> {
+  const transferMessage = message as TransferQueueMessage;
+
+  if (transferMessage?.type === MESSAGE_TRANSFER_QUEUE_LIST) {
+    return transferQueueEngine.listSnapshot();
+  }
+
+  if (transferMessage?.type === MESSAGE_TRANSFER_QUEUE_CANCEL) {
+    await transferQueueEngine.cancel(transferMessage.payload.id);
+    return { ok: true };
+  }
+
+  if (transferMessage?.type === MESSAGE_TRANSFER_QUEUE_RETRY) {
+    await transferQueueEngine.retry(transferMessage.payload.id);
+    return { ok: true };
+  }
+
+  if (transferMessage?.type === MESSAGE_TRANSFER_QUEUE_REMOVE) {
+    await transferQueueEngine.remove(transferMessage.payload.id);
+    return { ok: true };
+  }
+
+  if (transferMessage?.type === MESSAGE_TRANSFER_QUEUE_CLEAR_HISTORY) {
+    await transferQueueEngine.clearHistory(transferMessage.payload.direction);
+    return { ok: true };
+  }
+
+  if (transferMessage?.type === MESSAGE_TRANSFER_QUEUE_ENQUEUE_UPLOAD) {
+    const blob = base64ToBlob(
+      transferMessage.payload.base64,
+      transferMessage.payload.mimeType,
+    );
+
+    const job = await transferQueueEngine.enqueueUpload({
+      source: transferMessage.payload.source,
+      parentId: transferMessage.payload.parentId,
+      name: transferMessage.payload.name,
+      mimeType: transferMessage.payload.mimeType,
+      blob,
+    });
+
+    return { ok: true, jobId: job.id };
+  }
+
+  return undefined;
+}
 
 async function getActivitySettingsFromStorage(): Promise<ActivitySettings> {
   const defaults: ActivitySettings = {
@@ -285,23 +416,6 @@ function getDateStamp(date = new Date()): string {
   return `${day}${month}${year}`;
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  const chunkSize = 0x8000;
-
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, i + chunkSize);
-    binary += String.fromCharCode(...chunk);
-  }
-
-  return btoa(binary);
-}
-
 async function dataUrlToFile(dataUrl: string, filename: string): Promise<File> {
   const response = await fetch(dataUrl);
   const blob = await response.blob();
@@ -322,28 +436,13 @@ async function enqueueFileForUpload(
     }
   }
 
-  const bytes = await file.arrayBuffer();
-  const message: UploadBridgeMessage = {
-    type: MESSAGE_ENQUEUE_UPLOAD,
-    payload: {
-      parentId,
-      name: file.name,
-      mimeType: file.type || "application/octet-stream",
-      base64: arrayBufferToBase64(bytes),
-    },
-  };
-
-  const attempts = 8;
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    try {
-      await browser.runtime.sendMessage(message);
-      return;
-    } catch {
-      await delay(250);
-    }
-  }
-
-  throw new Error("Не удалось передать файл в очередь загрузки");
+  await transferQueueEngine.enqueueUpload({
+    source: "context-menu",
+    parentId,
+    name: file.name,
+    mimeType: file.type || "application/octet-stream",
+    blob: file,
+  });
 }
 
 async function saveScreenshotToDrive(tab?: Browser.tabs.Tab): Promise<void> {
@@ -429,6 +528,15 @@ async function saveImageToDrive(
   await enqueueFileForUpload(imageFile, parentId, tab?.id);
 }
 
+function isNetworkFetchError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return message.includes("failed to fetch") || message.includes("networkerror");
+}
+
 /**
  * Синхронизировать активности из Drive Activity API
  */
@@ -445,7 +553,18 @@ async function syncActivities(): Promise<void> {
     }
 
     // Получить активности с API
-    const response = await fetchDriveActivity(undefined, MAX_ACTIVITIES);
+    let response;
+    try {
+      response = await fetchDriveActivity(undefined, MAX_ACTIVITIES);
+    } catch (error) {
+      if (isNetworkFetchError(error)) {
+        console.warn("[Background] Activity sync skipped: network is unavailable");
+        return;
+      }
+
+      throw error;
+    }
+
     const parsed = parseActivities(response.activities || []);
     const settings = await getActivitySettingsFromStorage();
     const filteredParsed = filterByEnabledTypes(parsed, settings.enabledTypes);
@@ -490,6 +609,11 @@ async function syncActivities(): Promise<void> {
     // Обновить icon badge с количеством непрочитанных
     await updateBadge(limited);
   } catch (error) {
+    if (isNetworkFetchError(error)) {
+      console.warn("[Background] Activity sync skipped due to transient network error");
+      return;
+    }
+
     console.error("[Background] Sync error:", error);
   }
 }

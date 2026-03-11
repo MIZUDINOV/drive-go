@@ -4,6 +4,7 @@ import { Toast } from "@kobalte/core/toast";
 import { Tabs } from "@kobalte/core/tabs";
 import { ActivitySettings } from "./components/ActivitySettings";
 import { SavePathsSettings } from "./components/SavePathsSettings";
+import { GeneralSettings } from "./components/GeneralSettings";
 
 type SettingsSection = {
   id: string;
@@ -59,12 +60,7 @@ export function OptionsApp() {
           </Tabs.Content>
 
           <Tabs.Content value="general">
-            <div class="options-section">
-              <h2>Общие настройки</h2>
-              <p class="options-section-description">
-                Здесь будут общие настройки расширения
-              </p>
-            </div>
+            <GeneralSettings />
           </Tabs.Content>
 
           <Tabs.Content value="about">

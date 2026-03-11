@@ -5,7 +5,6 @@ import {
   createMemo,
   createSignal,
   JSX,
-  onCleanup,
 } from "solid-js";
 import { Breadcrumbs } from "@kobalte/core/breadcrumbs";
 import { SegmentedControl } from "@kobalte/core/segmented-control";
@@ -28,9 +27,8 @@ import {
   DEFAULT_DRIVE_SEARCH_FILTERS,
 } from "../../services/driveApi";
 import {
-  addFilesToUploadQueue,
-  subscribeToUploadQueueSettled,
-} from "../../services/uploadManager";
+  enqueueFilesForUpload,
+} from "../../services/transferQueueClient";
 import {
   addSharedItemToStarred,
   removeSharedItem,
@@ -433,28 +431,6 @@ export function DriveBrowser(props: DriveBrowserProps) {
     );
   });
 
-  createEffect(() => {
-    if (scope !== "my-drive") {
-      return;
-    }
-
-    const unsubscribe = subscribeToUploadQueueSettled((successfulParentIds) => {
-      const currentFolderId = browserState.currentFolderId();
-
-      if (!successfulParentIds.includes(currentFolderId)) {
-        return;
-      }
-
-      if (browserState.loading()) {
-        return;
-      }
-
-      void browserState.refresh();
-    });
-
-    onCleanup(unsubscribe);
-  });
-
   const onItemDoubleClick = (item: DriveItem) => {
     if (isFolder(item)) {
       if (isTrashScope) {
@@ -493,7 +469,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const files = Array.from(input.files);
-      addFilesToUploadQueue(files, browserState.currentFolderId());
+      void enqueueFilesForUpload(files, browserState.currentFolderId());
       input.value = "";
     }
   };

@@ -1,6 +1,6 @@
 import { type JSX } from "solid-js";
 
-export type TabIconName = "drive" | "clock" | "shared" | "star" | "pulse" | "trash" | "settings";
+export type TabIconName = "drive" | "clock" | "shared" | "star" | "pulse" | "transfers" | "trash" | "settings";
 
 const tabIconbyName = new Map<TabIconName, string>([
   ["drive", "storage"],
@@ -8,6 +8,7 @@ const tabIconbyName = new Map<TabIconName, string>([
   ["shared", "people"],
   ["star", "star"],
   ["pulse", "notifications"],
+  ["transfers", "sync_alt"],
   ["trash", "delete"],
   ["settings", "settings"],
 ]);

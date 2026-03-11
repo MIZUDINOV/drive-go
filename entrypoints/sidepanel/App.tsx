@@ -8,19 +8,17 @@ import { ActivityBrowser } from "./components/activity/ActivityBrowser";
 import { DriveSearchBar } from "./components/search/DriveSearchBar";
 import { UploadPopover } from "./components/upload/UploadPopover";
 import { DragDropOverlay } from "./components/upload/DragDropOverlay";
-import { addFilesToUploadQueue } from "./services/uploadManager";
+import { TransfersBrowser } from "./components/transfers/TransfersBrowser";
+import { enqueueFilesForUpload } from "./services/transferQueueClient";
 import {
   DEFAULT_DRIVE_SEARCH_FILTERS,
   type DriveSearchFilters,
 } from "./services/driveApi";
 import {
-  MESSAGE_ENQUEUE_UPLOAD,
-  type UploadBridgeMessage,
-} from "../shared/contextMenuUpload";
-import {
   MESSAGE_PLAY_NOTIFICATION_SOUND,
   type PlayNotificationSoundMessage,
 } from "../shared/activityNotifications";
+import { PORT_TRANSFER_QUEUE_SIDEPANEL_SESSION } from "../shared/transferQueueMessages";
 import "material-symbols/rounded.css";
 import "./App.css";
 
@@ -36,19 +34,9 @@ const tabs: TabItem[] = [
   { id: "shared", title: "Доступные мне", icon: "shared" },
   { id: "starred", title: "Избранные", icon: "star" },
   { id: "activity", title: "Активность", icon: "pulse" },
+  { id: "transfers", title: "Передачи", icon: "transfers" },
   { id: "trash", title: "Корзина", icon: "trash" },
 ];
-
-function base64ToUint8Array(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-
-  for (let i = 0; i < binary.length; i += 1) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-
-  return bytes;
-}
 
 function playNotificationSound(
   sound: "chime" | "bell" | "digital",
@@ -148,24 +136,15 @@ function App() {
   );
 
   const handleFilesDrop = (files: File[]) => {
-    addFilesToUploadQueue(files, currentFolderId());
+    void enqueueFilesForUpload(files, currentFolderId());
   };
 
   onMount(() => {
+    const sidepanelSessionPort = browser.runtime.connect({
+      name: PORT_TRANSFER_QUEUE_SIDEPANEL_SESSION,
+    });
+
     const listener = (message: unknown) => {
-      const uploadMessage = message as UploadBridgeMessage;
-      if (uploadMessage?.type === MESSAGE_ENQUEUE_UPLOAD) {
-        const fileBytes = base64ToUint8Array(uploadMessage.payload.base64);
-        const fileBuffer = new ArrayBuffer(fileBytes.length);
-        new Uint8Array(fileBuffer).set(fileBytes);
-        const file = new File([fileBuffer], uploadMessage.payload.name, {
-          type: uploadMessage.payload.mimeType,
-        });
-
-        addFilesToUploadQueue([file], uploadMessage.payload.parentId);
-        return;
-      }
-
       const soundMessage = message as PlayNotificationSoundMessage;
       if (soundMessage?.type === MESSAGE_PLAY_NOTIFICATION_SOUND) {
         playNotificationSound(soundMessage.payload.sound);
@@ -175,6 +154,7 @@ function App() {
     browser.runtime.onMessage.addListener(listener);
     onCleanup(() => {
       browser.runtime.onMessage.removeListener(listener);
+      sidepanelSessionPort.disconnect();
     });
   });
 
@@ -309,6 +289,10 @@ function App() {
                   />
                 </Show>
 
+                <Show when={tab.id === "transfers"}>
+                  <TransfersBrowser />
+                </Show>
+
                 <Show when={tab.id === "activity"}>
                   <ActivityBrowser />
                 </Show>
@@ -318,6 +302,7 @@ function App() {
                     tab.id !== "my-drive" &&
                     tab.id !== "recent" &&
                     tab.id !== "starred" &&
+                    tab.id !== "transfers" &&
                     tab.id !== "trash" &&
                     tab.id !== "activity" &&
                     tab.id !== "shared"

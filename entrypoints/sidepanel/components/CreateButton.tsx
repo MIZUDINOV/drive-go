@@ -4,7 +4,7 @@ import { DropdownMenu } from "@kobalte/core/dropdown-menu";
 import { Button } from "@kobalte/core/button";
 import { TextField } from "@kobalte/core/text-field";
 import { createFolder } from "../services/driveApi";
-import { addFilesToUploadQueue } from "../services/uploadManager";
+import { enqueueFilesForUpload } from "../services/transferQueueClient";
 import { FileTypeIcon } from "../fileTypes";
 
 type CreateOption = {
@@ -69,7 +69,7 @@ export function CreateButton(props: CreateButtonProps) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const files = Array.from(input.files);
-      addFilesToUploadQueue(files, props.currentFolderId);
+      void enqueueFilesForUpload(files, props.currentFolderId);
       input.value = ""; // Сброс для повторного выбора тех же файлов
     }
   };

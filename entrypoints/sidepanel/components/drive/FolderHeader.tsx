@@ -7,7 +7,7 @@ import { TextField } from "@kobalte/core/text-field";
 import { FileTypeIcon } from "../../fileTypes";
 import { useDriveBrowser } from "./useDriveBrowser";
 import { createFolder } from "../../services/driveApi";
-import { addFilesToUploadQueue } from "../../services/uploadManager";
+import { enqueueFilesForUpload } from "../../services/transferQueueClient";
 
 export function FolderHeader() {
   const browserState = useDriveBrowser();
@@ -38,7 +38,7 @@ export function FolderHeader() {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const files = Array.from(input.files);
-      addFilesToUploadQueue(files, browserState.currentFolderId());
+      void enqueueFilesForUpload(files, browserState.currentFolderId());
       input.value = "";
     }
   };

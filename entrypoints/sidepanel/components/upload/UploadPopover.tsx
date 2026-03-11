@@ -1,15 +1,23 @@
-import { For, Show } from "solid-js";
+import { For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { Popover } from "@kobalte/core/popover";
 import { Button } from "@kobalte/core/button";
 import { Tooltip } from "@kobalte/core/tooltip";
-import type { UploadTask } from "../../services/uploadTypes";
 import {
-  uploadStore,
-  cancelUploadTask,
-  removeUploadTask,
-  clearCompletedTasks,
-  retryUploadTask,
-} from "../../services/uploadManager";
+  cancelTransferQueueItem,
+  listTransferQueueSnapshot,
+  removeTransferQueueItem,
+  retryTransferQueueItem,
+} from "../../services/transferQueueClient";
+import {
+  getTransferPopoverSeenUpTo,
+  setTransferPopoverSeenUpTo,
+} from "../../../shared/transferQueueUiState";
+import type {
+  TransferHistoryItem,
+  TransferQueueItem,
+} from "../../../shared/transferQueueTypes";
+
+const MAX_RECENT_COMPLETED = 20;
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -19,14 +27,14 @@ function formatBytes(bytes: number): string {
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 }
 
-function getStatusText(status: UploadTask["status"]): string {
+function getStatusText(status: TransferQueueItem["status"]): string {
   switch (status) {
     case "pending":
       return "В очереди";
     case "uploading":
       return "Загрузка...";
-    case "completed":
-      return "Завершено";
+    case "downloading":
+      return "Скачивание...";
     case "error":
       return "Ошибка";
     case "cancelled":
@@ -34,14 +42,14 @@ function getStatusText(status: UploadTask["status"]): string {
   }
 }
 
-function getStatusClass(status: UploadTask["status"]): string {
+function getStatusClass(status: TransferQueueItem["status"]): string {
   switch (status) {
     case "pending":
       return "upload-task-pending";
     case "uploading":
       return "upload-task-uploading";
-    case "completed":
-      return "upload-task-completed";
+    case "downloading":
+      return "upload-task-uploading";
     case "error":
       return "upload-task-error";
     case "cancelled":
@@ -50,18 +58,25 @@ function getStatusClass(status: UploadTask["status"]): string {
 }
 
 type UploadTaskItemProps = {
-  task: UploadTask;
+  task: TransferQueueItem;
+  onCancel: (id: string) => Promise<void>;
+  onRetry: (id: string) => Promise<void>;
+  onRemove: (id: string) => Promise<void>;
 };
 
 function UploadTaskItem(props: UploadTaskItemProps) {
   const canCancel = () =>
-    props.task.status === "pending" || props.task.status === "uploading";
+    props.task.status === "pending" ||
+    props.task.status === "uploading" ||
+    props.task.status === "downloading";
   const canRetry = () =>
     props.task.status === "error" || props.task.status === "cancelled";
-  const canRemove = () =>
-    props.task.status === "completed" ||
-    props.task.status === "error" ||
-    props.task.status === "cancelled";
+  const canRemove = () => props.task.status === "error" || props.task.status === "cancelled";
+
+  const uploadPercent = () =>
+    props.task.sizeBytes > 0
+      ? Math.min(100, Math.max(0, Math.round((props.task.progressBytes / props.task.sizeBytes) * 100)))
+      : 0;
 
   return (
     <div class="upload-task-item">
@@ -73,22 +88,22 @@ function UploadTaskItem(props: UploadTaskItemProps) {
           <span class={getStatusClass(props.task.status)}>
             {getStatusText(props.task.status)}
           </span>
-          <Show when={props.task.status === "uploading"}>
+          <Show when={props.task.status === "uploading" || props.task.status === "downloading"}>
             <span class="upload-task-progress-text">
-              {formatBytes(props.task.uploadedBytes)} / {formatBytes(props.task.size)}
+              {formatBytes(props.task.progressBytes)} / {formatBytes(props.task.sizeBytes)}
             </span>
           </Show>
-          <Show when={props.task.status === "error" && props.task.error}>
-            <span class="upload-task-error-text" title={props.task.error}>
-              {props.task.error}
+          <Show when={props.task.status === "error" && props.task.errorMessage}>
+            <span class="upload-task-error-text" title={props.task.errorMessage}>
+              {props.task.errorMessage}
             </span>
           </Show>
         </div>
-        <Show when={props.task.status === "uploading"}>
+        <Show when={props.task.status === "uploading" || props.task.status === "downloading"}>
           <div class="upload-task-progress-bar">
             <div
               class="upload-task-progress-fill"
-              style={{ width: `${props.task.progress}%` }}
+              style={{ width: `${uploadPercent()}%` }}
             />
           </div>
         </Show>
@@ -100,7 +115,9 @@ function UploadTaskItem(props: UploadTaskItemProps) {
             <Button
               class="upload-task-action-btn"
               type="button"
-              onClick={() => cancelUploadTask(props.task.id)}
+              onClick={() => {
+                void props.onCancel(props.task.id);
+              }}
             >
               <span class="material-symbols-rounded">close</span>
             </Button>
@@ -117,7 +134,9 @@ function UploadTaskItem(props: UploadTaskItemProps) {
             <Button
               class="upload-task-action-btn"
               type="button"
-              onClick={() => retryUploadTask(props.task.id)}
+              onClick={() => {
+                void props.onRetry(props.task.id);
+              }}
             >
               <span class="material-symbols-rounded">refresh</span>
             </Button>
@@ -135,7 +154,9 @@ function UploadTaskItem(props: UploadTaskItemProps) {
             <Button
               class="upload-task-action-btn"
               type="button"
-              onClick={() => removeUploadTask(props.task.id)}
+              onClick={() => {
+                void props.onRemove(props.task.id);
+              }}
             >
               <span class="material-symbols-rounded">close</span>
             </Button>
@@ -153,20 +174,98 @@ function UploadTaskItem(props: UploadTaskItemProps) {
 }
 
 export function UploadPopover() {
-  const hasCompletedTasks = () =>
-    uploadStore.tasks.some(
-      (task) =>
-        task.status === "completed" ||
-        task.status === "error" ||
-        task.status === "cancelled",
-    );
+  const [isOpen, setIsOpen] = createSignal(false);
+  const [tasks, setTasks] = createSignal<TransferQueueItem[]>([]);
+  const [recentCompleted, setRecentCompleted] = createSignal<TransferHistoryItem[]>([]);
+  const [seenUpTo, setSeenUpTo] = createSignal<number>(Date.now());
+  const [lastAutoOpenCompletedCount, setLastAutoOpenCompletedCount] =
+    createSignal(0);
+
+  const loadTasks = async (): Promise<void> => {
+    try {
+      const snapshot = await listTransferQueueSnapshot();
+      setTasks(snapshot.queue);
+
+      const unseenCompleted = snapshot.history
+        .filter((item) => item.completedAt > seenUpTo())
+        .sort((a, b) => b.completedAt - a.completedAt)
+        .slice(0, MAX_RECENT_COMPLETED);
+
+      setRecentCompleted(unseenCompleted);
+
+      if (unseenCompleted.length > lastAutoOpenCompletedCount()) {
+        setIsOpen(true);
+      }
+
+      setLastAutoOpenCompletedCount(unseenCompleted.length);
+    } catch {
+      setTasks([]);
+      setRecentCompleted([]);
+    }
+  };
+
+  onMount(() => {
+    let timerId: number | null = null;
+
+    void (async () => {
+      const initialSeenUpTo = await getTransferPopoverSeenUpTo();
+      setSeenUpTo(initialSeenUpTo);
+      await loadTasks();
+
+      timerId = window.setInterval(() => {
+        void loadTasks();
+      }, 1200);
+    })();
+
+    onCleanup(() => {
+      if (timerId !== null) {
+        window.clearInterval(timerId);
+      }
+      void setTransferPopoverSeenUpTo(Date.now());
+    });
+  });
+
+  const hasCompletedTasks = createMemo(() =>
+    tasks().some((task) => task.status === "error" || task.status === "cancelled"),
+  );
+
+  const popoverBadgeCount = createMemo(
+    () => tasks().length + recentCompleted().length,
+  );
+
+  const handleCancel = async (id: string): Promise<void> => {
+    await cancelTransferQueueItem(id);
+    await loadTasks();
+  };
+
+  const handleRetry = async (id: string): Promise<void> => {
+    await retryTransferQueueItem(id);
+    await loadTasks();
+  };
+
+  const handleRemove = async (id: string): Promise<void> => {
+    await removeTransferQueueItem(id);
+    await loadTasks();
+  };
+
+  const clearCompletedTasks = async (): Promise<void> => {
+    const removableIds = tasks()
+      .filter((task) => task.status === "error" || task.status === "cancelled")
+      .map((task) => task.id);
+
+    for (const id of removableIds) {
+      await removeTransferQueueItem(id);
+    }
+
+    await loadTasks();
+  };
 
   return (
-    <Popover placement="bottom-end">
+    <Popover placement="bottom-end" open={isOpen()} onOpenChange={setIsOpen}>
       <Popover.Trigger class="upload-icon-btn" type="button" aria-label="Очередь загрузок">
         <span class="material-symbols-rounded">upload_file</span>
-        <Show when={uploadStore.tasks.length > 0}>
-          <span class="upload-count">{uploadStore.tasks.length}</span>
+        <Show when={popoverBadgeCount() > 0}>
+          <span class="upload-count">{popoverBadgeCount()}</span>
         </Show>
       </Popover.Trigger>
 
@@ -179,7 +278,9 @@ export function UploadPopover() {
                 <Button
                   class="upload-popover-clear-btn"
                   type="button"
-                  onClick={clearCompletedTasks}
+                  onClick={() => {
+                    void clearCompletedTasks();
+                  }}
                 >
                   Очистить
                 </Button>
@@ -194,7 +295,7 @@ export function UploadPopover() {
           </div>
 
           <Show
-            when={uploadStore.tasks.length > 0}
+            when={tasks().length > 0}
             fallback={
               <div class="upload-popover-empty">
                 <p>Нет загрузок</p>
@@ -202,8 +303,40 @@ export function UploadPopover() {
             }
           >
             <div class="upload-popover-list">
-              <For each={uploadStore.tasks}>
-                {(task) => <UploadTaskItem task={task} />}
+              <For each={tasks()}>
+                {(task) => (
+                  <UploadTaskItem
+                    task={task}
+                    onCancel={handleCancel}
+                    onRetry={handleRetry}
+                    onRemove={handleRemove}
+                  />
+                )}
+              </For>
+            </div>
+          </Show>
+
+          <Show when={recentCompleted().length > 0}>
+            <div class="upload-popover-header" style="margin-top: 8px;">
+              <h3 class="upload-popover-title">Завершено в этой сессии</h3>
+            </div>
+            <div class="upload-popover-list">
+              <For each={recentCompleted()}>
+                {(item) => (
+                  <div class="upload-task-item">
+                    <div class="upload-task-info">
+                      <div class="upload-task-name" title={item.name}>
+                        {item.name}
+                      </div>
+                      <div class="upload-task-details">
+                        <span class="upload-task-completed">Завершено</span>
+                        <span class="upload-task-progress-text">
+                          {formatBytes(item.sizeBytes)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </For>
             </div>
           </Show>
