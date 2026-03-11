@@ -10,17 +10,19 @@ export class TransferQueuePolicyController {
 
   private readonly sidepanelSessionCount$ = new BehaviorSubject<number>(0);
 
-  private readonly subscription = combineLatest([
-    this.backgroundTransfersEnabled$,
-    this.sidepanelSessionCount$,
-  ])
-    .pipe(
-      map(([backgroundEnabled, sessionCount]) => backgroundEnabled || sessionCount > 0),
-      distinctUntilChanged(),
-    )
-    .subscribe((enabled) => {
-      this.options.setProcessingEnabled(enabled);
-    });
+  private readonly subscriptions = [
+    combineLatest([
+      this.backgroundTransfersEnabled$,
+      this.sidepanelSessionCount$,
+    ])
+      .pipe(
+        map(([backgroundEnabled, sessionCount]) => backgroundEnabled || sessionCount > 0),
+        distinctUntilChanged(),
+      )
+      .subscribe((enabled) => {
+        this.options.setProcessingEnabled(enabled);
+      }),
+  ];
 
   public constructor(private readonly options: TransferQueuePolicyControllerOptions) {}
 
@@ -45,7 +47,10 @@ export class TransferQueuePolicyController {
   }
 
   public dispose(): void {
-    this.subscription.unsubscribe();
+    for (const subscription of this.subscriptions) {
+      subscription.unsubscribe();
+    }
+
     this.backgroundTransfersEnabled$.complete();
     this.sidepanelSessionCount$.complete();
   }

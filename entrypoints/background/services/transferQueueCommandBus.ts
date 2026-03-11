@@ -18,13 +18,10 @@ export class TransferQueueCommandBus {
   private readonly normalPriorityCommands$ =
     new Subject<TransferQueueCommandRequest<unknown>>();
 
-  private readonly highPrioritySubscription = this.createLaneSubscription(
-    this.highPriorityCommands$,
-  );
-
-  private readonly normalPrioritySubscription = this.createLaneSubscription(
-    this.normalPriorityCommands$,
-  );
+  private readonly subscriptions = [
+    this.createLaneSubscription(this.highPriorityCommands$),
+    this.createLaneSubscription(this.normalPriorityCommands$),
+  ];
 
   public enqueue<T>(
     key: string,
@@ -51,8 +48,10 @@ export class TransferQueueCommandBus {
   }
 
   public dispose(): void {
-    this.highPrioritySubscription.unsubscribe();
-    this.normalPrioritySubscription.unsubscribe();
+    for (const subscription of this.subscriptions) {
+      subscription.unsubscribe();
+    }
+
     this.highPriorityCommands$.complete();
     this.normalPriorityCommands$.complete();
   }
