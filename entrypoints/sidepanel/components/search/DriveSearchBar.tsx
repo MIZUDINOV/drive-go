@@ -14,6 +14,7 @@ import { Button } from "@kobalte/core/button";
 import { FileTypeIcon } from "../../fileTypes";
 import type { DriveApiFile } from "../drive/driveTypes";
 import {
+  DEFAULT_DRIVE_SEARCH_FILTERS,
   type DriveSearchFilters,
   openDriveItemInNewTab,
 } from "../../services/driveApi";
@@ -79,6 +80,14 @@ const MODIFIED_LABEL: Record<DriveSearchFilters["modified"], string> = {
 
 const FILTER_MENU_CONTENT_CLASS = "drive-search-filter-menu-content";
 const FILTER_MENU_CONTENT_SELECTOR = `.${FILTER_MENU_CONTENT_CLASS}`;
+
+function isDefaultSearchFilters(filters: DriveSearchFilters): boolean {
+  return (
+    filters.type === DEFAULT_DRIVE_SEARCH_FILTERS.type &&
+    filters.owner === DEFAULT_DRIVE_SEARCH_FILTERS.owner &&
+    filters.modified === DEFAULT_DRIVE_SEARCH_FILTERS.modified
+  );
+}
 
 function formatDate(dateIso?: string): string {
   if (!dateIso) {
@@ -200,8 +209,10 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
   const [isTypeMenuOpen, setIsTypeMenuOpen] = createSignal(false);
   const [isOwnerMenuOpen, setIsOwnerMenuOpen] = createSignal(false);
   const [isModifiedMenuOpen, setIsModifiedMenuOpen] = createSignal(false);
+  let searchControlRef: HTMLDivElement | undefined;
   let filtersRef: HTMLDivElement | undefined;
   let suppressAutoClose = false;
+  let shouldResetFiltersOnClose = false;
 
   const keepPanelOpenDuringMenuTransition = () => {
     suppressAutoClose = true;
@@ -216,13 +227,37 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
     props.onFiltersChange(nextFilters);
   };
 
+  const resetFiltersOnCloseAfterClear = () => {
+    if (!isDefaultSearchFilters(props.filters)) {
+      props.onFiltersChange(DEFAULT_DRIVE_SEARCH_FILTERS);
+    }
+  };
+
   const shouldKeepPanelOpen = (target: EventTarget | null): boolean =>
     target instanceof Element
       ? Boolean(
+          searchControlRef?.contains(target) ||
           filtersRef?.contains(target) ||
           target.closest(FILTER_MENU_CONTENT_SELECTOR),
         )
       : false;
+
+  const requestFiltersResetOnClose = () => {
+    shouldResetFiltersOnClose = true;
+  };
+
+  const clearPendingFiltersReset = () => {
+    shouldResetFiltersOnClose = false;
+  };
+
+  const tryResetFiltersOnClose = () => {
+    if (!shouldResetFiltersOnClose || queryText().length > 0) {
+      return;
+    }
+
+    resetFiltersOnCloseAfterClear();
+    clearPendingFiltersReset();
+  };
 
   const queryText = createMemo(() => props.value.trim());
 
@@ -249,6 +284,13 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
     }
 
     setIsOpen(open);
+
+    if (!open) {
+      tryResetFiltersOnClose();
+      return;
+    }
+
+    clearPendingFiltersReset();
   };
 
   const returnFocusToInput = (event: Event) => {
@@ -312,6 +354,17 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
     searchStream.setFilters(props.filters);
   });
 
+  createEffect(() => {
+    if (
+      props.active &&
+      !isOpen() &&
+      !isAnyMenuOpen() &&
+      queryText().length === 0
+    ) {
+      tryResetFiltersOnClose();
+    }
+  });
+
   return (
     <Search
       class="drive-search"
@@ -353,6 +406,7 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
       <Search.Control
         class="drive-search-input-wrap"
         aria-label="Поиск в Google Drive"
+        ref={searchControlRef}
       >
         <Search.Indicator
           loadingComponent={
@@ -402,6 +456,16 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
           placeholder="Поиск в Google Drive"
           value={props.value}
           disabled={!props.active}
+          onBlur={(event) => {
+            if (
+              queryText().length > 0 ||
+              shouldKeepPanelOpen(event.relatedTarget)
+            ) {
+              return;
+            }
+
+            requestFiltersResetOnClose();
+          }}
         />
 
         <Show when={props.value.length > 0}>
@@ -410,6 +474,7 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
             class="drive-search-clear-btn"
             aria-label="Очистить поиск"
             onClick={() => {
+              requestFiltersResetOnClose();
               props.onChange("");
               setResults([]);
               if (!isAnyMenuOpen()) {
@@ -450,6 +515,10 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
 
             if (shouldKeepPanelOpen(event.relatedTarget)) {
               return;
+            }
+
+            if (queryText().length === 0) {
+              requestFiltersResetOnClose();
             }
 
             setIsOpen(false);

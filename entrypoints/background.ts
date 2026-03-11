@@ -31,6 +31,7 @@ import {
   deleteStagedTransferBlob,
   getStagedTransferBlob,
 } from "./shared/transferQueueStagingDb";
+import { setTransferPopoverSeenUpTo } from "./shared/transferQueueUiState";
 import { BackgroundLifecycle } from "./background/services/backgroundLifecycle";
 import { TransferQueueCommandBus } from "./background/services/transferQueueCommandBus";
 import { TransferQueueEventBus } from "./background/services/transferQueueEventBus";
@@ -192,6 +193,7 @@ export default defineBackground(() => {
 
     port.onDisconnect.addListener(() => {
       releaseSession();
+      void setTransferPopoverSeenUpTo(Date.now());
     });
   };
 

@@ -612,6 +612,10 @@
   position: relative;
 }
 
+.upload-trigger-wrap {
+  position: relative;
+}
+
 .upload-icon-btn svg {
   width: 18px;
   height: 18px;
@@ -631,6 +635,71 @@
   position: absolute;
   top: 2px;
   right: 2px;
+}
+
+.upload-inline-notices {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(320px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  z-index: 120;
+}
+
+.upload-inline-notice-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(20, 41, 64, 0.14);
+  padding: 10px 12px;
+  animation: upload-inline-notice-enter 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.upload-inline-notice-item .material-symbols-rounded {
+  font-size: 18px;
+  color: var(--accent);
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.upload-inline-notice-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.upload-inline-notice-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.upload-inline-notice-name {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes upload-inline-notice-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .content-panels {
@@ -2128,6 +2197,39 @@
   flex-direction: column;
   overflow: hidden;
   z-index: 100;
+  transform-origin: top right;
+}
+
+.upload-popover-content[data-expanded] {
+  animation: upload-popover-enter 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.upload-popover-content[data-closed] {
+  animation: upload-popover-exit 0.16s ease-in;
+}
+
+@keyframes upload-popover-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes upload-popover-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
 }
 
 .upload-popover-header {
@@ -2295,6 +2397,19 @@
   width: 12px;
   height: 12px;
   color: var(--text-subtle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .upload-popover-content,
+  .upload-popover-content[data-expanded],
+  .upload-popover-content[data-closed] {
+    animation: none;
+    transition: none;
+  }
+
+  .upload-inline-notice-item {
+    animation: none;
+  }
 }
 
 /* Drag & Drop Overlay */

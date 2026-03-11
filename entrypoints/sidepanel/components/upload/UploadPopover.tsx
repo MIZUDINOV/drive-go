@@ -1,4 +1,6 @@
 import { For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { Subject, Subscription, timer } from "rxjs";
+import { mergeMap, map, switchMap } from "rxjs/operators";
 import { Popover } from "@kobalte/core/popover";
 import { Button } from "@kobalte/core/button";
 import { Tooltip } from "@kobalte/core/tooltip";
@@ -19,6 +21,14 @@ import type {
 } from "../../../shared/transferQueueTypes";
 
 const MAX_RECENT_COMPLETED = 20;
+const AUTO_CLOSE_DELAY_MS = 3000;
+const MAX_INLINE_NOTICES = 4;
+
+type InlineUploadNotice = {
+  id: string;
+  name: string;
+  direction: TransferQueueItem["direction"];
+};
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -176,29 +186,80 @@ function UploadTaskItem(props: UploadTaskItemProps) {
 
 export function UploadPopover() {
   const [isOpen, setIsOpen] = createSignal(false);
+  const [isAutoOpened, setIsAutoOpened] = createSignal(false);
   const [tasks, setTasks] = createSignal<TransferQueueItem[]>([]);
   const [recentCompleted, setRecentCompleted] = createSignal<TransferHistoryItem[]>([]);
+  const [inlineNotices, setInlineNotices] = createSignal<InlineUploadNotice[]>([]);
   const [seenUpTo, setSeenUpTo] = createSignal<number>(Date.now());
   const [lastAutoOpenCompletedCount, setLastAutoOpenCompletedCount] =
     createSignal(0);
+  const autoCloseKick$ = new Subject<void>();
+  const inlineNoticeExpiry$ = new Subject<string>();
+  const subscriptions: Subscription[] = [];
+
+  const pushInlineNotice = (item: TransferQueueItem): void => {
+    setInlineNotices((current) => {
+      if (current.some((notice) => notice.id === item.id)) {
+        return current;
+      }
+
+      const next = [
+        ...current,
+        {
+          id: item.id,
+          name: item.name,
+          direction: item.direction,
+        },
+      ];
+
+      if (next.length <= MAX_INLINE_NOTICES) {
+        return next;
+      }
+
+      return next.slice(next.length - MAX_INLINE_NOTICES);
+    });
+
+    inlineNoticeExpiry$.next(item.id);
+  };
+
+  const applySnapshot = (
+    snapshot: { queue: TransferQueueItem[]; history: TransferHistoryItem[] },
+    sessionStartAt: number,
+  ): void => {
+    const previousQueueById = new Set(tasks().map((item) => item.id));
+    const sessionQueue = snapshot.queue.filter(
+      (item) => item.createdAt >= sessionStartAt,
+    );
+
+    for (const item of sessionQueue) {
+      if (!previousQueueById.has(item.id) && !isOpen()) {
+        pushInlineNotice(item);
+      }
+    }
+
+    setTasks(sessionQueue);
+
+    const unseenCompleted = snapshot.history
+      .filter((item) => item.completedAt > sessionStartAt)
+      .sort((a, b) => b.completedAt - a.completedAt)
+      .slice(0, MAX_RECENT_COMPLETED);
+
+    setRecentCompleted(unseenCompleted);
+
+    if (unseenCompleted.length > lastAutoOpenCompletedCount()) {
+      setInlineNotices([]);
+      setIsOpen(true);
+      setIsAutoOpened(true);
+      autoCloseKick$.next();
+    }
+
+    setLastAutoOpenCompletedCount(unseenCompleted.length);
+  };
 
   const loadTasks = async (): Promise<void> => {
     try {
       const snapshot = await listTransferQueueSnapshot();
-      setTasks(snapshot.queue);
-
-      const unseenCompleted = snapshot.history
-        .filter((item) => item.completedAt > seenUpTo())
-        .sort((a, b) => b.completedAt - a.completedAt)
-        .slice(0, MAX_RECENT_COMPLETED);
-
-      setRecentCompleted(unseenCompleted);
-
-      if (unseenCompleted.length > lastAutoOpenCompletedCount()) {
-        setIsOpen(true);
-      }
-
-      setLastAutoOpenCompletedCount(unseenCompleted.length);
+      applySnapshot(snapshot, seenUpTo());
     } catch {
       setTasks([]);
       setRecentCompleted([]);
@@ -207,27 +268,40 @@ export function UploadPopover() {
 
   onMount(() => {
     let unsubscribeSnapshots: (() => void) | null = null;
+    const autoCloseSubscription = autoCloseKick$
+      .pipe(switchMap(() => timer(AUTO_CLOSE_DELAY_MS)))
+      .subscribe(() => {
+        if (!isAutoOpened()) {
+          return;
+        }
+
+        setIsOpen(false);
+        setIsAutoOpened(false);
+      });
+
+    const inlineNoticeExpirySubscription = inlineNoticeExpiry$
+      .pipe(
+        mergeMap((id) =>
+          timer(AUTO_CLOSE_DELAY_MS).pipe(map(() => id)),
+        ),
+      )
+      .subscribe((expiredId) => {
+        setInlineNotices((current) =>
+          current.filter((notice) => notice.id !== expiredId),
+        );
+      });
+
+    subscriptions.push(autoCloseSubscription);
+    subscriptions.push(inlineNoticeExpirySubscription);
 
     void (async () => {
       const initialSeenUpTo = await getTransferPopoverSeenUpTo();
       setSeenUpTo(initialSeenUpTo);
+      setLastAutoOpenCompletedCount(0);
       await loadTasks();
 
       unsubscribeSnapshots = subscribeTransferQueueSnapshots((snapshot) => {
-        setTasks(snapshot.queue);
-
-        const unseenCompleted = snapshot.history
-          .filter((item) => item.completedAt > seenUpTo())
-          .sort((a, b) => b.completedAt - a.completedAt)
-          .slice(0, MAX_RECENT_COMPLETED);
-
-        setRecentCompleted(unseenCompleted);
-
-        if (unseenCompleted.length > lastAutoOpenCompletedCount()) {
-          setIsOpen(true);
-        }
-
-        setLastAutoOpenCompletedCount(unseenCompleted.length);
+        applySnapshot(snapshot, seenUpTo());
       });
     })();
 
@@ -235,9 +309,29 @@ export function UploadPopover() {
       if (unsubscribeSnapshots) {
         unsubscribeSnapshots();
       }
+
+      for (const subscription of subscriptions) {
+        subscription.unsubscribe();
+      }
+
+      subscriptions.length = 0;
+      autoCloseKick$.complete();
+      inlineNoticeExpiry$.complete();
       void setTransferPopoverSeenUpTo(Date.now());
     });
   });
+
+  const handlePopoverOpenChange = (open: boolean): void => {
+    setIsOpen(open);
+
+    if (!open) {
+      setIsAutoOpened(false);
+      return;
+    }
+
+    setInlineNotices([]);
+    setIsAutoOpened(false);
+  };
 
   const hasCompletedTasks = createMemo(() =>
     tasks().some((task) => task.status === "error" || task.status === "cancelled"),
@@ -275,13 +369,43 @@ export function UploadPopover() {
   };
 
   return (
-    <Popover placement="bottom-end" open={isOpen()} onOpenChange={setIsOpen}>
-      <Popover.Trigger class="upload-icon-btn" type="button" aria-label="Очередь загрузок">
-        <span class="material-symbols-rounded">upload_file</span>
-        <Show when={popoverBadgeCount() > 0}>
-          <span class="upload-count">{popoverBadgeCount()}</span>
+    <Popover
+      placement="bottom-end"
+      open={isOpen()}
+      onOpenChange={handlePopoverOpenChange}
+    >
+      <div class="upload-trigger-wrap">
+        <Popover.Trigger class="upload-icon-btn" type="button" aria-label="Очередь загрузок">
+          <span class="material-symbols-rounded">upload_file</span>
+          <Show when={popoverBadgeCount() > 0}>
+            <span class="upload-count">{popoverBadgeCount()}</span>
+          </Show>
+        </Popover.Trigger>
+
+        <Show when={!isOpen() && inlineNotices().length > 0}>
+          <div class="upload-inline-notices" role="status" aria-live="polite">
+            <For each={inlineNotices()}>
+              {(notice) => (
+                <div class="upload-inline-notice-item">
+                  <span class="material-symbols-rounded" aria-hidden="true">
+                    {notice.direction === "download" ? "download" : "upload"}
+                  </span>
+                  <div class="upload-inline-notice-copy">
+                    <p class="upload-inline-notice-title">
+                      {notice.direction === "download"
+                        ? "Скачивание добавлено"
+                        : "Загрузка добавлена"}
+                    </p>
+                    <p class="upload-inline-notice-name" title={notice.name}>
+                      {notice.name}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </For>
+          </div>
         </Show>
-      </Popover.Trigger>
+      </div>
 
       <Popover.Portal>
         <Popover.Content class="upload-popover-content">

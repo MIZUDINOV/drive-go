@@ -1,18 +1,12 @@
-import {
-  BehaviorSubject,
-  Subject,
-  Subscription,
-  combineLatest,
-  concat,
-  from,
-  of,
-} from "rxjs";
+import { BehaviorSubject, Subscription, concat, from, merge, of } from "rxjs";
 import {
   debounceTime,
   distinctUntilChanged,
   map,
   shareReplay,
+  skip,
   switchMap,
+  withLatestFrom,
 } from "rxjs/operators";
 import type { DriveApiFile } from "../components/drive/driveTypes";
 import {
@@ -30,6 +24,7 @@ type SearchRequest = {
   active: boolean;
   query: string;
   filters: DriveSearchFilters;
+  refreshToken: number;
 };
 
 const SEARCH_DEBOUNCE_MS = 260;
@@ -42,6 +37,7 @@ function normalizeRequest(request: SearchRequest): SearchRequest {
     active: request.active,
     query: request.query.trim(),
     filters: request.filters,
+    refreshToken: request.refreshToken,
   };
 }
 
@@ -51,7 +47,8 @@ function isSameRequest(left: SearchRequest, right: SearchRequest): boolean {
     left.query === right.query &&
     left.filters.type === right.filters.type &&
     left.filters.owner === right.filters.owner &&
-    left.filters.modified === right.filters.modified
+    left.filters.modified === right.filters.modified &&
+    left.refreshToken === right.refreshToken
   );
 }
 
@@ -72,18 +69,28 @@ export class DriveSearchStream {
     DEFAULT_DRIVE_SEARCH_FILTERS,
   );
 
-  private readonly refresh$ = new Subject<void>();
+  private readonly refresh$ = new BehaviorSubject<number>(0);
 
-  public readonly state$ = combineLatest([
-    this.active$,
-    this.query$,
-    this.filters$,
-    this.refresh$.pipe(map(() => Date.now())),
-  ]).pipe(
-    debounceTime(SEARCH_DEBOUNCE_MS),
-    map(([active, query, filters]) =>
-      normalizeRequest({ active, query, filters }),
+  public readonly state$ = merge(
+    this.query$.pipe(
+      debounceTime(SEARCH_DEBOUNCE_MS),
+      withLatestFrom(this.active$, this.filters$, this.refresh$),
+      map(([query, active, filters, refreshToken]) =>
+        normalizeRequest({ active, query, filters, refreshToken }),
+      ),
     ),
+    merge(
+      of(null),
+      this.active$.pipe(skip(1)),
+      this.filters$.pipe(skip(1)),
+      this.refresh$.pipe(skip(1)),
+    ).pipe(
+      withLatestFrom(this.active$, this.query$, this.filters$, this.refresh$),
+      map(([, active, query, filters, refreshToken]) =>
+        normalizeRequest({ active, query, filters, refreshToken }),
+      ),
+    ),
+  ).pipe(
     distinctUntilChanged(isSameRequest),
     switchMap((request) => {
       const hasFilter = hasActiveFilters(request.filters);
@@ -94,17 +101,15 @@ export class DriveSearchStream {
 
       return concat(
         of<DriveSearchState>(LOADING_STATE),
-        from(searchDriveItems(request.query, request.filters, SEARCH_RESULT_LIMIT)).pipe(
-          map((results) => ({ results, loading: false })),
-        ),
+        from(
+          searchDriveItems(request.query, request.filters, SEARCH_RESULT_LIMIT),
+        ).pipe(map((results) => ({ results, loading: false }))),
       );
     }),
     shareReplay({ bufferSize: 1, refCount: true }),
   );
 
-  public constructor() {
-    this.refresh$.next();
-  }
+  public constructor() {}
 
   public setActive(active: boolean): void {
     this.active$.next(active);
@@ -119,7 +124,7 @@ export class DriveSearchStream {
   }
 
   public refresh(): void {
-    this.refresh$.next();
+    this.refresh$.next(this.refresh$.value + 1);
   }
 
   public subscribe(listener: (state: DriveSearchState) => void): Subscription {
