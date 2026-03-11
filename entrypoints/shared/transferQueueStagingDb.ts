@@ -66,3 +66,21 @@ export async function deleteStagedTransferBlob(id: string): Promise<void> {
   const db = await getDb();
   await db.delete(STORE_STAGED_BLOBS, id);
 }
+
+export async function cleanupStaleStagedTransferBlobs(
+  maxAgeMs: number,
+): Promise<number> {
+  const db = await getDb();
+  const cutoff = Date.now() - maxAgeMs;
+
+  const tx = db.transaction(STORE_STAGED_BLOBS, "readwrite");
+  const index = tx.store.index("by-createdAt");
+  const staleKeys = await index.getAllKeys(IDBKeyRange.upperBound(cutoff));
+
+  for (const key of staleKeys) {
+    await tx.store.delete(key);
+  }
+
+  await tx.done;
+  return staleKeys.length;
+}

@@ -14,6 +14,7 @@ import {
   type PlayNotificationSoundMessage,
 } from "./shared/activityNotifications";
 import {
+  MESSAGE_TRANSFER_QUEUE_SNAPSHOT_UPDATED,
   MESSAGE_TRANSFER_QUEUE_CANCEL,
   MESSAGE_TRANSFER_QUEUE_CLEAR_HISTORY,
   MESSAGE_TRANSFER_QUEUE_ENQUEUE_UPLOAD,
@@ -21,12 +22,21 @@ import {
   MESSAGE_TRANSFER_QUEUE_REMOVE,
   MESSAGE_TRANSFER_QUEUE_RETRY,
   PORT_TRANSFER_QUEUE_SIDEPANEL_SESSION,
+  PORT_TRANSFER_QUEUE_UPDATES,
+  type TransferQueueSnapshotUpdatedPortMessage,
   type TransferQueueMessage,
 } from "./shared/transferQueueMessages";
 import {
+  cleanupStaleStagedTransferBlobs,
   deleteStagedTransferBlob,
   getStagedTransferBlob,
 } from "./shared/transferQueueStagingDb";
+import { BackgroundLifecycle } from "./background/services/backgroundLifecycle";
+import { TransferQueueCommandBus } from "./background/services/transferQueueCommandBus";
+import { TransferQueueEventBus } from "./background/services/transferQueueEventBus";
+import { TransferQueuePolicyController } from "./background/services/transferQueuePolicyController";
+import { runTransferQueueStateReducerChecks } from "./background/services/transferQueueStateReducerChecks";
+import { logTransferQueueLifecycleEvent } from "./background/services/transferQueueTelemetry";
 import { transferQueueEngine } from "./background/services/transferQueueEngine";
 import {
   getTransferQueueGeneralSettings,
@@ -44,27 +54,71 @@ const STORAGE_KEY = {
 };
 
 const MAX_NOTIFIED_IDS = 2000;
+const ENQUEUE_DEDUPE_WINDOW_MS = 1200;
+const STAGING_BLOB_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const STAGING_CLEANUP_INTERVAL_MS = 30 * 60 * 1000;
+
+type RuntimePort = ReturnType<typeof browser.runtime.connect>;
 
 let syncTimer: ReturnType<typeof setTimeout> | undefined;
-let backgroundTransfersEnabled = true;
-let sidepanelSessionCount = 0;
+const backgroundLifecycle = new BackgroundLifecycle();
+const transferQueueCommandBus = new TransferQueueCommandBus();
+const transferQueueEventBus = new TransferQueueEventBus();
+const transferQueuePolicyController = new TransferQueuePolicyController({
+  setProcessingEnabled: (enabled) => {
+    transferQueueEngine.setProcessingEnabled(enabled);
+  },
+});
+const transferQueueUpdatePorts = new Set<RuntimePort>();
+const recentEnqueueByFingerprint = new Map<
+  string,
+  { timestamp: number; jobId: string }
+>();
 
-function updateTransferQueueProcessingPolicy(): void {
-  const shouldProcess = backgroundTransfersEnabled || sidepanelSessionCount > 0;
-  transferQueueEngine.setProcessingEnabled(shouldProcess);
+function buildEnqueueFingerprint(params: {
+  name: string;
+  mimeType: string;
+  parentId: string | null;
+  sizeBytes: number;
+}): string {
+  return [
+    params.name,
+    params.mimeType,
+    params.parentId ?? "root",
+    String(params.sizeBytes),
+  ].join("|");
+}
+
+function pruneRecentEnqueueCache(now: number): void {
+  for (const [fingerprint, entry] of recentEnqueueByFingerprint.entries()) {
+    if (now - entry.timestamp > ENQUEUE_DEDUPE_WINDOW_MS) {
+      recentEnqueueByFingerprint.delete(fingerprint);
+    }
+  }
 }
 
 async function initializeTransferQueuePolicy(): Promise<void> {
   const settings = await getTransferQueueGeneralSettings();
-  backgroundTransfersEnabled = settings.backgroundTransfersEnabled;
-  updateTransferQueueProcessingPolicy();
+  transferQueuePolicyController.setBackgroundTransfersEnabled(
+    settings.backgroundTransfersEnabled,
+  );
 }
 
 export default defineBackground(() => {
   console.log("Hello background!", { id: browser.runtime.id });
 
+  if (import.meta.env.DEV) {
+    runTransferQueueStateReducerChecks();
+  }
+
   void transferQueueEngine.initialize();
   void initializeTransferQueuePolicy();
+  transferQueueEngine.setStateChangedListener(() => {
+    transferQueueEventBus.emitSnapshotChanged();
+  });
+  transferQueueEngine.setLifecycleListener((event) => {
+    logTransferQueueLifecycleEvent(event);
+  });
 
   const sidePanelApi = browser.sidePanel;
 
@@ -73,13 +127,24 @@ export default defineBackground(() => {
   }
 
   void setupContextMenus();
-  browser.runtime.onInstalled.addListener(() => {
+  void cleanupStaleStagedTransferBlobs(STAGING_BLOB_MAX_AGE_MS);
+  const stagingCleanupTimer = setInterval(() => {
+    void cleanupStaleStagedTransferBlobs(STAGING_BLOB_MAX_AGE_MS);
+  }, STAGING_CLEANUP_INTERVAL_MS);
+
+  const handleInstalled = () => {
     void setupContextMenus();
-  });
-  browser.contextMenus.onClicked.addListener((info, tab) => {
+  };
+
+  const handleContextMenuClickListener: Parameters<
+    typeof browser.contextMenus.onClicked.addListener
+  >[0] = (info, tab) => {
     void handleContextMenuClick(info, tab);
-  });
-  browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  };
+
+  const handleRuntimeMessage: Parameters<
+    typeof browser.runtime.onMessage.addListener
+  >[0] = (message, _sender, sendResponse) => {
     void handleTransferQueueRuntimeMessage(message)
       .then((response) => {
         sendResponse(response);
@@ -91,19 +156,78 @@ export default defineBackground(() => {
       });
 
     return true;
-  });
-  browser.runtime.onConnect.addListener((port) => {
+  };
+
+  const handleRuntimeConnect: Parameters<
+    typeof browser.runtime.onConnect.addListener
+  >[0] = (port) => {
+    if (port.name === PORT_TRANSFER_QUEUE_UPDATES) {
+      transferQueueUpdatePorts.add(port);
+
+      void transferQueueEngine.listSnapshot().then((snapshot) => {
+        const message: TransferQueueSnapshotUpdatedPortMessage = {
+          type: MESSAGE_TRANSFER_QUEUE_SNAPSHOT_UPDATED,
+          payload: snapshot,
+        };
+
+        try {
+          port.postMessage(message);
+        } catch {
+          transferQueueUpdatePorts.delete(port);
+        }
+      });
+
+      port.onDisconnect.addListener(() => {
+        transferQueueUpdatePorts.delete(port);
+      });
+
+      return;
+    }
+
     if (port.name !== PORT_TRANSFER_QUEUE_SIDEPANEL_SESSION) {
       return;
     }
 
-    sidepanelSessionCount += 1;
-    updateTransferQueueProcessingPolicy();
+    const releaseSession = transferQueuePolicyController.openSidepanelSession();
 
     port.onDisconnect.addListener(() => {
-      sidepanelSessionCount = Math.max(0, sidepanelSessionCount - 1);
-      updateTransferQueueProcessingPolicy();
+      releaseSession();
     });
+  };
+
+  browser.runtime.onInstalled.addListener(handleInstalled);
+  browser.contextMenus.onClicked.addListener(handleContextMenuClickListener);
+  browser.runtime.onMessage.addListener(handleRuntimeMessage);
+  browser.runtime.onConnect.addListener(handleRuntimeConnect);
+
+  const transferQueueSnapshotSubscription = transferQueueEventBus.subscribeSnapshotChanged(
+    async () => {
+      if (transferQueueUpdatePorts.size === 0) {
+        return;
+      }
+
+      const snapshot = await transferQueueEngine.listSnapshot();
+      const message: TransferQueueSnapshotUpdatedPortMessage = {
+        type: MESSAGE_TRANSFER_QUEUE_SNAPSHOT_UPDATED,
+        payload: snapshot,
+      };
+
+      for (const port of transferQueueUpdatePorts) {
+        try {
+          port.postMessage(message);
+        } catch {
+          transferQueueUpdatePorts.delete(port);
+        }
+      }
+    },
+    140,
+  );
+
+  backgroundLifecycle.add(() => {
+    browser.runtime.onInstalled.removeListener(handleInstalled);
+    browser.contextMenus.onClicked.removeListener(handleContextMenuClickListener);
+    browser.runtime.onMessage.removeListener(handleRuntimeMessage);
+    browser.runtime.onConnect.removeListener(handleRuntimeConnect);
   });
 
   // Синхронизация активностей при запуске
@@ -112,7 +236,9 @@ export default defineBackground(() => {
   // Планировщик синхронизации с интервалом из настроек
   void scheduleNextSyncFromSettings();
 
-  browser.storage.onChanged.addListener((changes, areaName) => {
+  const handleStorageChanged: Parameters<
+    typeof browser.storage.onChanged.addListener
+  >[0] = (changes, areaName) => {
     if (areaName !== "local") {
       return;
     }
@@ -133,9 +259,43 @@ export default defineBackground(() => {
     }
 
     void getTransferQueueGeneralSettings().then((settings) => {
-      backgroundTransfersEnabled = settings.backgroundTransfersEnabled;
-      updateTransferQueueProcessingPolicy();
+      transferQueuePolicyController.setBackgroundTransfersEnabled(
+        settings.backgroundTransfersEnabled,
+      );
     });
+  };
+
+  browser.storage.onChanged.addListener(handleStorageChanged);
+
+  backgroundLifecycle.add(() => {
+    browser.storage.onChanged.removeListener(handleStorageChanged);
+  });
+
+  backgroundLifecycle.add(() => {
+    transferQueueEngine.dispose();
+  });
+
+  backgroundLifecycle.add(() => {
+    transferQueueSnapshotSubscription.unsubscribe();
+    transferQueueEventBus.dispose();
+    transferQueueCommandBus.dispose();
+    transferQueuePolicyController.dispose();
+    transferQueueEngine.setStateChangedListener(null);
+    transferQueueEngine.setLifecycleListener(null);
+    transferQueueUpdatePorts.clear();
+    recentEnqueueByFingerprint.clear();
+  });
+
+  backgroundLifecycle.add(() => {
+    clearInterval(stagingCleanupTimer);
+  });
+
+  const runtimeWithSuspend = browser.runtime as typeof browser.runtime & {
+    onSuspend?: { addListener: (callback: () => void) => void };
+  };
+
+  runtimeWithSuspend.onSuspend?.addListener(() => {
+    backgroundLifecycle.disposeAll();
   });
 });
 
@@ -160,22 +320,46 @@ async function handleTransferQueueRuntimeMessage(
   }
 
   if (transferMessage?.type === MESSAGE_TRANSFER_QUEUE_CANCEL) {
-    await transferQueueEngine.cancel(transferMessage.payload.id);
+    await transferQueueCommandBus.enqueue(
+      `job:${transferMessage.payload.id}`,
+      async () => {
+        await transferQueueEngine.cancel(transferMessage.payload.id);
+      },
+      "high",
+    );
     return { ok: true };
   }
 
   if (transferMessage?.type === MESSAGE_TRANSFER_QUEUE_RETRY) {
-    await transferQueueEngine.retry(transferMessage.payload.id);
+    await transferQueueCommandBus.enqueue(
+      `job:${transferMessage.payload.id}`,
+      async () => {
+        await transferQueueEngine.retry(transferMessage.payload.id);
+      },
+      "high",
+    );
     return { ok: true };
   }
 
   if (transferMessage?.type === MESSAGE_TRANSFER_QUEUE_REMOVE) {
-    await transferQueueEngine.remove(transferMessage.payload.id);
+    await transferQueueCommandBus.enqueue(
+      `job:${transferMessage.payload.id}`,
+      async () => {
+        await transferQueueEngine.remove(transferMessage.payload.id);
+      },
+      "high",
+    );
     return { ok: true };
   }
 
   if (transferMessage?.type === MESSAGE_TRANSFER_QUEUE_CLEAR_HISTORY) {
-    await transferQueueEngine.clearHistory(transferMessage.payload.direction);
+    await transferQueueCommandBus.enqueue(
+      "history:clear",
+      async () => {
+        await transferQueueEngine.clearHistory(transferMessage.payload.direction);
+      },
+      "high",
+    );
     return { ok: true };
   }
 
@@ -198,21 +382,47 @@ async function handleTransferQueueRuntimeMessage(
       throw new Error("Некорректный payload enqueue-upload: отсутствуют данные файла");
     }
 
-    try {
-      const job = await transferQueueEngine.enqueueUpload({
-        source: transferMessage.payload.source,
-        parentId: transferMessage.payload.parentId,
-        name: transferMessage.payload.name,
-        mimeType: transferMessage.payload.mimeType,
-        blob,
-      });
+    const fingerprint = buildEnqueueFingerprint({
+      name: transferMessage.payload.name,
+      mimeType: transferMessage.payload.mimeType,
+      parentId: transferMessage.payload.parentId,
+      sizeBytes: blob.size,
+    });
 
-      return { ok: true, jobId: job.id };
-    } finally {
-      if (transferMessage.payload.stagingId) {
-        await deleteStagedTransferBlob(transferMessage.payload.stagingId);
+    return transferQueueCommandBus.enqueue(`enqueue:${fingerprint}`, async () => {
+      const now = Date.now();
+      pruneRecentEnqueueCache(now);
+
+      const existingEntry = recentEnqueueByFingerprint.get(fingerprint);
+      if (existingEntry && now - existingEntry.timestamp < ENQUEUE_DEDUPE_WINDOW_MS) {
+        return {
+          ok: true,
+          deduped: true,
+          existingJobId: existingEntry.jobId,
+        };
       }
-    }
+
+      try {
+        const job = await transferQueueEngine.enqueueUpload({
+          source: transferMessage.payload.source,
+          parentId: transferMessage.payload.parentId,
+          name: transferMessage.payload.name,
+          mimeType: transferMessage.payload.mimeType,
+          blob,
+        });
+
+        recentEnqueueByFingerprint.set(fingerprint, {
+          timestamp: now,
+          jobId: job.id,
+        });
+
+        return { ok: true, jobId: job.id };
+      } finally {
+        if (transferMessage.payload.stagingId) {
+          await deleteStagedTransferBlob(transferMessage.payload.stagingId);
+        }
+      }
+    });
   }
 
   return undefined;

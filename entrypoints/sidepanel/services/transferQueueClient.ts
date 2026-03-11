@@ -1,12 +1,16 @@
 import {
+  MESSAGE_TRANSFER_QUEUE_SNAPSHOT_UPDATED,
   MESSAGE_TRANSFER_QUEUE_CANCEL,
   MESSAGE_TRANSFER_QUEUE_CLEAR_HISTORY,
   MESSAGE_TRANSFER_QUEUE_ENQUEUE_UPLOAD,
   MESSAGE_TRANSFER_QUEUE_LIST,
   MESSAGE_TRANSFER_QUEUE_REMOVE,
   MESSAGE_TRANSFER_QUEUE_RETRY,
+  PORT_TRANSFER_QUEUE_UPDATES,
+  type TransferQueueSnapshotUpdatedPortMessage,
   type TransferQueueCancelMessage,
   type TransferQueueEnqueueUploadMessage,
+  type TransferQueueEnqueueUploadResponse,
   type TransferQueueListMessage,
   type TransferQueueListResponse,
   type TransferQueueRemoveMessage,
@@ -29,6 +33,36 @@ function createStagingId(): string {
   }
 
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function isTransferQueueEnqueueUploadResponse(
+  value: unknown,
+): value is TransferQueueEnqueueUploadResponse {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.ok !== "boolean") {
+    return false;
+  }
+
+  if (record.jobId !== undefined && typeof record.jobId !== "string") {
+    return false;
+  }
+
+  if (record.deduped !== undefined && typeof record.deduped !== "boolean") {
+    return false;
+  }
+
+  if (
+    record.existingJobId !== undefined &&
+    typeof record.existingJobId !== "string"
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 export async function enqueueFilesForUpload(
@@ -54,7 +88,14 @@ export async function enqueueFilesForUpload(
       },
     };
 
-    await browser.runtime.sendMessage(message);
+    const response = await browser.runtime.sendMessage(message);
+    if (!isTransferQueueEnqueueUploadResponse(response) || !response.ok) {
+      throw new Error("Некорректный ответ enqueue-upload");
+    }
+
+    if (response.deduped && !response.existingJobId) {
+      await listTransferQueueSnapshot();
+    }
   }
 }
 
@@ -111,4 +152,32 @@ export async function clearTransferHistory(
   };
 
   await browser.runtime.sendMessage(message);
+}
+
+export function subscribeTransferQueueSnapshots(
+  onSnapshot: (snapshot: TransferQueueListResponse) => void,
+): () => void {
+  const port = browser.runtime.connect({
+    name: PORT_TRANSFER_QUEUE_UPDATES,
+  });
+
+  const listener = (message: unknown) => {
+    const update = message as TransferQueueSnapshotUpdatedPortMessage;
+    if (update?.type !== MESSAGE_TRANSFER_QUEUE_SNAPSHOT_UPDATED) {
+      return;
+    }
+
+    if (!isTransferQueueListResponse(update.payload)) {
+      return;
+    }
+
+    onSnapshot(update.payload);
+  };
+
+  port.onMessage.addListener(listener);
+
+  return () => {
+    port.onMessage.removeListener(listener);
+    port.disconnect();
+  };
 }

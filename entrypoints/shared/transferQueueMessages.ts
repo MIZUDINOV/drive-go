@@ -14,6 +14,10 @@ export const MESSAGE_TRANSFER_QUEUE_CLEAR_HISTORY =
   "gdrivego.transfer-queue.clear-history";
 export const PORT_TRANSFER_QUEUE_SIDEPANEL_SESSION =
   "gdrivego.transfer-queue.sidepanel-session";
+export const PORT_TRANSFER_QUEUE_UPDATES =
+  "gdrivego.transfer-queue.updates";
+export const MESSAGE_TRANSFER_QUEUE_SNAPSHOT_UPDATED =
+  "gdrivego.transfer-queue.snapshot-updated";
 
 export type TransferQueueEnqueueUploadMessage = {
   type: typeof MESSAGE_TRANSFER_QUEUE_ENQUEUE_UPLOAD;
@@ -70,4 +74,16 @@ export type TransferQueueMessage =
 export type TransferQueueListResponse = {
   queue: TransferQueueItem[];
   history: TransferHistoryItem[];
+};
+
+export type TransferQueueEnqueueUploadResponse = {
+  ok: boolean;
+  jobId?: string;
+  deduped?: boolean;
+  existingJobId?: string;
+};
+
+export type TransferQueueSnapshotUpdatedPortMessage = {
+  type: typeof MESSAGE_TRANSFER_QUEUE_SNAPSHOT_UPDATED;
+  payload: TransferQueueListResponse;
 };

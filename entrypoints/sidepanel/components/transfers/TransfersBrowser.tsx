@@ -10,6 +10,7 @@ import {
   listTransferQueueSnapshot,
   removeTransferQueueItem,
   retryTransferQueueItem,
+  subscribeTransferQueueSnapshots,
 } from "../../services/transferQueueClient";
 import type {
   TransferHistoryItem,
@@ -174,12 +175,15 @@ export function TransfersBrowser() {
 
   onMount(() => {
     void loadSnapshot();
-    const intervalId = window.setInterval(() => {
-      void loadSnapshot();
-    }, 1500);
+    const unsubscribe = subscribeTransferQueueSnapshots((snapshot) => {
+      setQueue(snapshot.queue);
+      setHistory(snapshot.history);
+      setError(null);
+      setIsLoading(false);
+    });
 
     onCleanup(() => {
-      window.clearInterval(intervalId);
+      unsubscribe();
     });
   });
 

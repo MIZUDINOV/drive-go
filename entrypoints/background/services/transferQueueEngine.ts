@@ -7,7 +7,6 @@ import {
   deleteSession,
   getPayloadBlob,
   getQueueJob,
-  getSession,
   listHistoryItems,
   listPendingQueueJobs,
   listQueueJobs,
@@ -15,7 +14,6 @@ import {
   putPayloadChunks,
   putQueueJob,
   updateQueueJob,
-  upsertSession,
 } from "./transferQueueDb";
 import type {
   TransferHistoryItem,
@@ -23,11 +21,16 @@ import type {
   TransferQueueSnapshot,
   TransferSource,
 } from "../../shared/transferQueueTypes";
-
-const SMALL_FILE_THRESHOLD_BYTES = 5 * 1024 * 1024;
-const CHUNK_SIZE = 8 * 1024 * 1024;
-const MAX_CONCURRENT_UPLOADS = 2;
-const ROOT_FOLDER_LABEL = "Корневая папка";
+import { TransferQueueRxOrchestrator } from "./transferQueueRxOrchestrator";
+import type { TransferQueueLifecycleEvent } from "./transferQueueLifecycleEvent";
+import { reduceTransferQueueItem } from "./transferQueueStateReducer";
+import {
+  CHUNK_SIZE,
+  MAX_CONCURRENT_UPLOADS,
+  ROOT_FOLDER_LABEL,
+  SMALL_FILE_THRESHOLD_BYTES,
+} from "./transferQueueConstants";
+import { transferUploadExecutor } from "./transferUploadExecutor";
 
 type EnqueueUploadParams = {
   source: TransferSource;
@@ -107,278 +110,40 @@ function splitBlobIntoChunks(blob: Blob): Blob[] {
   return chunks;
 }
 
-async function uploadMultipart(
-  token: string,
-  params: {
-    blob: Blob;
-    name: string;
-    mimeType: string;
-    parentId: string | null;
-  },
-  signal: AbortSignal,
-): Promise<string> {
-  const metadata = {
-    name: params.name,
-    mimeType: params.mimeType || "application/octet-stream",
-    ...(params.parentId ? { parents: [params.parentId] } : {}),
-  };
-
-  const formData = new FormData();
-  formData.append(
-    "metadata",
-    new Blob([JSON.stringify(metadata)], { type: "application/json" }),
-  );
-  formData.append("file", params.blob, params.name);
-
-  const response = await fetch(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-      signal,
-    },
-  );
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Ошибка загрузки: ${response.status} ${text}`);
-  }
-
-  const data = (await response.json()) as { id?: string };
-  if (!data.id) {
-    throw new Error("Drive API не вернул id загруженного файла");
-  }
-
-  return data.id;
-}
-
-async function createResumableSession(
-  token: string,
-  params: {
-    name: string;
-    mimeType: string;
-    sizeBytes: number;
-    parentId: string | null;
-  },
-  signal: AbortSignal,
-): Promise<string> {
-  const metadata = {
-    name: params.name,
-    mimeType: params.mimeType || "application/octet-stream",
-    ...(params.parentId ? { parents: [params.parentId] } : {}),
-  };
-
-  const response = await fetch(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json; charset=UTF-8",
-        "X-Upload-Content-Type": params.mimeType || "application/octet-stream",
-        "X-Upload-Content-Length": String(params.sizeBytes),
-      },
-      body: JSON.stringify(metadata),
-      signal,
-    },
-  );
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Ошибка инициализации resumable: ${response.status} ${text}`);
-  }
-
-  const uploadUrl = response.headers.get("Location");
-  if (!uploadUrl) {
-    throw new Error("Не получен Location для resumable upload");
-  }
-
-  return uploadUrl;
-}
-
-type ResumableProbeResult = {
-  nextByte: number;
-  completedFileId?: string;
-};
-
-async function probeResumableProgress(
-  uploadUrl: string,
-  totalBytes: number,
-  token: string,
-  signal: AbortSignal,
-): Promise<ResumableProbeResult> {
-  const response = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Length": "0",
-      "Content-Range": `bytes */${totalBytes}`,
-    },
-    signal,
-  });
-
-  if (response.status === 200 || response.status === 201) {
-    const data = (await response.json()) as { id?: string };
-    return {
-      nextByte: totalBytes,
-      completedFileId: data.id,
-    };
-  }
-
-  if (response.status === 308) {
-    const range = response.headers.get("Range");
-    if (!range) {
-      return { nextByte: 0 };
-    }
-
-    const match = /bytes=0-(\d+)/i.exec(range);
-    if (!match) {
-      return { nextByte: 0 };
-    }
-
-    const lastUploadedByte = Number(match[1]);
-    if (!Number.isFinite(lastUploadedByte) || lastUploadedByte < 0) {
-      return { nextByte: 0 };
-    }
-
-    return { nextByte: lastUploadedByte + 1 };
-  }
-
-  if (response.status === 404) {
-    return { nextByte: -1 };
-  }
-
-  const text = await response.text();
-  throw new Error(`Ошибка проверки resumable сессии: ${response.status} ${text}`);
-}
-
-async function uploadResumable(
-  job: TransferQueueItem,
-  blob: Blob,
-  signal: AbortSignal,
-  onProgress: (uploadedBytes: number) => Promise<void>,
-): Promise<string> {
-  const token = await getAccessToken();
-  const existingSession = await getSession(job.id);
-
-  let uploadUrl = existingSession?.uploadUrl;
-  let nextByte = existingSession?.nextByte ?? 0;
-
-  if (!uploadUrl) {
-    uploadUrl = await createResumableSession(
-      token,
-      {
-        name: job.name,
-        mimeType: job.mimeType,
-        sizeBytes: blob.size,
-        parentId: job.parentId,
-      },
-      signal,
-    );
-
-    await upsertSession({
-      jobId: job.id,
-      uploadUrl,
-      nextByte: 0,
-      updatedAt: Date.now(),
-    });
-  } else {
-    const probe = await probeResumableProgress(uploadUrl, blob.size, token, signal);
-    if (probe.completedFileId) {
-      await onProgress(blob.size);
-      return probe.completedFileId;
-    }
-
-    if (probe.nextByte < 0) {
-      uploadUrl = await createResumableSession(
-        token,
-        {
-          name: job.name,
-          mimeType: job.mimeType,
-          sizeBytes: blob.size,
-          parentId: job.parentId,
-        },
-        signal,
-      );
-      nextByte = 0;
-      await upsertSession({
-        jobId: job.id,
-        uploadUrl,
-        nextByte,
-        updatedAt: Date.now(),
-      });
-    } else {
-      nextByte = probe.nextByte;
-      await onProgress(nextByte);
-      await upsertSession({
-        jobId: job.id,
-        uploadUrl,
-        nextByte,
-        updatedAt: Date.now(),
-      });
-    }
-  }
-
-  while (nextByte < blob.size) {
-    const endByte = Math.min(nextByte + CHUNK_SIZE, blob.size) - 1;
-    const chunk = blob.slice(nextByte, endByte + 1, blob.type);
-
-    const response = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/octet-stream",
-        "Content-Length": String(chunk.size),
-        "Content-Range": `bytes ${nextByte}-${endByte}/${blob.size}`,
-      },
-      body: chunk,
-      signal,
-    });
-
-    if (response.status === 200 || response.status === 201) {
-      const data = (await response.json()) as { id?: string };
-      if (!data.id) {
-        throw new Error("Drive API не вернул id после resumable upload");
-      }
-
-      await onProgress(blob.size);
-      return data.id;
-    }
-
-    if (response.status === 308) {
-      nextByte = endByte + 1;
-      await onProgress(nextByte);
-      await upsertSession({
-        jobId: job.id,
-        uploadUrl,
-        nextByte,
-        updatedAt: Date.now(),
-      });
-      continue;
-    }
-
-    if (response.status === 404) {
-      throw new Error("Сессия resumable upload истекла, попробуйте повторить задачу");
-    }
-
-    const text = await response.text();
-    throw new Error(`Ошибка chunk upload: ${response.status} ${text}`);
-  }
-
-  throw new Error("Resumable upload завершился без file id");
-}
 
 class TransferQueueEngine {
   private readonly activeJobs = new Set<string>();
 
   private readonly activeAbortControllers = new Map<string, AbortController>();
 
+  private readonly rxOrchestrator = new TransferQueueRxOrchestrator({
+    runPump: () => this.pump(),
+    onDisabled: () => this.abortActiveJobs(),
+    onError: (error) => {
+      console.error("[TransferQueue] Pump orchestration error", error);
+    },
+  });
+
   private isInitialized = false;
 
   private processingEnabled = true;
+
+  private stateChangedListener: (() => void) | null = null;
+
+  private lifecycleListener: ((event: TransferQueueLifecycleEvent) => void) | null =
+    null;
+
+  private readonly lastProgressPercentByJob = new Map<string, number>();
+
+  public setStateChangedListener(listener: (() => void) | null): void {
+    this.stateChangedListener = listener;
+  }
+
+  public setLifecycleListener(
+    listener: ((event: TransferQueueLifecycleEvent) => void) | null,
+  ): void {
+    this.lifecycleListener = listener;
+  }
 
   public async initialize(): Promise<void> {
     if (this.isInitialized) {
@@ -394,7 +159,7 @@ class TransferQueueEngine {
       }
     }
 
-    await this.pump();
+    this.rxOrchestrator.requestPump();
   }
 
   public setProcessingEnabled(enabled: boolean): void {
@@ -403,15 +168,13 @@ class TransferQueueEngine {
     }
 
     this.processingEnabled = enabled;
+    this.rxOrchestrator.setProcessingEnabled(enabled);
+  }
 
-    if (!enabled) {
-      for (const controller of this.activeAbortControllers.values()) {
-        controller.abort();
-      }
-      return;
-    }
-
-    void this.pump();
+  public dispose(): void {
+    this.rxOrchestrator.dispose();
+    this.abortActiveJobs();
+    this.lastProgressPercentByJob.clear();
   }
 
   public async enqueueUpload(params: EnqueueUploadParams): Promise<TransferQueueItem> {
@@ -444,7 +207,15 @@ class TransferQueueEngine {
       await putPayloadBlob(job.id, params.blob, job.mimeType);
     }
 
-    await this.pump();
+    this.notifyStateChanged();
+    this.emitLifecycleEvent({
+      type: "enqueued",
+      jobId: job.id,
+      timestamp: Date.now(),
+      status: job.status,
+      message: `${job.strategy}:${job.direction}`,
+    });
+    this.rxOrchestrator.requestPump();
     return job;
   }
 
@@ -464,9 +235,16 @@ class TransferQueueEngine {
       activeController.abort();
     }
 
-    await updateQueueJob(jobId, {
+    await this.applyTransition(jobId, {
+      type: "cancel",
+    });
+    this.notifyStateChanged();
+    this.emitLifecycleEvent({
+      type: "cancelled",
+      jobId,
+      timestamp: Date.now(),
       status: "cancelled",
-      errorMessage: "Отменено пользователем",
+      message: "cancel requested by user",
     });
   }
 
@@ -476,12 +254,18 @@ class TransferQueueEngine {
       return;
     }
 
-    await updateQueueJob(jobId, {
-      status: "pending",
-      progressBytes: 0,
-      errorMessage: undefined,
+    await this.applyTransition(jobId, {
+      type: "retry",
     });
-    await this.pump();
+    this.notifyStateChanged();
+    this.lastProgressPercentByJob.delete(jobId);
+    this.emitLifecycleEvent({
+      type: "retried",
+      jobId,
+      timestamp: Date.now(),
+      status: "pending",
+    });
+    this.rxOrchestrator.requestPump();
   }
 
   public async remove(jobId: string): Promise<void> {
@@ -496,14 +280,30 @@ class TransferQueueEngine {
       await deleteQueueJob(jobId);
       await deletePayload(jobId);
       await deleteSession(jobId);
+      this.notifyStateChanged();
+      this.lastProgressPercentByJob.delete(jobId);
+      this.emitLifecycleEvent({
+        type: "removed",
+        jobId,
+        timestamp: Date.now(),
+        message: "removed from queue",
+      });
       return;
     }
 
     await deleteHistoryItem(jobId);
+    this.notifyStateChanged();
+    this.emitLifecycleEvent({
+      type: "removed",
+      jobId,
+      timestamp: Date.now(),
+      message: "removed from history",
+    });
   }
 
   public async clearHistory(direction?: "upload" | "download"): Promise<void> {
     await clearHistoryByDirection(direction);
+    this.notifyStateChanged();
   }
 
   private async pump(): Promise<void> {
@@ -520,8 +320,10 @@ class TransferQueueEngine {
       }
 
       const claimedJob = await updateQueueJob(nextJob.id, {
-        status: nextJob.direction === "upload" ? "uploading" : "downloading",
-        errorMessage: undefined,
+        ...reduceTransferQueueItem(nextJob, {
+          type: "claim",
+          direction: nextJob.direction,
+        }),
       });
 
       if (!claimedJob) {
@@ -529,10 +331,22 @@ class TransferQueueEngine {
       }
 
       this.activeJobs.add(claimedJob.id);
+      this.emitLifecycleEvent({
+        type: "claimed",
+        jobId: claimedJob.id,
+        timestamp: Date.now(),
+        status: claimedJob.status,
+      });
       void this.processJob(claimedJob).finally(() => {
         this.activeJobs.delete(claimedJob.id);
-        void this.pump();
+        this.rxOrchestrator.requestPump();
       });
+    }
+  }
+
+  private abortActiveJobs(): void {
+    for (const controller of this.activeAbortControllers.values()) {
+      controller.abort();
     }
   }
 
@@ -551,24 +365,35 @@ class TransferQueueEngine {
       }
 
       const onProgress = async (uploadedBytes: number): Promise<void> => {
-        await updateQueueJob(job.id, {
-          progressBytes: Math.min(uploadedBytes, job.sizeBytes),
+        await this.applyTransition(job.id, {
+          type: "progress",
+          progressBytes: uploadedBytes,
         });
+        this.notifyStateChanged();
+
+        const safePercent =
+          job.sizeBytes > 0
+            ? Math.min(100, Math.max(0, Math.round((uploadedBytes / job.sizeBytes) * 100)))
+            : 0;
+        const lastPercent = this.lastProgressPercentByJob.get(job.id) ?? -1;
+        if (safePercent === 100 || safePercent - lastPercent >= 5) {
+          this.lastProgressPercentByJob.set(job.id, safePercent);
+          this.emitLifecycleEvent({
+            type: "progress",
+            jobId: job.id,
+            timestamp: Date.now(),
+            status: "uploading",
+            progressPercent: safePercent,
+          });
+        }
       };
 
-      const driveFileId =
-        job.strategy === "multipart"
-          ? await uploadMultipart(
-              await getAccessToken(),
-              {
-                blob: payload,
-                name: job.name,
-                mimeType: job.mimeType,
-                parentId: job.parentId,
-              },
-              abortController.signal,
-            )
-          : await uploadResumable(job, payload, abortController.signal, onProgress);
+      const driveFileId = await transferUploadExecutor.executeUpload({
+        job,
+        payload,
+        signal: abortController.signal,
+        onProgress,
+      });
 
       const historyItem: TransferHistoryItem = {
         id: job.id,
@@ -587,15 +412,30 @@ class TransferQueueEngine {
       await deleteQueueJob(job.id);
       await deletePayload(job.id);
       await deleteSession(job.id);
+      this.notifyStateChanged();
+      this.lastProgressPercentByJob.delete(job.id);
+      this.emitLifecycleEvent({
+        type: "completed",
+        jobId: job.id,
+        timestamp: Date.now(),
+        message: `driveFileId=${driveFileId}`,
+      });
     } catch (error: unknown) {
       const isAbortError =
         (error instanceof DOMException && error.name === "AbortError") ||
         (error instanceof Error && error.name === "AbortError");
 
       if (isAbortError && !this.processingEnabled) {
-        await updateQueueJob(job.id, {
+        await this.applyTransition(job.id, {
+          type: "pause",
+        });
+        this.notifyStateChanged();
+        this.emitLifecycleEvent({
+          type: "paused",
+          jobId: job.id,
+          timestamp: Date.now(),
           status: "pending",
-          errorMessage: undefined,
+          message: "processing disabled",
         });
         return;
       }
@@ -608,12 +448,52 @@ class TransferQueueEngine {
       }
 
       const message = error instanceof Error ? error.message : "Неизвестная ошибка";
-      await updateQueueJob(job.id, {
+      await this.applyTransition(job.id, {
+        type: "fail",
+        message,
+      });
+      this.notifyStateChanged();
+      this.emitLifecycleEvent({
+        type: "failed",
+        jobId: job.id,
+        timestamp: Date.now(),
         status: "error",
-        errorMessage: message,
+        message,
       });
     } finally {
       this.activeAbortControllers.delete(job.id);
+      this.lastProgressPercentByJob.delete(job.id);
+    }
+  }
+
+  private notifyStateChanged(): void {
+    this.stateChangedListener?.();
+  }
+
+  private emitLifecycleEvent(event: TransferQueueLifecycleEvent): void {
+    this.lifecycleListener?.(event);
+  }
+
+  private async applyTransition(
+    jobId: string,
+    transition:
+      | { type: "cancel" }
+      | { type: "retry" }
+      | { type: "pause" }
+      | { type: "fail"; message: string }
+      | { type: "progress"; progressBytes: number },
+  ): Promise<void> {
+    const current = await getQueueJob(jobId);
+    if (!current) {
+      return;
+    }
+
+    try {
+      const patch = reduceTransferQueueItem(current, transition);
+      await updateQueueJob(jobId, patch);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "invalid transition";
+      console.warn(`[TransferQueue] Skipping transition for ${jobId}: ${message}`);
     }
   }
 }

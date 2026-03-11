@@ -7,6 +7,7 @@ import {
   listTransferQueueSnapshot,
   removeTransferQueueItem,
   retryTransferQueueItem,
+  subscribeTransferQueueSnapshots,
 } from "../../services/transferQueueClient";
 import {
   getTransferPopoverSeenUpTo,
@@ -205,21 +206,34 @@ export function UploadPopover() {
   };
 
   onMount(() => {
-    let timerId: number | null = null;
+    let unsubscribeSnapshots: (() => void) | null = null;
 
     void (async () => {
       const initialSeenUpTo = await getTransferPopoverSeenUpTo();
       setSeenUpTo(initialSeenUpTo);
       await loadTasks();
 
-      timerId = window.setInterval(() => {
-        void loadTasks();
-      }, 1200);
+      unsubscribeSnapshots = subscribeTransferQueueSnapshots((snapshot) => {
+        setTasks(snapshot.queue);
+
+        const unseenCompleted = snapshot.history
+          .filter((item) => item.completedAt > seenUpTo())
+          .sort((a, b) => b.completedAt - a.completedAt)
+          .slice(0, MAX_RECENT_COMPLETED);
+
+        setRecentCompleted(unseenCompleted);
+
+        if (unseenCompleted.length > lastAutoOpenCompletedCount()) {
+          setIsOpen(true);
+        }
+
+        setLastAutoOpenCompletedCount(unseenCompleted.length);
+      });
     })();
 
     onCleanup(() => {
-      if (timerId !== null) {
-        window.clearInterval(timerId);
+      if (unsubscribeSnapshots) {
+        unsubscribeSnapshots();
       }
       void setTransferPopoverSeenUpTo(Date.now());
     });
