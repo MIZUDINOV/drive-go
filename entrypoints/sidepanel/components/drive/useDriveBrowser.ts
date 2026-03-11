@@ -45,6 +45,20 @@ function mapApiFile(file: DriveApiFile): DriveItem {
   };
 }
 
+function compareDriveItems(a: DriveItem, b: DriveItem): number {
+  const aIsFolder = a.mimeType === "application/vnd.google-apps.folder";
+  const bIsFolder = b.mimeType === "application/vnd.google-apps.folder";
+
+  if (aIsFolder !== bIsFolder) {
+    return aIsFolder ? -1 : 1;
+  }
+
+  return a.name.localeCompare(b.name, "ru", {
+    sensitivity: "base",
+    numeric: true,
+  });
+}
+
 export function useDriveBrowser(options?: UseDriveBrowserOptions) {
   const scope = options?.scope ?? "my-drive";
   const isSharedScope = scope === "shared";
@@ -217,6 +231,31 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
     setItems((prev) => prev.filter((item) => item.id !== itemId));
   };
 
+  const updateItemLocally = (
+    itemId: string,
+    patch: Partial<Pick<DriveItem, "name" | "modifiedTime" | "ownerName">>,
+  ) => {
+    setItems((prev) => {
+      const next = prev.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              ...patch,
+            }
+          : item,
+      );
+
+      return next.sort(compareDriveItems);
+    });
+  };
+
+  const upsertItemLocally = (item: DriveItem) => {
+    setItems((prev) => {
+      const withoutExisting = prev.filter((current) => current.id !== item.id);
+      return [...withoutExisting, item].sort(compareDriveItems);
+    });
+  };
+
   const clearItemsLocally = () => {
     setItems([]);
     setNextPageToken(undefined);
@@ -237,6 +276,8 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
     refresh,
     loadMore,
     removeItemLocally,
+    updateItemLocally,
+    upsertItemLocally,
     clearItemsLocally,
     openFolder,
     goUp,

@@ -6,8 +6,7 @@ import {
   DriveItemMenuButton,
   type DriveItemMenuConfig,
 } from "./DriveItemMenu";
-import type { DriveItem, DriveViewMode } from "./driveTypes";
-import { isFolder } from "./driveTypes";
+import { DriveViewMode, isFolder, type DriveItem } from "./driveTypes";
 
 type DriveItemsContentProps = {
   items: DriveItem[];
@@ -18,7 +17,9 @@ type DriveItemsContentProps = {
   formatDate: (dateIso: string) => string;
   formatSize: (size?: string) => string;
   onItemOpen: (item: DriveItem) => void;
-  onItemsChanged: () => Promise<void>;
+  onItemMoved: (item: DriveItem, targetFolderId: string) => void;
+  onItemRenamed: (itemId: string, newName: string) => void;
+  onItemTrashed: (itemId: string) => void;
   menuConfig?: DriveItemMenuConfig;
   emptyText: string;
 };
@@ -54,7 +55,7 @@ export function DriveItemsContent(props: DriveItemsContentProps) {
           fallback={<DriveItemsSkeleton viewMode={props.viewMode} />}
         >
           <Show
-            when={props.viewMode === "list"}
+            when={props.viewMode === DriveViewMode.List}
             fallback={
               <div class="drive-grid-layout">
                 <Show when={folders().length > 0}>
@@ -65,7 +66,9 @@ export function DriveItemsContent(props: DriveItemsContentProps) {
                           item={item}
                           currentFolderId={props.currentFolderId}
                           onOpen={() => props.onItemOpen(item)}
-                          onMoveSuccess={props.onItemsChanged}
+                          onItemMoved={props.onItemMoved}
+                          onItemRenamed={props.onItemRenamed}
+                          onItemTrashed={props.onItemTrashed}
                           menuConfig={props.menuConfig}
                         >
                           <article
@@ -90,7 +93,9 @@ export function DriveItemsContent(props: DriveItemsContentProps) {
                                 item={item}
                                 currentFolderId={props.currentFolderId}
                                 onOpen={() => props.onItemOpen(item)}
-                                onMoveSuccess={props.onItemsChanged}
+                                onItemMoved={props.onItemMoved}
+                                onItemRenamed={props.onItemRenamed}
+                                onItemTrashed={props.onItemTrashed}
                                 menuConfig={props.menuConfig}
                               />
                             </div>
@@ -109,7 +114,9 @@ export function DriveItemsContent(props: DriveItemsContentProps) {
                           item={item}
                           currentFolderId={props.currentFolderId}
                           onOpen={() => props.onItemOpen(item)}
-                          onMoveSuccess={props.onItemsChanged}
+                          onItemMoved={props.onItemMoved}
+                          onItemRenamed={props.onItemRenamed}
+                          onItemTrashed={props.onItemTrashed}
                           menuConfig={props.menuConfig}
                         >
                           <article
@@ -134,7 +141,9 @@ export function DriveItemsContent(props: DriveItemsContentProps) {
                                 item={item}
                                 currentFolderId={props.currentFolderId}
                                 onOpen={() => props.onItemOpen(item)}
-                                onMoveSuccess={props.onItemsChanged}
+                                onItemMoved={props.onItemMoved}
+                                onItemRenamed={props.onItemRenamed}
+                                onItemTrashed={props.onItemTrashed}
                                 menuConfig={props.menuConfig}
                               />
                             </div>
@@ -178,7 +187,9 @@ export function DriveItemsContent(props: DriveItemsContentProps) {
                     item={item}
                     currentFolderId={props.currentFolderId}
                     onOpen={() => props.onItemOpen(item)}
-                    onMoveSuccess={props.onItemsChanged}
+                    onItemMoved={props.onItemMoved}
+                    onItemRenamed={props.onItemRenamed}
+                    onItemTrashed={props.onItemTrashed}
                     menuConfig={props.menuConfig}
                   >
                     <article
@@ -218,7 +229,9 @@ export function DriveItemsContent(props: DriveItemsContentProps) {
                         item={item}
                         currentFolderId={props.currentFolderId}
                         onOpen={() => props.onItemOpen(item)}
-                        onMoveSuccess={props.onItemsChanged}
+                        onItemMoved={props.onItemMoved}
+                        onItemRenamed={props.onItemRenamed}
+                        onItemTrashed={props.onItemTrashed}
                         menuConfig={props.menuConfig}
                       />
                     </article>

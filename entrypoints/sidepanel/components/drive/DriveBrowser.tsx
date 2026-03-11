@@ -5,6 +5,7 @@ import {
   createMemo,
   createSignal,
   JSX,
+  onMount,
 } from "solid-js";
 import { Breadcrumbs } from "@kobalte/core/breadcrumbs";
 import { SegmentedControl } from "@kobalte/core/segmented-control";
@@ -18,14 +19,18 @@ import { Toast, toaster } from "@kobalte/core/toast";
 import { Portal } from "solid-js/web";
 import { FileTypeIcon } from "../../fileTypes";
 import { useDriveBrowser, type DriveBrowserScope } from "./useDriveBrowser";
-import type { DriveItem, DriveViewMode } from "./driveTypes";
-import { isFolder } from "./driveTypes";
+import { DriveViewMode, isFolder, type DriveItem } from "./driveTypes";
 import {
   openDriveItemInNewTab,
   createFolder,
   type DriveSearchFilters,
   DEFAULT_DRIVE_SEARCH_FILTERS,
 } from "../../services/driveApi";
+import {
+  getDefaultDriveViewMode,
+  getDriveViewModeForScope,
+  setDriveViewModeForScope,
+} from "../../services/driveViewModePreferences";
 import {
   enqueueFilesForUpload,
 } from "../../services/transferQueueClient";
@@ -188,7 +193,9 @@ export function DriveBrowser(props: DriveBrowserProps) {
   const isStarredScope = scope === "starred";
   const isTrashScope = scope === "trash";
   const browserState = useDriveBrowser({ scope });
-  const [viewMode, setViewMode] = createSignal<DriveViewMode>("list");
+  const [viewMode, setViewMode] = createSignal<DriveViewMode>(
+    getDefaultDriveViewMode(),
+  );
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
   const [isEmptyTrashDialogOpen, setIsEmptyTrashDialogOpen] =
     createSignal(false);
@@ -232,6 +239,41 @@ export function DriveBrowser(props: DriveBrowserProps) {
     );
   };
 
+  const applyLocalRemoval = async (
+    item: Pick<DriveItem, "id" | "mimeType">,
+    options?: { markFoldersDirty?: boolean },
+  ): Promise<void> => {
+    browserState.removeItemLocally(item.id);
+
+    if (options?.markFoldersDirty && isFolder(item)) {
+      await markFolderPathsDirty();
+    }
+  };
+
+  const applyLocalRemovalById = (itemId: string): void => {
+    browserState.removeItemLocally(itemId);
+  };
+
+  const applyLocalRename = (itemId: string, newName: string): void => {
+    browserState.updateItemLocally(itemId, {
+      name: newName,
+      modifiedTime: new Date().toISOString(),
+    });
+  };
+
+  const applyLocalMove = async (
+    item: DriveItem,
+    targetFolderId: string,
+  ): Promise<void> => {
+    if (targetFolderId !== browserState.currentFolderId()) {
+      browserState.removeItemLocally(item.id);
+    }
+
+    if (isFolder(item)) {
+      await markFolderPathsDirty();
+    }
+  };
+
   const menuConfig = createMemo<DriveItemMenuConfig | undefined>(() => {
     if (!isSharedScope && !isRecentScope && !isStarredScope && !isTrashScope) {
       return undefined;
@@ -252,11 +294,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
             return false;
           }
 
-          browserState.removeItemLocally(item.id);
-
-          if (isFolder(item)) {
-            await markFolderPathsDirty();
-          }
+          await applyLocalRemoval(item, { markFoldersDirty: true });
 
           showActionToast(
             "Восстановлено",
@@ -278,11 +316,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
             return false;
           }
 
-          browserState.removeItemLocally(item.id);
-
-          if (isFolder(item)) {
-            await markFolderPathsDirty();
-          }
+          await applyLocalRemoval(item, { markFoldersDirty: true });
 
           showActionToast(
             "Удалено навсегда",
@@ -317,9 +351,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
             STARRED_TOAST_REGION_ID,
           );
 
-          browserState.removeItemLocally(item.id);
-
-          // Обновляем список локально без полного перезапроса.
+          await applyLocalRemoval(item);
           return false;
         },
       };
@@ -394,9 +426,17 @@ export function DriveBrowser(props: DriveBrowserProps) {
           "success",
           SHARED_TOAST_REGION_ID,
         );
-        return true;
+
+        await applyLocalRemoval(item);
+        return false;
       },
     };
+  });
+
+  onMount(() => {
+    void getDriveViewModeForScope(scope).then((mode) => {
+      setViewMode(mode);
+    });
   });
 
   createEffect(() => {
@@ -459,7 +499,24 @@ export function DriveBrowser(props: DriveBrowserProps) {
       await markFolderPathsDirty();
       setIsDialogOpen(false);
       setFolderName("Без названия");
-      await browserState.refresh();
+
+      const currentFilters = browserState.filters();
+      const isFolderAllowedByType =
+        currentFilters.type === "all" || currentFilters.type === "folders";
+
+      if (isFolderAllowedByType) {
+        browserState.upsertItemLocally({
+          id: result.folder.id,
+          name: result.folder.name,
+          mimeType: result.folder.mimeType,
+          modifiedTime: result.folder.modifiedTime ?? "",
+          size: result.folder.size,
+          ownerName: result.folder.owners?.[0]?.displayName,
+          iconLink: result.folder.iconLink,
+          thumbnailLink: result.folder.thumbnailLink,
+          webViewLink: result.folder.webViewLink,
+        });
+      }
     } else {
       setError(result.error);
     }
@@ -481,6 +538,18 @@ export function DriveBrowser(props: DriveBrowserProps) {
   const openDialog = () => {
     setIsDialogOpen(true);
     setError(null);
+  };
+
+  const handleItemMoved = (item: DriveItem, targetFolderId: string) => {
+    void applyLocalMove(item, targetFolderId);
+  };
+
+  const handleItemRenamed = (itemId: string, newName: string) => {
+    applyLocalRename(itemId, newName);
+  };
+
+  const handleItemTrashed = (itemId: string) => {
+    applyLocalRemovalById(itemId);
   };
 
   const openGoogleDoc = (
@@ -677,8 +746,9 @@ export function DriveBrowser(props: DriveBrowserProps) {
           class="drive-view-toggle"
           value={viewMode()}
           onChange={(value) => {
-            if (value === "list" || value === "grid") {
+            if (value === DriveViewMode.List || value === DriveViewMode.Grid) {
               setViewMode(value);
+              void setDriveViewModeForScope(scope, value);
             }
           }}
           aria-label="Режим отображения"
@@ -686,7 +756,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
           <Tooltip placement="bottom" gutter={4}>
             <SegmentedControl.Item
               class="drive-view-toggle-item"
-              value="list"
+              value={DriveViewMode.List}
               aria-label="Режим списка"
             >
               <SegmentedControl.ItemInput class="drive-view-toggle-input" />
@@ -704,7 +774,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
           <Tooltip placement="bottom" gutter={4}>
             <SegmentedControl.Item
               class="drive-view-toggle-item"
-              value="grid"
+              value={DriveViewMode.Grid}
               aria-label="Режим плиток"
             >
               <SegmentedControl.ItemInput class="drive-view-toggle-input" />
@@ -816,7 +886,9 @@ export function DriveBrowser(props: DriveBrowserProps) {
         formatDate={props.formatDate}
         formatSize={props.formatSize}
         onItemOpen={onItemDoubleClick}
-        onItemsChanged={browserState.refresh}
+        onItemMoved={handleItemMoved}
+        onItemRenamed={handleItemRenamed}
+        onItemTrashed={handleItemTrashed}
         menuConfig={menuConfig()}
         emptyText={
           isSharedScope

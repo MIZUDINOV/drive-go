@@ -89,7 +89,6 @@
 
 .tab-item:hover {
   background: var(--surface-hover);
-  transform: translateX(2px);
 }
 
 .tab-item:focus {
@@ -186,7 +185,6 @@
 
 .settings-btn:hover {
   background: var(--surface-hover);
-  transform: translateX(2px);
 }
 
 .settings-btn:focus {

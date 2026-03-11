@@ -11,7 +11,7 @@ type RenameDialogProps = {
   item: DriveItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onRenameSuccess: () => void;
+  onRenameSuccess: (newName: string) => void;
 };
 
 function splitExtension(fileName: string): {
@@ -66,7 +66,7 @@ export function RenameDialog(props: RenameDialogProps) {
       }
 
       props.onOpenChange(false);
-      props.onRenameSuccess();
+      props.onRenameSuccess(newFullName);
     } else {
       setError(result.error);
     }

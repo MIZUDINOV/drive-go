@@ -1,9 +1,9 @@
 import { For } from "solid-js";
 import { Skeleton } from "@kobalte/core/skeleton";
-import type { DriveViewMode } from "./driveTypes";
+import { DriveViewMode, type DriveViewMode as DriveViewModeType } from "./driveTypes";
 
 type DriveItemsSkeletonProps = {
-  viewMode: DriveViewMode;
+  viewMode: DriveViewModeType;
 };
 
 // List view skeleton item
@@ -76,7 +76,7 @@ function GridFolderSkeletonItem() {
 }
 
 export function DriveItemsSkeleton(props: DriveItemsSkeletonProps) {
-  if (props.viewMode === "list") {
+  if (props.viewMode === DriveViewMode.List) {
     return (
       <div class="drive-items-list" aria-busy="true">
         <For each={Array(8)}>

@@ -12,7 +12,7 @@ type MoveFileDialogProps = {
   currentFolderId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onMoveSuccess: () => void;
+  onMoveSuccess: (targetFolderId: string) => void;
 };
 
 export function MoveFileDialog(props: MoveFileDialogProps) {
@@ -52,7 +52,7 @@ export function MoveFileDialog(props: MoveFileDialogProps) {
 
     if (result.ok) {
       props.onOpenChange(false);
-      props.onMoveSuccess();
+      props.onMoveSuccess(folderId);
     } else {
       setError(result.error);
     }

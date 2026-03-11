@@ -331,6 +331,9 @@ type DriveItemContextMenuProps = {
   currentFolderId: string;
   onOpen: () => void;
   onMoveSuccess?: () => void;
+  onItemMoved?: (item: DriveItem, targetFolderId: string) => void;
+  onItemRenamed?: (itemId: string, newName: string) => void;
+  onItemTrashed?: (itemId: string) => void;
   menuConfig?: DriveItemMenuConfig;
   children: JSX.Element;
 };
@@ -348,6 +351,21 @@ export function DriveItemContextMenu(props: DriveItemContextMenuProps) {
     if (props.onMoveSuccess) {
       props.onMoveSuccess();
     }
+  };
+
+  const handleMoveSuccess = (targetFolderId: string) => {
+    props.onItemMoved?.(props.item, targetFolderId);
+    handleSuccess();
+  };
+
+  const handleRenameSuccess = (newName: string) => {
+    props.onItemRenamed?.(props.item.id, newName);
+    handleSuccess();
+  };
+
+  const handleTrashSuccess = () => {
+    props.onItemTrashed?.(props.item.id);
+    handleSuccess();
   };
 
   const handleCopyLink = () => {
@@ -443,7 +461,7 @@ export function DriveItemContextMenu(props: DriveItemContextMenuProps) {
           currentFolderId={props.currentFolderId}
           open={isMoveDialogOpen()}
           onOpenChange={setIsMoveDialogOpen}
-          onMoveSuccess={handleSuccess}
+          onMoveSuccess={handleMoveSuccess}
         />
       </Show>
 
@@ -452,7 +470,7 @@ export function DriveItemContextMenu(props: DriveItemContextMenuProps) {
           item={props.item}
           open={isRenameDialogOpen()}
           onOpenChange={setIsRenameDialogOpen}
-          onRenameSuccess={handleSuccess}
+          onRenameSuccess={handleRenameSuccess}
         />
       </Show>
 
@@ -461,7 +479,7 @@ export function DriveItemContextMenu(props: DriveItemContextMenuProps) {
           item={props.item}
           open={isTrashDialogOpen()}
           onOpenChange={setIsTrashDialogOpen}
-          onTrashSuccess={handleSuccess}
+          onTrashSuccess={handleTrashSuccess}
         />
       </Show>
 
@@ -490,6 +508,9 @@ type DriveItemMenuButtonProps = {
   currentFolderId: string;
   onOpen: () => void;
   onMoveSuccess?: () => void;
+  onItemMoved?: (item: DriveItem, targetFolderId: string) => void;
+  onItemRenamed?: (itemId: string, newName: string) => void;
+  onItemTrashed?: (itemId: string) => void;
   menuConfig?: DriveItemMenuConfig;
 };
 
@@ -506,6 +527,21 @@ export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
     if (props.onMoveSuccess) {
       props.onMoveSuccess();
     }
+  };
+
+  const handleMoveSuccess = (targetFolderId: string) => {
+    props.onItemMoved?.(props.item, targetFolderId);
+    handleSuccess();
+  };
+
+  const handleRenameSuccess = (newName: string) => {
+    props.onItemRenamed?.(props.item.id, newName);
+    handleSuccess();
+  };
+
+  const handleTrashSuccess = () => {
+    props.onItemTrashed?.(props.item.id);
+    handleSuccess();
   };
 
   const handleCopyLink = () => {
@@ -609,7 +645,7 @@ export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
           currentFolderId={props.currentFolderId}
           open={isMoveDialogOpen()}
           onOpenChange={setIsMoveDialogOpen}
-          onMoveSuccess={handleSuccess}
+          onMoveSuccess={handleMoveSuccess}
         />
       </Show>
 
@@ -618,7 +654,7 @@ export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
           item={props.item}
           open={isRenameDialogOpen()}
           onOpenChange={setIsRenameDialogOpen}
-          onRenameSuccess={handleSuccess}
+          onRenameSuccess={handleRenameSuccess}
         />
       </Show>
 
@@ -627,7 +663,7 @@ export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
           item={props.item}
           open={isTrashDialogOpen()}
           onOpenChange={setIsTrashDialogOpen}
-          onTrashSuccess={handleSuccess}
+          onTrashSuccess={handleTrashSuccess}
         />
       </Show>
 

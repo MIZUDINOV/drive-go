@@ -43,7 +43,10 @@ export type BreadcrumbItem = {
   name: string;
 };
 
-export type DriveViewMode = "list" | "grid";
+export enum DriveViewMode {
+  List = "list",
+  Grid = "grid",
+}
 
 export function isFolder(item: Pick<DriveItem, "mimeType">): boolean {
   return item.mimeType === FOLDER_MIME_TYPE;
