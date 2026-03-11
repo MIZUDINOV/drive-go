@@ -22,7 +22,8 @@ export type TransferQueueEnqueueUploadMessage = {
     parentId: string | null;
     name: string;
     mimeType: string;
-    base64: string;
+    stagingId?: string;
+    base64?: string;
   };
 };
 

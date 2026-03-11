@@ -23,6 +23,10 @@ import {
   PORT_TRANSFER_QUEUE_SIDEPANEL_SESSION,
   type TransferQueueMessage,
 } from "./shared/transferQueueMessages";
+import {
+  deleteStagedTransferBlob,
+  getStagedTransferBlob,
+} from "./shared/transferQueueStagingDb";
 import { transferQueueEngine } from "./background/services/transferQueueEngine";
 import {
   getTransferQueueGeneralSettings,
@@ -176,20 +180,39 @@ async function handleTransferQueueRuntimeMessage(
   }
 
   if (transferMessage?.type === MESSAGE_TRANSFER_QUEUE_ENQUEUE_UPLOAD) {
-    const blob = base64ToBlob(
-      transferMessage.payload.base64,
-      transferMessage.payload.mimeType,
-    );
+    let blob: Blob;
 
-    const job = await transferQueueEngine.enqueueUpload({
-      source: transferMessage.payload.source,
-      parentId: transferMessage.payload.parentId,
-      name: transferMessage.payload.name,
-      mimeType: transferMessage.payload.mimeType,
-      blob,
-    });
+    if (transferMessage.payload.stagingId) {
+      const stagedBlob = await getStagedTransferBlob(transferMessage.payload.stagingId);
+      if (!stagedBlob) {
+        throw new Error("Не удалось получить staged payload для загрузки");
+      }
 
-    return { ok: true, jobId: job.id };
+      blob = stagedBlob;
+    } else if (transferMessage.payload.base64) {
+      blob = base64ToBlob(
+        transferMessage.payload.base64,
+        transferMessage.payload.mimeType,
+      );
+    } else {
+      throw new Error("Некорректный payload enqueue-upload: отсутствуют данные файла");
+    }
+
+    try {
+      const job = await transferQueueEngine.enqueueUpload({
+        source: transferMessage.payload.source,
+        parentId: transferMessage.payload.parentId,
+        name: transferMessage.payload.name,
+        mimeType: transferMessage.payload.mimeType,
+        blob,
+      });
+
+      return { ok: true, jobId: job.id };
+    } finally {
+      if (transferMessage.payload.stagingId) {
+        await deleteStagedTransferBlob(transferMessage.payload.stagingId);
+      }
+    }
   }
 
   return undefined;

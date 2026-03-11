@@ -12,6 +12,7 @@ import {
   type TransferQueueRemoveMessage,
   type TransferQueueRetryMessage,
 } from "../../shared/transferQueueMessages";
+import { putStagedTransferBlob } from "../../shared/transferQueueStagingDb";
 
 function isTransferQueueListResponse(value: unknown): value is TransferQueueListResponse {
   if (typeof value !== "object" || value === null) {
@@ -22,17 +23,12 @@ function isTransferQueueListResponse(value: unknown): value is TransferQueueList
   return Array.isArray(record.queue) && Array.isArray(record.history);
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  const chunkSize = 0x8000;
-
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    const chunk = bytes.subarray(index, index + chunkSize);
-    binary += String.fromCharCode(...chunk);
+function createStagingId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
   }
 
-  return btoa(binary);
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export async function enqueueFilesForUpload(
@@ -40,7 +36,12 @@ export async function enqueueFilesForUpload(
   parentId: string | null,
 ): Promise<void> {
   for (const file of files) {
-    const bytes = await file.arrayBuffer();
+    const stagingId = createStagingId();
+    await putStagedTransferBlob(
+      stagingId,
+      file,
+      file.type || "application/octet-stream",
+    );
 
     const message: TransferQueueEnqueueUploadMessage = {
       type: MESSAGE_TRANSFER_QUEUE_ENQUEUE_UPLOAD,
@@ -49,7 +50,7 @@ export async function enqueueFilesForUpload(
         parentId,
         name: file.name,
         mimeType: file.type || "application/octet-stream",
-        base64: arrayBufferToBase64(bytes),
+        stagingId,
       },
     };
 

@@ -1,4 +1,5 @@
 import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
+import { Badge } from "@kobalte/core/badge";
 import { Tabs } from "@kobalte/core/tabs";
 import { Button } from "@kobalte/core/button";
 import { Tooltip } from "@kobalte/core/tooltip";
@@ -37,6 +38,36 @@ const tabs: TabItem[] = [
   { id: "transfers", title: "Передачи", icon: "transfers" },
   { id: "trash", title: "Корзина", icon: "trash" },
 ];
+
+const ACTIVITY_STORAGE_KEYS = {
+  ACTIVITIES: "activities",
+  READ_IDS: "readActivityIds",
+};
+
+async function getUnreadActivityCount(): Promise<number> {
+  const storage = await browser.storage.local.get([
+    ACTIVITY_STORAGE_KEYS.ACTIVITIES,
+    ACTIVITY_STORAGE_KEYS.READ_IDS,
+  ]);
+
+  const activities = Array.isArray(storage[ACTIVITY_STORAGE_KEYS.ACTIVITIES])
+    ? (storage[ACTIVITY_STORAGE_KEYS.ACTIVITIES] as Array<{ id?: string }>)
+    : [];
+
+  const readIds = new Set(
+    Array.isArray(storage[ACTIVITY_STORAGE_KEYS.READ_IDS])
+      ? (storage[ACTIVITY_STORAGE_KEYS.READ_IDS] as string[])
+      : [],
+  );
+
+  return activities.reduce((count, item) => {
+    if (!item?.id) {
+      return count;
+    }
+
+    return readIds.has(item.id) ? count : count + 1;
+  }, 0);
+}
 
 function playNotificationSound(
   sound: "chime" | "bell" | "digital",
@@ -131,6 +162,7 @@ function App() {
   const [searchFilters, setSearchFilters] = createSignal<DriveSearchFilters>(
     DEFAULT_DRIVE_SEARCH_FILTERS,
   );
+  const [activityUnreadCount, setActivityUnreadCount] = createSignal(0);
   const [currentFolderId, setCurrentFolderId] = createSignal<string | null>(
     null,
   );
@@ -140,9 +172,20 @@ function App() {
   };
 
   onMount(() => {
+    const refreshUnreadCount = async () => {
+      try {
+        const unread = await getUnreadActivityCount();
+        setActivityUnreadCount(unread);
+      } catch {
+        setActivityUnreadCount(0);
+      }
+    };
+
     const sidepanelSessionPort = browser.runtime.connect({
       name: PORT_TRANSFER_QUEUE_SIDEPANEL_SESSION,
     });
+
+    void refreshUnreadCount();
 
     const listener = (message: unknown) => {
       const soundMessage = message as PlayNotificationSoundMessage;
@@ -151,9 +194,23 @@ function App() {
       }
     };
 
+    const storageListener: Parameters<
+      typeof browser.storage.onChanged.addListener
+    >[0] = (changes, areaName) => {
+      if (areaName !== "local") {
+        return;
+      }
+
+      if (changes[ACTIVITY_STORAGE_KEYS.ACTIVITIES] || changes[ACTIVITY_STORAGE_KEYS.READ_IDS]) {
+        void refreshUnreadCount();
+      }
+    };
+
     browser.runtime.onMessage.addListener(listener);
+    browser.storage.onChanged.addListener(storageListener);
     onCleanup(() => {
       browser.runtime.onMessage.removeListener(listener);
+      browser.storage.onChanged.removeListener(storageListener);
       sidepanelSessionPort.disconnect();
     });
   });
@@ -193,6 +250,14 @@ function App() {
                     />
                   </span>
                   <span class="tab-label">{tab.title}</span>
+                  <Show when={tab.id === "activity" && activityUnreadCount() > 0}>
+                    <Badge
+                      class="tab-activity-badge"
+                      textValue={`${activityUnreadCount()} непрочитанных уведомлений`}
+                    >
+                      {activityUnreadCount() > 99 ? "99+" : activityUnreadCount()}
+                    </Badge>
+                  </Show>
                 </Tabs.Trigger>
                 <Tooltip.Portal>
                   <Tooltip.Content class="tab-tooltip">

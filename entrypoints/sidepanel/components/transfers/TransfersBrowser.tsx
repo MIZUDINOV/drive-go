@@ -1,7 +1,9 @@
 import { For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { Button } from "@kobalte/core/button";
+import { DropdownMenu } from "@kobalte/core/dropdown-menu";
 import { Select } from "@kobalte/core/select";
 import { TextField } from "@kobalte/core/text-field";
+import { ToggleGroup } from "@kobalte/core/toggle-group";
 import {
   cancelTransferQueueItem,
   clearTransferHistory,
@@ -24,6 +26,18 @@ const SORT_LABEL: Record<TransferSort, string> = {
   "name-asc": "Имя A-Z",
   "size-desc": "Размер по убыванию",
 };
+
+const SORT_OPTIONS: TransferSort[] = ["newest", "oldest", "name-asc", "size-desc"];
+
+const FILTER_OPTIONS: Array<{ value: TransferFilter; label: string }> = [
+  { value: "all", label: "Все" },
+  { value: "uploaded", label: "Загруженные" },
+  { value: "downloaded", label: "Скачанные" },
+];
+
+function isTransferFilter(value: string): value is TransferFilter {
+  return value === "all" || value === "uploaded" || value === "downloaded";
+}
 
 type TransferListItem =
   | {
@@ -247,26 +261,24 @@ export function TransfersBrowser() {
     <div class="transfers-browser">
       <div class="transfers-header">
         <h2>Передачи</h2>
-        <div class="transfers-filters">
-          <Button
-            class={`transfers-filter-btn ${filter() === "all" ? "is-active" : ""}`}
-            onClick={() => setFilter("all")}
-          >
-            Все
-          </Button>
-          <Button
-            class={`transfers-filter-btn ${filter() === "uploaded" ? "is-active" : ""}`}
-            onClick={() => setFilter("uploaded")}
-          >
-            Загруженные
-          </Button>
-          <Button
-            class={`transfers-filter-btn ${filter() === "downloaded" ? "is-active" : ""}`}
-            onClick={() => setFilter("downloaded")}
-          >
-            Скачанные
-          </Button>
-        </div>
+        <ToggleGroup
+          class="transfers-filters"
+          value={filter()}
+          onChange={(value) => {
+            if (typeof value === "string" && isTransferFilter(value)) {
+              setFilter(value);
+            }
+          }}
+          aria-label="Фильтр передач"
+        >
+          <For each={FILTER_OPTIONS}>
+            {(option) => (
+              <ToggleGroup.Item class="transfers-filter-btn" value={option.value}>
+                {option.label}
+              </ToggleGroup.Item>
+            )}
+          </For>
+        </ToggleGroup>
       </div>
 
       <TextField class="transfers-search" value={search()} onChange={setSearch}>
@@ -275,8 +287,9 @@ export function TransfersBrowser() {
 
       <div class="transfers-toolbar">
         <Select<TransferSort>
-          options={["newest", "oldest", "name-asc", "size-desc"]}
+          options={SORT_OPTIONS}
           value={sort()}
+          gutter={6}
           optionValue={(option) => option}
           optionTextValue={(option) => SORT_LABEL[option]}
           onChange={(next) => {
@@ -315,17 +328,29 @@ export function TransfersBrowser() {
           </Select.Portal>
         </Select>
 
-        <div class="transfers-clear-actions">
-          <Button class="transfers-clear-btn" onClick={() => void handleClear("all")}>
-            Очистить все
-          </Button>
-          <Button class="transfers-clear-btn" onClick={() => void handleClear("uploaded")}>
-            Очистить загруженные
-          </Button>
-          <Button class="transfers-clear-btn" onClick={() => void handleClear("downloaded")}>
-            Очистить скачанные
-          </Button>
-        </div>
+        <DropdownMenu gutter={6}>
+          <DropdownMenu.Trigger class="transfers-clear-trigger" aria-label="Очистка передач">
+            <span>Очистить</span>
+            <DropdownMenu.Icon class="transfers-clear-trigger-icon">
+              <span class="material-symbols-rounded">expand_more</span>
+            </DropdownMenu.Icon>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content class="transfers-clear-content">
+              <div class="transfers-clear-listbox" role="group" aria-label="Действия очистки">
+                <DropdownMenu.Item class="transfers-clear-item" onSelect={() => void handleClear("all")}>
+                  Очистить все
+                </DropdownMenu.Item>
+                <DropdownMenu.Item class="transfers-clear-item" onSelect={() => void handleClear("uploaded")}>
+                  Очистить загруженные
+                </DropdownMenu.Item>
+                <DropdownMenu.Item class="transfers-clear-item" onSelect={() => void handleClear("downloaded")}>
+                  Очистить скачанные
+                </DropdownMenu.Item>
+              </div>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu>
       </div>
 
       <Show when={error()}>

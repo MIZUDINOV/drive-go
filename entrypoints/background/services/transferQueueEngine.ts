@@ -25,7 +25,7 @@ import type {
 } from "../../shared/transferQueueTypes";
 
 const SMALL_FILE_THRESHOLD_BYTES = 5 * 1024 * 1024;
-const CHUNK_SIZE = 512 * 1024;
+const CHUNK_SIZE = 8 * 1024 * 1024;
 const MAX_CONCURRENT_UPLOADS = 2;
 const ROOT_FOLDER_LABEL = "Корневая папка";
 

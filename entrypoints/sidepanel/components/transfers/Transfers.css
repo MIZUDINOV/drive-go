@@ -19,21 +19,36 @@
 .transfers-filters {
   display: inline-flex;
   gap: 6px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
 }
 
 .transfers-filter-btn {
-  border: 1px solid var(--line);
-  background: var(--surface);
+  border: 1px solid transparent;
+  background: transparent;
   border-radius: 8px;
   height: 30px;
   padding: 0 10px;
   font-size: 12px;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
-.transfers-filter-btn.is-active {
+.transfers-filter-btn:hover {
+  background: #f3f6fb;
+}
+
+.transfers-filter-btn[data-pressed] {
   border-color: var(--accent);
   color: var(--accent);
   background: #e6f0ff;
+}
+
+.transfers-filter-btn:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 1px;
 }
 
 .transfers-search-input {
@@ -65,6 +80,22 @@
   justify-content: space-between;
   gap: 8px;
   font-size: 12px;
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.transfers-sort-trigger:hover {
+  background: #f8fafc;
+}
+
+.transfers-sort-trigger[data-expanded] {
+  border-color: #8fb7ff;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.15);
+}
+
+.transfers-sort-trigger:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 1px;
 }
 
 .transfers-sort-value {
@@ -75,6 +106,11 @@
 
 .transfers-sort-icon .material-symbols-rounded {
   font-size: 18px;
+  transition: transform 180ms ease;
+}
+
+.transfers-sort-trigger[data-expanded] .transfers-sort-icon .material-symbols-rounded {
+  transform: rotate(180deg);
 }
 
 .transfers-sort-content {
@@ -83,6 +119,12 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12);
+  transform-origin: var(--kb-select-content-transform-origin);
+  animation: transfersMenuHide 140ms ease-in forwards;
+}
+
+.transfers-sort-content[data-expanded] {
+  animation: transfersMenuShow 160ms ease-out;
 }
 
 .transfers-sort-listbox {
@@ -99,25 +141,120 @@
   border-radius: 6px;
   padding: 8px;
   font-size: 12px;
+  cursor: pointer;
+}
+
+.transfers-sort-item[data-highlighted] {
+  background: #f1f5f9;
+}
+
+.transfers-sort-item[data-selected] {
+  color: var(--accent);
+  font-weight: 500;
 }
 
 .transfers-sort-item-indicator .material-symbols-rounded {
   font-size: 16px;
 }
 
-.transfers-clear-actions {
-  display: inline-flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.transfers-clear-btn {
+.transfers-clear-trigger {
   border: 1px solid var(--line);
   background: #fff;
   border-radius: 8px;
   height: 30px;
   padding: 0 10px;
   font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.transfers-clear-trigger:hover {
+  background: #f8fafc;
+}
+
+.transfers-clear-trigger[data-expanded] {
+  border-color: #8fb7ff;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.15);
+}
+
+.transfers-clear-trigger:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 1px;
+}
+
+.transfers-clear-trigger-icon .material-symbols-rounded {
+  font-size: 17px;
+  transition: transform 180ms ease;
+}
+
+.transfers-clear-trigger[data-expanded] .transfers-clear-trigger-icon .material-symbols-rounded {
+  transform: rotate(180deg);
+}
+
+.transfers-clear-content {
+  z-index: 1200;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12);
+  padding: 0;
+  overflow: hidden;
+  min-width: 200px;
+  transform-origin: var(--kb-menu-content-transform-origin);
+  animation: transfersMenuHide 140ms ease-in forwards;
+}
+
+.transfers-clear-content[data-expanded] {
+  animation: transfersMenuShow 160ms ease-out;
+}
+
+.transfers-clear-listbox {
+  margin: 0;
+  padding: 6px;
+  display: grid;
+  gap: 2px;
+}
+
+.transfers-clear-item {
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.transfers-clear-item[data-highlighted] {
+  background: #f1f5f9;
+}
+
+.transfers-clear-item[data-disabled] {
+  opacity: 0.5;
+}
+
+@keyframes transfersMenuShow {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes transfersMenuHide {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
 }
 
 .transfers-empty,
