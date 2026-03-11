@@ -22,6 +22,11 @@ import {
   type DriveSearchFilters,
 } from "./services/driveApi";
 import {
+  isAuthFlowCancelledError,
+  startInteractiveSignIn,
+  tryGetAuthTokenSilently,
+} from "./services/authService";
+import {
   ActivityNotificationSound,
   type ActivitySettings,
 } from "./services/activityTypes";
@@ -45,10 +50,15 @@ const tabs: TabItem[] = [
   { id: "trash", title: "Корзина", icon: "trash" },
 ];
 
+const AUTH_SILENT_POLL_INTERVAL_MS = 1500;
+
 function playNotificationSound(
   sound: ActivitySettings["notificationSound"],
 ): void {
-  const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  const AudioContextCtor =
+    window.AudioContext ||
+    (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+      .webkitAudioContext;
   if (!AudioContextCtor) {
     return;
   }
@@ -65,7 +75,10 @@ function playNotificationSound(
 
     gain.gain.setValueAtTime(0.0001, now + startOffset);
     gain.gain.exponentialRampToValueAtTime(0.12, now + startOffset + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + startOffset + duration);
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      now + startOffset + duration,
+    );
 
     oscillator.connect(gain);
     gain.connect(context.destination);
@@ -131,6 +144,59 @@ function formatSize(size?: string) {
   return `${fixed} ${units[unitIndex]}`;
 }
 
+type SidepanelAuthState =
+  | "checking"
+  | "unauthenticated"
+  | "authenticating"
+  | "authenticated"
+  | "cancelled"
+  | "error";
+
+function getAuthErrorMessage(state: SidepanelAuthState): string {
+  if (state === "cancelled") {
+    return "Процесс авторизации был прерван. Нажмите Повторить вход, чтобы продолжить.";
+  }
+
+  return "Не удалось выполнить вход. Проверьте доступ к интернету и повторите попытку.";
+}
+
+function getDetailedAuthErrorMessage(error: unknown): string {
+  const rawMessage =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "unknown auth error";
+  const message = rawMessage.toLowerCase();
+
+  if (
+    message.includes("network") ||
+    message.includes("internet") ||
+    message.includes("failed to fetch")
+  ) {
+    return "Не удалось выполнить вход из-за проблем с сетью. Проверьте интернет и повторите попытку.";
+  }
+
+  if (
+    message.includes("invalid_client") ||
+    message.includes("unauthorized_client") ||
+    message.includes("not allowed for this client") ||
+    message.includes("oauth2 request failed")
+  ) {
+    return "Не удалось выполнить вход: OAuth-клиент отклонил запрос. Если это запуск на другом устройстве, проверьте, что extension ID совпадает с ID, привязанным к OAuth client в Google Cloud.";
+  }
+
+  if (
+    message.includes("not granted") ||
+    message.includes("consent") ||
+    message.includes("permission")
+  ) {
+    return "Не удалось выполнить вход: доступ не был выдан. Разрешите доступ к аккаунту Google и повторите попытку.";
+  }
+
+  return "Не удалось выполнить вход. Повторите попытку. Если ошибка повторяется, проверьте OAuth-настройки расширения.";
+}
+
 function App() {
   const [isMenuCollapsed, setIsMenuCollapsed] = createSignal(true);
   const [activeTabId, setActiveTabId] = createSignal(tabs[0].id);
@@ -142,202 +208,366 @@ function App() {
   const [currentFolderId, setCurrentFolderId] = createSignal<string | null>(
     null,
   );
+  const [authState, setAuthState] =
+    createSignal<SidepanelAuthState>("checking");
+  const [authErrorMessage, setAuthErrorMessage] = createSignal<string | null>(
+    null,
+  );
 
+  let sidepanelSessionPort: ReturnType<typeof browser.runtime.connect> | null =
+    null;
+  let soundSubscription: { unsubscribe: () => void } | null = null;
+  let unreadSubscription: { unsubscribe: () => void } | null = null;
+  let authAttemptId = 0;
   const handleFilesDrop = (files: File[]) => {
     void enqueueFilesForUpload(files, currentFolderId());
   };
 
-  onMount(() => {
+  const disposeSidepanelSession = (): void => {
+    soundSubscription?.unsubscribe();
+    unreadSubscription?.unsubscribe();
+    soundSubscription = null;
+    unreadSubscription = null;
+
+    if (sidepanelSessionPort) {
+      sidepanelSessionPort.disconnect();
+      sidepanelSessionPort = null;
+    }
+
+    disposeActivityStreams();
+  };
+
+  const initializeSidepanelSession = (): void => {
+    if (sidepanelSessionPort) {
+      return;
+    }
+
     startActivityStreams();
 
-    const sidepanelSessionPort = browser.runtime.connect({
+    sidepanelSessionPort = browser.runtime.connect({
       name: PORT_TRANSFER_QUEUE_SIDEPANEL_SESSION,
     });
 
-    const soundSubscription = subscribeActivityNotificationSound((sound) => {
+    soundSubscription = subscribeActivityNotificationSound((sound) => {
       playNotificationSound(sound);
     });
 
-    const unreadSubscription = activityUnreadCount$.subscribe((count) => {
+    unreadSubscription = activityUnreadCount$.subscribe((count) => {
       setActivityUnreadCount(count);
     });
+  };
+
+  const handleSignIn = async (): Promise<void> => {
+    if (authState() === "authenticating") {
+      return;
+    }
+
+    setAuthErrorMessage(null);
+    setAuthState("authenticating");
+
+    const currentAttemptId = ++authAttemptId;
+    const isCurrentAttempt = (): boolean => {
+      return (
+        authState() === "authenticating" && authAttemptId === currentAttemptId
+      );
+    };
+
+    const completeAuthSuccess = (): void => {
+      if (!isCurrentAttempt()) {
+        return;
+      }
+
+      initializeSidepanelSession();
+      setAuthState("authenticated");
+      setAuthErrorMessage(null);
+      authAttemptId += 1;
+    };
+
+    const handleWindowFocus = (): void => {
+      if (!isCurrentAttempt()) {
+        return;
+      }
+
+      void tryGetAuthTokenSilently().then((silentToken) => {
+        if (silentToken) {
+          completeAuthSuccess();
+        }
+      });
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+
+    try {
+      await startInteractiveSignIn();
+      completeAuthSuccess();
+    } catch (error) {
+      if (!isCurrentAttempt()) {
+        return;
+      }
+
+      console.error("[Auth] Interactive sign-in failed", error);
+      const nextState: SidepanelAuthState = isAuthFlowCancelledError(error)
+        ? "cancelled"
+        : "error";
+      setAuthState(nextState);
+      setAuthErrorMessage(
+        nextState === "error"
+          ? getDetailedAuthErrorMessage(error)
+          : getAuthErrorMessage(nextState),
+      );
+      authAttemptId += 1;
+    } finally {
+      window.removeEventListener("focus", handleWindowFocus);
+    }
+  };
+
+  const handleCancelSignIn = (): void => {
+    if (authState() !== "authenticating") {
+      return;
+    }
+
+    authAttemptId += 1;
+    setAuthState("unauthenticated");
+    setAuthErrorMessage(null);
+  };
+
+  onMount(() => {
+    void (async () => {
+      const silentToken = await tryGetAuthTokenSilently();
+      if (silentToken) {
+        initializeSidepanelSession();
+        setAuthState("authenticated");
+        return;
+      }
+
+      setAuthState("unauthenticated");
+    })();
 
     onCleanup(() => {
-      soundSubscription.unsubscribe();
-      unreadSubscription.unsubscribe();
-      sidepanelSessionPort.disconnect();
-      disposeActivityStreams();
+      disposeSidepanelSession();
     });
   });
 
+  const isAuthBusy = () =>
+    authState() === "checking" || authState() === "authenticating";
   return (
-    <Tabs
-      class={`panel-layout ${isMenuCollapsed() ? "collapsed" : ""}`}
-      orientation="vertical"
-      value={activeTabId()}
-      onChange={setActiveTabId}
-    >
-      <aside class="sidebar">
-        <div class="sidebar-top">
-          <Button
-            class="menu-btn"
-            type="button"
-            aria-label="Переключить меню"
-            onClick={() => setIsMenuCollapsed((prev) => !prev)}
-          >
-            <span class="material-symbols-rounded">menu</span>
-          </Button>
-        </div>
+    <Show
+      when={authState() === "authenticated"}
+      fallback={
+        <section class="auth-gate">
+          <div class="auth-gate-card">
+            <h1>Войдите в Google Drive Go</h1>
+            <p>
+              Для доступа к файлам и активности нужно авторизоваться через
+              Google.
+            </p>
 
-        <Tabs.List class="tab-list" aria-label="Разделы Google Drive">
-          <For each={tabs}>
-            {(tab) => (
-              <Tooltip
-                placement="right"
-                gutter={8}
-                disabled={!isMenuCollapsed()}
-              >
-                <Tabs.Trigger class="tab-item" value={tab.id}>
-                  <span class="tab-icon">
-                    <TabIcon
-                      name={tab.icon}
-                      isSelected={activeTabId() === tab.id}
-                    />
-                  </span>
-                  <span class="tab-label">{tab.title}</span>
-                  <Show when={tab.id === "activity" && activityUnreadCount() > 0}>
-                    <Badge
-                      class="tab-activity-badge"
-                      textValue={`${activityUnreadCount()} непрочитанных уведомлений`}
-                    >
-                      {activityUnreadCount() > 99 ? "99+" : activityUnreadCount()}
-                    </Badge>
-                  </Show>
-                </Tabs.Trigger>
-                <Tooltip.Portal>
-                  <Tooltip.Content class="tab-tooltip">
-                    <Tooltip.Arrow />
-                    <span>{tab.title}</span>
-                  </Tooltip.Content>
-                </Tooltip.Portal>
-              </Tooltip>
-            )}
-          </For>
-        </Tabs.List>
-
-        <div class="sidebar-bottom">
-          <Tooltip placement="right" gutter={8} disabled={!isMenuCollapsed()}>
             <Button
-              class="settings-btn"
+              class="auth-signin-btn"
               onClick={() => {
-                const optionsUrl = browser.runtime.getURL("/options.html");
-                window.open(optionsUrl, "google-drive-go-options");
+                void handleSignIn();
               }}
-              title="Настройки"
+              disabled={isAuthBusy()}
             >
-              <span class="material-symbols-rounded">settings</span>
-              <span class="tab-label">Настройки</span>
+              <Show when={isAuthBusy()}>
+                <span class="auth-loader" aria-hidden="true" />
+              </Show>
+              <span>
+                {authState() === "checking"
+                  ? "Проверяем сессию..."
+                  : authState() === "authenticating"
+                    ? "Идет вход..."
+                    : authState() === "cancelled" || authState() === "error"
+                      ? "Повторить вход"
+                      : "Войти через Google"}
+              </span>
             </Button>
-            <Tooltip.Portal>
-              <Tooltip.Content class="tab-tooltip">
-                <Tooltip.Arrow />
-                <span>Настройки</span>
-              </Tooltip.Content>
-            </Tooltip.Portal>
-          </Tooltip>
-        </div>
-      </aside>
 
-      <section class="content-area">
-        <header class="topbar">
-          <h1 class="brand">Google Drive Go</h1>
+            <Show when={authState() === "authenticating"}>
+              <Button class="auth-cancel-btn" onClick={handleCancelSignIn}>
+                Отменить вход
+              </Button>
+            </Show>
 
-          <div class="search-block">
-            <DriveSearchBar
-              value={searchQuery()}
-              filters={searchFilters()}
-              active={activeTabId() === "my-drive"}
-              onChange={setSearchQuery}
-              onFiltersChange={setSearchFilters}
-            />
-
-            <UploadPopover />
+            <Show when={authErrorMessage()}>
+              {(message) => <p class="auth-error">{message()}</p>}
+            </Show>
           </div>
-        </header>
+        </section>
+      }
+    >
+      <Tabs
+        class={`panel-layout ${isMenuCollapsed() ? "collapsed" : ""}`}
+        orientation="vertical"
+        value={activeTabId()}
+        onChange={setActiveTabId}
+      >
+        <aside class="sidebar">
+          <div class="sidebar-top">
+            <Button
+              class="menu-btn"
+              type="button"
+              aria-label="Переключить меню"
+              onClick={() => setIsMenuCollapsed((prev) => !prev)}
+            >
+              <span class="material-symbols-rounded">menu</span>
+            </Button>
+          </div>
 
-        <div class="content-panels">
-          <For each={tabs}>
-            {(tab) => (
-              <Tabs.Content class="content-card" value={tab.id}>
-                <Show when={tab.id === "my-drive"}>
-                  <DriveBrowser
-                    formatDate={formatDate}
-                    formatSize={formatSize}
-                    onFolderChange={setCurrentFolderId}
-                  />
-                </Show>
-
-                <Show when={tab.id === "shared"}>
-                  <DriveBrowser
-                    scope="shared"
-                    formatDate={formatDate}
-                    formatSize={formatSize}
-                  />
-                </Show>
-
-                <Show when={tab.id === "recent"}>
-                  <DriveBrowser
-                    scope="recent"
-                    formatDate={formatDate}
-                    formatSize={formatSize}
-                  />
-                </Show>
-
-                <Show when={tab.id === "starred"}>
-                  <DriveBrowser
-                    scope="starred"
-                    formatDate={formatDate}
-                    formatSize={formatSize}
-                  />
-                </Show>
-
-                <Show when={tab.id === "trash"}>
-                  <DriveBrowser
-                    scope="trash"
-                    formatDate={formatDate}
-                    formatSize={formatSize}
-                  />
-                </Show>
-
-                <Show when={tab.id === "transfers"}>
-                  <TransfersBrowser />
-                </Show>
-
-                <Show when={tab.id === "activity"}>
-                  <ActivityBrowser />
-                </Show>
-
-                <Show
-                  when={
-                    tab.id !== "my-drive" &&
-                    tab.id !== "recent" &&
-                    tab.id !== "starred" &&
-                    tab.id !== "transfers" &&
-                    tab.id !== "trash" &&
-                    tab.id !== "activity" &&
-                    tab.id !== "shared"
-                  }
+          <Tabs.List class="tab-list" aria-label="Разделы Google Drive">
+            <For each={tabs}>
+              {(tab) => (
+                <Tooltip
+                  placement="right"
+                  gutter={8}
+                  disabled={!isMenuCollapsed()}
                 >
-                  <p>Содержимое раздела появится на следующем шаге.</p>
-                </Show>
-              </Tabs.Content>
-            )}
-          </For>
-        </div>
-      </section>
+                  <Tabs.Trigger class="tab-item" value={tab.id}>
+                    <span class="tab-icon">
+                      <TabIcon
+                        name={tab.icon}
+                        isSelected={activeTabId() === tab.id}
+                      />
+                    </span>
+                    <span class="tab-label">{tab.title}</span>
+                    <Show
+                      when={tab.id === "activity" && activityUnreadCount() > 0}
+                    >
+                      <Badge
+                        class="tab-activity-badge"
+                        textValue={`${activityUnreadCount()} непрочитанных уведомлений`}
+                      >
+                        {activityUnreadCount() > 99
+                          ? "99+"
+                          : activityUnreadCount()}
+                      </Badge>
+                    </Show>
+                  </Tabs.Trigger>
+                  <Tooltip.Portal>
+                    <Tooltip.Content class="tab-tooltip">
+                      <Tooltip.Arrow />
+                      <span>{tab.title}</span>
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
+                </Tooltip>
+              )}
+            </For>
+          </Tabs.List>
 
-      <DragDropOverlay onDrop={handleFilesDrop} />
-    </Tabs>
+          <div class="sidebar-bottom">
+            <Tooltip placement="right" gutter={8} disabled={!isMenuCollapsed()}>
+              <Button
+                class="settings-btn"
+                onClick={() => {
+                  const optionsUrl = browser.runtime.getURL("/options.html");
+                  window.open(optionsUrl, "google-drive-go-options");
+                }}
+                title="Настройки"
+              >
+                <span class="material-symbols-rounded">settings</span>
+                <span class="tab-label">Настройки</span>
+              </Button>
+              <Tooltip.Portal>
+                <Tooltip.Content class="tab-tooltip">
+                  <Tooltip.Arrow />
+                  <span>Настройки</span>
+                </Tooltip.Content>
+              </Tooltip.Portal>
+            </Tooltip>
+          </div>
+        </aside>
+
+        <section class="content-area">
+          <header class="topbar">
+            <h1 class="brand">Google Drive Go</h1>
+
+            <div class="search-block">
+              <DriveSearchBar
+                value={searchQuery()}
+                filters={searchFilters()}
+                active={activeTabId() === "my-drive"}
+                onChange={setSearchQuery}
+                onFiltersChange={setSearchFilters}
+              />
+
+              <UploadPopover />
+            </div>
+          </header>
+
+          <div class="content-panels">
+            <For each={tabs}>
+              {(tab) => (
+                <Tabs.Content class="content-card" value={tab.id}>
+                  <Show when={tab.id === "my-drive"}>
+                    <DriveBrowser
+                      formatDate={formatDate}
+                      formatSize={formatSize}
+                      onFolderChange={setCurrentFolderId}
+                    />
+                  </Show>
+
+                  <Show when={tab.id === "shared"}>
+                    <DriveBrowser
+                      scope="shared"
+                      formatDate={formatDate}
+                      formatSize={formatSize}
+                    />
+                  </Show>
+
+                  <Show when={tab.id === "recent"}>
+                    <DriveBrowser
+                      scope="recent"
+                      formatDate={formatDate}
+                      formatSize={formatSize}
+                    />
+                  </Show>
+
+                  <Show when={tab.id === "starred"}>
+                    <DriveBrowser
+                      scope="starred"
+                      formatDate={formatDate}
+                      formatSize={formatSize}
+                    />
+                  </Show>
+
+                  <Show when={tab.id === "trash"}>
+                    <DriveBrowser
+                      scope="trash"
+                      formatDate={formatDate}
+                      formatSize={formatSize}
+                    />
+                  </Show>
+
+                  <Show when={tab.id === "transfers"}>
+                    <TransfersBrowser />
+                  </Show>
+
+                  <Show when={tab.id === "activity"}>
+                    <ActivityBrowser />
+                  </Show>
+
+                  <Show
+                    when={
+                      tab.id !== "my-drive" &&
+                      tab.id !== "recent" &&
+                      tab.id !== "starred" &&
+                      tab.id !== "transfers" &&
+                      tab.id !== "trash" &&
+                      tab.id !== "activity" &&
+                      tab.id !== "shared"
+                    }
+                  >
+                    <p>Содержимое раздела появится на следующем шаге.</p>
+                  </Show>
+                </Tabs.Content>
+              )}
+            </For>
+          </div>
+        </section>
+
+        <DragDropOverlay onDrop={handleFilesDrop} />
+      </Tabs>
+    </Show>
   );
 }
 

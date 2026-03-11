@@ -1,4 +1,5 @@
 import type { DriveActivityResponse } from "./activityTypes";
+import { getAccessTokenSilently } from "./authService";
 
 const ACTIVITY_API_BASE = "https://driveactivity.googleapis.com/v2";
 
@@ -174,18 +175,6 @@ export async function fetchFileComments(
  * Получить токен доступа из chrome identity
  */
 export async function getAccessToken(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    browser.identity.getAuthToken({ interactive: false }, (result) => {
-      if (browser.runtime.lastError || !result) {
-        reject(new Error(browser.runtime.lastError?.message || "No token"));
-      } else {
-        const token = typeof result === "string" ? result : result.token;
-        if (!token) {
-          reject(new Error("Token is undefined"));
-        } else {
-          resolve(token);
-        }
-      }
-    });
-  });
+  const result = await getAccessTokenSilently();
+  return result.token;
 }

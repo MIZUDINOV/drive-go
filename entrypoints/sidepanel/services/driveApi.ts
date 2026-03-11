@@ -3,6 +3,7 @@ import type {
   DriveItem,
   DriveListMyDriveResponse,
 } from "../components/drive/driveTypes";
+import { getAccessTokenSilently, type AuthToken } from "./authService";
 
 type DriveListResult = {
   files?: DriveApiFile[];
@@ -140,12 +141,8 @@ export async function openDriveItemInNewTab(
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-export async function getAccessToken(): Promise<Browser.identity.GetAuthTokenResult> {
-  try {
-    return await browser.identity.getAuthToken({ interactive: false });
-  } catch {
-    return browser.identity.getAuthToken({ interactive: true });
-  }
+export async function getAccessToken(): Promise<AuthToken> {
+  return getAccessTokenSilently();
 }
 
 export async function listMyDriveFolder(

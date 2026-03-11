@@ -1,4 +1,5 @@
 import { BehaviorSubject, combineLatest } from "rxjs";
+import type { Subscription } from "rxjs";
 import { distinctUntilChanged, map } from "rxjs/operators";
 
 type TransferQueuePolicyControllerOptions = {
@@ -6,25 +7,34 @@ type TransferQueuePolicyControllerOptions = {
 };
 
 export class TransferQueuePolicyController {
-  private readonly backgroundTransfersEnabled$ = new BehaviorSubject<boolean>(true);
+  private readonly backgroundTransfersEnabled$ = new BehaviorSubject<boolean>(
+    true,
+  );
 
   private readonly sidepanelSessionCount$ = new BehaviorSubject<number>(0);
 
-  private readonly subscriptions = [
-    combineLatest([
-      this.backgroundTransfersEnabled$,
-      this.sidepanelSessionCount$,
-    ])
-      .pipe(
-        map(([backgroundEnabled, sessionCount]) => backgroundEnabled || sessionCount > 0),
-        distinctUntilChanged(),
-      )
-      .subscribe((enabled) => {
-        this.options.setProcessingEnabled(enabled);
-      }),
-  ];
+  private readonly subscriptions: Subscription[] = [];
 
-  public constructor(private readonly options: TransferQueuePolicyControllerOptions) {}
+  public constructor(
+    private readonly options: TransferQueuePolicyControllerOptions,
+  ) {
+    this.subscriptions.push(
+      combineLatest([
+        this.backgroundTransfersEnabled$,
+        this.sidepanelSessionCount$,
+      ])
+        .pipe(
+          map(
+            ([backgroundEnabled, sessionCount]) =>
+              backgroundEnabled || sessionCount > 0,
+          ),
+          distinctUntilChanged(),
+        )
+        .subscribe((enabled) => {
+          this.options.setProcessingEnabled(enabled);
+        }),
+    );
+  }
 
   public setBackgroundTransfersEnabled(enabled: boolean): void {
     this.backgroundTransfersEnabled$.next(enabled);
