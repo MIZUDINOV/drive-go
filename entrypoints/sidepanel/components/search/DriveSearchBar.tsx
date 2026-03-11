@@ -5,7 +5,9 @@ import {
   createMemo,
   createSignal,
   onCleanup,
+  onMount,
 } from "solid-js";
+import type { Subscription } from "rxjs";
 import { Search } from "@kobalte/core/search";
 import { Select } from "@kobalte/core/select";
 import { Button } from "@kobalte/core/button";
@@ -14,8 +16,8 @@ import type { DriveApiFile } from "../drive/driveTypes";
 import {
   type DriveSearchFilters,
   openDriveItemInNewTab,
-  searchDriveItems,
 } from "../../services/driveApi";
+import { createDriveSearchStream } from "../../services/driveSearchStream";
 
 type DriveSearchBarProps = {
   value: string;
@@ -75,6 +77,9 @@ const MODIFIED_LABEL: Record<DriveSearchFilters["modified"], string> = {
   "365d": "1 год",
 };
 
+const FILTER_MENU_CONTENT_CLASS = "drive-search-filter-menu-content";
+const FILTER_MENU_CONTENT_SELECTOR = `.${FILTER_MENU_CONTENT_CLASS}`;
+
 function formatDate(dateIso?: string): string {
   if (!dateIso) {
     return "";
@@ -124,9 +129,15 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
           const iconMimeType = props.iconMimeTypes?.[option];
 
           return (
-            <Select.Item item={itemProps.item} class="drive-search-filter-type-item">
+            <Select.Item
+              item={itemProps.item}
+              class="drive-search-filter-type-item"
+            >
               <Show when={iconMimeType !== undefined}>
-                <span class="drive-search-filter-type-item-icon" aria-hidden="true">
+                <span
+                  class="drive-search-filter-type-item-icon"
+                  aria-hidden="true"
+                >
                   <FileTypeIcon
                     mimeType={iconMimeType ?? "application/octet-stream"}
                   />
@@ -156,7 +167,11 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
           aria-label={props.ariaLabel}
         >
           <Select.Value class="drive-search-filter-type-value">
-            {(state) => (state.selectedOption() ? props.labels[state.selectedOption() as T] : "")}
+            {(state) =>
+              state.selectedOption()
+                ? props.labels[state.selectedOption() as T]
+                : ""
+            }
           </Select.Value>
           <Select.Icon>
             <span class="material-symbols-rounded">expand_more</span>
@@ -165,7 +180,7 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
 
         <Select.Portal>
           <Select.Content
-            class="drive-search-filter-type-content drive-search-filter-menu-content"
+            class={`drive-search-filter-type-content ${FILTER_MENU_CONTENT_CLASS}`}
             onCloseAutoFocus={props.onCloseAutoFocus}
           >
             <Select.Listbox class="drive-search-filter-type-listbox" />
@@ -177,6 +192,8 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
 }
 
 export function DriveSearchBar(props: DriveSearchBarProps) {
+  const searchStream = createDriveSearchStream();
+  const subscriptions: Subscription[] = [];
   const [results, setResults] = createSignal<DriveApiFile[]>([]);
   const [loading, setLoading] = createSignal(false);
   const [isOpen, setIsOpen] = createSignal(false);
@@ -203,7 +220,7 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
     target instanceof Element
       ? Boolean(
           filtersRef?.contains(target) ||
-            target.closest(".drive-search-filter-menu-content"),
+          target.closest(FILTER_MENU_CONTENT_SELECTOR),
         )
       : false;
 
@@ -263,38 +280,36 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
   const getSingleOption = (option: DriveApiFile | DriveApiFile[]) =>
     Array.isArray(option) ? option[0] : option;
 
-  createEffect(() => {
-    const query = queryText();
-    const filters = props.filters;
+  onMount(() => {
+    const searchSubscription = searchStream.subscribe((state) => {
+      setResults(state.results);
+      setLoading(state.loading);
+      setIsOpen((queryText().length > 0 || isAnyMenuOpen()) && props.active);
+    });
 
-    if (!props.active) {
-      setResults([]);
-      setLoading(false);
-      setIsOpen(false);
-      return;
-    }
-
-    if (query.length === 0) {
-      setResults([]);
-      setLoading(false);
-      if (!isAnyMenuOpen()) {
-        setIsOpen(false);
-      }
-      return;
-    }
-
-    setLoading(true);
-    const timeoutId = window.setTimeout(async () => {
-      const found = await searchDriveItems(query, filters, 8);
-      setResults(found);
-      setLoading(false);
-      setIsOpen(query.length > 0 || isAnyMenuOpen());
-    }, 260);
+    subscriptions.push(searchSubscription);
 
     onCleanup(() => {
-      window.clearTimeout(timeoutId);
+      for (const subscription of subscriptions) {
+        subscription.unsubscribe();
+      }
+
+      subscriptions.length = 0;
+      searchStream.dispose();
       setLoading(false);
     });
+  });
+
+  createEffect(() => {
+    searchStream.setActive(props.active);
+  });
+
+  createEffect(() => {
+    searchStream.setQuery(queryText());
+  });
+
+  createEffect(() => {
+    searchStream.setFilters(props.filters);
   });
 
   return (
@@ -335,10 +350,16 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
         );
       }}
     >
-      <Search.Control class="drive-search-input-wrap" aria-label="Поиск в Google Drive">
+      <Search.Control
+        class="drive-search-input-wrap"
+        aria-label="Поиск в Google Drive"
+      >
         <Search.Indicator
           loadingComponent={
-            <Search.Icon class="drive-search-icon drive-search-icon-loading" aria-hidden="true">
+            <Search.Icon
+              class="drive-search-icon drive-search-icon-loading"
+              aria-hidden="true"
+            >
               <svg viewBox="0 0 24 24">
                 <circle
                   cx="12"
@@ -409,7 +430,10 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
         </Show>
       </Search.Control>
 
-      <Search.Content class="drive-search-panel" onCloseAutoFocus={returnFocusToInput}>
+      <Search.Content
+        class="drive-search-panel"
+        onCloseAutoFocus={returnFocusToInput}
+      >
         <div
           class="drive-search-filters"
           ref={filtersRef}
@@ -438,7 +462,9 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
             options={TYPE_OPTIONS}
             labels={TYPE_LABEL}
             iconMimeTypes={TYPE_MIME}
-            onOpenChange={(open) => handleSelectOpenChange(setIsTypeMenuOpen, open)}
+            onOpenChange={(open) =>
+              handleSelectOpenChange(setIsTypeMenuOpen, open)
+            }
             onChange={(type) => updateFilters({ ...props.filters, type })}
             onCloseAutoFocus={returnFocusToInput}
           />
@@ -449,7 +475,9 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
             value={props.filters.owner}
             options={OWNER_OPTIONS}
             labels={OWNER_LABEL}
-            onOpenChange={(open) => handleSelectOpenChange(setIsOwnerMenuOpen, open)}
+            onOpenChange={(open) =>
+              handleSelectOpenChange(setIsOwnerMenuOpen, open)
+            }
             onChange={(owner) => updateFilters({ ...props.filters, owner })}
             onCloseAutoFocus={returnFocusToInput}
           />
@@ -460,32 +488,36 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
             value={props.filters.modified}
             options={MODIFIED_OPTIONS}
             labels={MODIFIED_LABEL}
-            onOpenChange={(open) => handleSelectOpenChange(setIsModifiedMenuOpen, open)}
-            onChange={(modified) => updateFilters({ ...props.filters, modified })}
+            onOpenChange={(open) =>
+              handleSelectOpenChange(setIsModifiedMenuOpen, open)
+            }
+            onChange={(modified) =>
+              updateFilters({ ...props.filters, modified })
+            }
             onCloseAutoFocus={returnFocusToInput}
           />
         </div>
 
-          <div class="drive-search-results">
+        <div class="drive-search-results">
+          <Show
+            when={hasQuery()}
+            fallback={
+              <p class="drive-search-empty">
+                Введите запрос или выберите фильтры.
+              </p>
+            }
+          >
             <Show
-              when={hasQuery()}
-              fallback={
-                <p class="drive-search-empty">
-                  Введите запрос или выберите фильтры.
-                </p>
-              }
+              when={!loading()}
+              fallback={<p class="drive-search-empty">Поиск...</p>}
             >
-              <Show
-                when={!loading()}
-                fallback={<p class="drive-search-empty">Поиск...</p>}
-              >
-                <Search.Listbox class="drive-search-listbox" />
-                <Search.NoResult class="drive-search-empty">
-                  Ничего не найдено.
-                </Search.NoResult>
-              </Show>
+              <Search.Listbox class="drive-search-listbox" />
+              <Search.NoResult class="drive-search-empty">
+                Ничего не найдено.
+              </Search.NoResult>
             </Show>
-          </div>
+          </Show>
+        </div>
       </Search.Content>
     </Search>
   );
