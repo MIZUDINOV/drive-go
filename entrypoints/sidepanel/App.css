@@ -787,7 +787,8 @@
 
 .content-panels {
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 10px;
 }
 
@@ -813,6 +814,41 @@
   border: 1px solid var(--line);
   background: var(--surface);
   font-size: 12px;
+}
+
+@media (max-width: 780px) {
+  .drive-browser-header {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 10px;
+  }
+
+  .drive-browser-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    align-items: end;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .drive-browser-filter {
+    min-width: 0;
+  }
+
+  .refresh-btn {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 560px) {
+  .drive-browser-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .refresh-btn {
+    width: 100%;
+  }
 }
 
 .drive-meta {
@@ -1210,25 +1246,48 @@
 
 .drive-items-list,
 .drive-grid-layout {
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   max-height: calc(100vh - 230px);
+  min-width: 0;
 }
 
 .drive-grid-layout {
   display: grid;
   gap: 32px;
+  --drive-grid-col-min: 230px;
 }
 
 .drive-grid-folders-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, var(--drive-grid-col-min)), 1fr)
+  );
   gap: 10px;
+  min-width: 0;
 }
 
 .drive-items-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, var(--drive-grid-col-min)), 1fr)
+  );
   gap: 10px;
+  min-width: 0;
+}
+
+.drive-grid-folders-row > *,
+.drive-items-grid > * {
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  .drive-grid-folders-row,
+  .drive-items-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .drive-item {
