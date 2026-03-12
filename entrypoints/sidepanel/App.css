@@ -3,7 +3,7 @@
   grid-template-columns: 50px 1fr;
   gap: 0;
   width: 100%;
-  min-height: 100vh;
+  height: 100%;
   border: 1px solid var(--line);
   border-radius: 14px;
   overflow: hidden;
@@ -12,10 +12,11 @@
 }
 
 .auth-gate {
-  min-height: 100vh;
+  height: 100%;
   display: grid;
   place-items: center;
   padding: 24px;
+  overflow-y: auto;
 }
 
 .auth-gate-card {
@@ -380,9 +381,11 @@
 }
 
 .content-area {
-  display: grid;
-  grid-template-rows: auto 1fr;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   min-width: 0;
+  overflow: hidden;
   position: relative;
   z-index: 1;
 }
@@ -394,6 +397,7 @@
   gap: 10px;
   padding: 10px;
   border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
 }
 
 .brand {
@@ -855,14 +859,17 @@
 }
 
 .content-panels {
+  flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   padding: 10px;
 }
 
 .content-card {
-  min-height: calc(100vh - 86px);
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .content-card h2 {
@@ -926,9 +933,12 @@
 }
 
 .drive-browser {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+  height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .drive-browser-header {
@@ -938,6 +948,7 @@
   gap: 12px;
   padding: 8px 0;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .drive-browser-filters {
@@ -1347,9 +1358,10 @@
 
 .drive-items-list,
 .drive-grid-layout {
+  flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  max-height: calc(100vh - 230px);
+  min-height: 0;
   min-width: 0;
 }
 

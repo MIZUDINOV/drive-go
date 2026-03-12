@@ -29,15 +29,37 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #c4cdd6 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #c4cdd6;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #a0adb8;
 }
 
 body {
   margin: 0;
-  min-height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 #root {
-  min-height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 button {
