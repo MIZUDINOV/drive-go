@@ -259,14 +259,14 @@ export function ShareDialog(props: ShareDialogProps) {
               </Show>
             </div>
 
-            <button
+            <Button
               class="share-drive-link"
               onClick={handleOpenInDrive}
               type="button"
             >
               <span class="material-symbols-rounded">open_in_new</span>
               Открыть настройки доступа в Google Drive
-            </button>
+            </Button>
           </div>
 
           <div class="dialog-footer">

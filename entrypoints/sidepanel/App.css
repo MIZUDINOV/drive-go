@@ -1018,6 +1018,26 @@
   flex: 0 0 auto;
 }
 
+.drive-access-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #d8dee8;
+  background: #f6f8fb;
+  color: #667185;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.drive-access-indicator .material-symbols-rounded {
+  font-size: 14px;
+  line-height: 1;
+}
+
 .trash-info-banner {
   display: flex;
   align-items: center;
@@ -1646,6 +1666,22 @@
 .dialog-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.permission-dialog-content {
+  max-width: 460px;
+}
+
+.permission-dialog-body {
+  display: grid;
+  gap: 10px;
+}
+
+.permission-dialog-description {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-muted);
 }
 
 .danger-delete-dialog-content {

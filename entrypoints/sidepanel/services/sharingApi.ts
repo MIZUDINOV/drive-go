@@ -1,4 +1,4 @@
-import { getAccessToken } from "./driveApi";
+import { getAccessToken, getWriteAccessToken } from "./driveApi";
 
 export type PermissionRole = "reader" | "commenter" | "writer";
 
@@ -63,7 +63,7 @@ export async function addPermission(
   role: PermissionRole,
 ): Promise<AddPermissionResult> {
   try {
-    const token = await getAccessToken();
+    const token = await getWriteAccessToken();
 
     const response = await fetch(
       `https://www.googleapis.com/drive/v3/files/${fileId}/permissions?sendNotificationEmail=false`,
@@ -108,7 +108,7 @@ export async function deletePermission(
   permissionId: string,
 ): Promise<DeletePermissionResult> {
   try {
-    const token = await getAccessToken();
+    const token = await getWriteAccessToken();
 
     const response = await fetch(
       `https://www.googleapis.com/drive/v3/files/${fileId}/permissions/${permissionId}`,

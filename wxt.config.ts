@@ -11,6 +11,7 @@ export default defineConfig({
     key: EXTENSION_PUBLIC_KEY,
     permissions: [
       "identity",
+      "identity.email",
       "storage",
       "contextMenus",
       "tabs",
@@ -26,10 +27,8 @@ export default defineConfig({
         "531460003531-oh7s45m6jl7sql4qj11l3nanoejrg5pl.apps.googleusercontent.com",
       scopes: [
         "https://www.googleapis.com/auth/drive",
-        "https://www.googleapis.com/auth/drive.metadata",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
         "https://www.googleapis.com/auth/drive.activity.readonly",
-        "https://www.googleapis.com/auth/userinfo.profile",
-        "https://www.googleapis.com/auth/userinfo.email",
       ],
     },
   },

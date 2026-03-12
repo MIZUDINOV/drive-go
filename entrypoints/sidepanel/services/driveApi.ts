@@ -3,7 +3,12 @@ import type {
   DriveItem,
   DriveListMyDriveResponse,
 } from "../components/drive/driveTypes";
-import { getAccessTokenSilently, type AuthToken } from "./authService";
+import {
+  getAccessTokenSilently,
+  OAUTH_SCOPE_DRIVE_METADATA_READONLY,
+  OAUTH_SCOPE_DRIVE_WRITE,
+  type AuthToken,
+} from "./authService";
 
 type DriveListResult = {
   files?: DriveApiFile[];
@@ -142,7 +147,11 @@ export async function openDriveItemInNewTab(
 }
 
 export async function getAccessToken(): Promise<AuthToken> {
-  return getAccessTokenSilently();
+  return getAccessTokenSilently([OAUTH_SCOPE_DRIVE_METADATA_READONLY]);
+}
+
+export async function getWriteAccessToken(): Promise<AuthToken> {
+  return getAccessTokenSilently([OAUTH_SCOPE_DRIVE_WRITE]);
 }
 
 export async function listMyDriveFolder(
@@ -255,7 +264,7 @@ export async function createFolder(
   }
 
   try {
-    const token = await getAccessToken();
+    const token = await getWriteAccessToken();
     const metadata = {
       name: folderName.trim(),
       mimeType: "application/vnd.google-apps.folder",
@@ -303,7 +312,7 @@ export async function moveFile(
   oldParentId?: string,
 ): Promise<MoveFileResult> {
   try {
-    const token = await getAccessToken();
+    const token = await getWriteAccessToken();
     const params = new URLSearchParams({
       addParents: newParentId,
       fields: "id,parents",
@@ -349,7 +358,7 @@ type TrashFileResult = { ok: true } | { ok: false; error: string };
 
 export async function trashFile(fileId: string): Promise<TrashFileResult> {
   try {
-    const token = await getAccessToken();
+    const token = await getWriteAccessToken();
 
     const response = await fetch(
       `https://www.googleapis.com/drive/v3/files/${fileId}`,
@@ -392,7 +401,7 @@ export async function renameFile(
   }
 
   try {
-    const token = await getAccessToken();
+    const token = await getWriteAccessToken();
 
     const response = await fetch(
       `https://www.googleapis.com/drive/v3/files/${fileId}`,
@@ -488,9 +497,7 @@ export async function listMyOwnedFolders(): Promise<DriveApiFile[]> {
  * Получить информацию о файле с данными пользователей
  * Используется для получения displayName, email и photoLink из Drive API
  */
-export async function getFileWithUserInfo(
-  fileId: string,
-): Promise<{
+export async function getFileWithUserInfo(fileId: string): Promise<{
   lastModifyingUser?: {
     displayName?: string;
     emailAddress?: string;
@@ -505,10 +512,11 @@ export async function getFileWithUserInfo(
   try {
     const token = await getAccessToken();
     const params = new URLSearchParams({
-      fields: "lastModifyingUser(displayName,emailAddress,photoLink),owners(displayName,emailAddress,photoLink)",
+      fields:
+        "lastModifyingUser(displayName,emailAddress,photoLink),owners(displayName,emailAddress,photoLink)",
       supportsAllDrives: "true",
     });
-    
+
     const url = `https://www.googleapis.com/drive/v3/files/${fileId}?${params.toString()}`;
     console.log(`[getFileWithUserInfo] GET ${url}`);
 
@@ -528,7 +536,9 @@ export async function getFileWithUserInfo(
         return null;
       }
 
-      console.error(`[getFileWithUserInfo] Error: ${response.status} ${response.statusText}`);
+      console.error(
+        `[getFileWithUserInfo] Error: ${response.status} ${response.statusText}`,
+      );
       console.error(`[getFileWithUserInfo] Response: ${errorText}`);
       return null;
     }

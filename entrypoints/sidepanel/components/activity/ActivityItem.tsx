@@ -1,5 +1,6 @@
 import { Show } from "solid-js";
 import { Button } from "@kobalte/core/button";
+import { Tooltip } from "@kobalte/core/tooltip";
 import type { ActivityItem as ActivityItemType } from "../../services/activityTypes";
 import { markAsRead } from "../../services/activityManager";
 import { FileTypeIcon } from "../../fileTypes";
@@ -141,7 +142,9 @@ export function ActivityItem(props: Props) {
 
         <div class="activity-item-target">
           <FileTypeIcon mimeType={props.item.target.mimeType} />
-          <span class="activity-item-filename">{props.item.target.fileName}</span>
+          <span class="activity-item-filename">
+            {props.item.target.fileName}
+          </span>
         </div>
 
         <Show when={props.item.details?.commentText}>
@@ -158,27 +161,41 @@ export function ActivityItem(props: Props) {
           }
         >
           <div class="activity-item-rename-info">
-            <span class="activity-item-old-name">{props.item.details!.oldName}</span>
+            <span class="activity-item-old-name">
+              {props.item.details!.oldName}
+            </span>
             <span class="material-symbols-rounded activity-item-arrow">
               arrow_forward
             </span>
-            <span class="activity-item-new-name">{props.item.details!.newName}</span>
+            <span class="activity-item-new-name">
+              {props.item.details!.newName}
+            </span>
           </div>
         </Show>
 
-        <div class="activity-item-time">{formatRelativeTime(props.item.timestamp)}</div>
+        <div class="activity-item-time">
+          {formatRelativeTime(props.item.timestamp)}
+        </div>
       </div>
 
-      <Button
-        class="activity-item-action-btn"
-        onClick={(e) => {
-          e.stopPropagation();
-          handleClick();
-        }}
-        title="Открыть файл"
-      >
-        <span class="material-symbols-rounded">open_in_new</span>
-      </Button>
+      <Tooltip placement="left" gutter={6}>
+        <Button
+          class="activity-item-action-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleClick();
+          }}
+          aria-label="Открыть файл"
+        >
+          <span class="material-symbols-rounded">open_in_new</span>
+        </Button>
+        <Tooltip.Portal>
+          <Tooltip.Content class="tab-tooltip">
+            <Tooltip.Arrow />
+            <span>Открыть файл</span>
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip>
     </div>
   );
 }

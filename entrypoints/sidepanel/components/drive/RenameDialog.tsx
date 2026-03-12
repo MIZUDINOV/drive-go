@@ -6,6 +6,8 @@ import type { DriveItem } from "./driveTypes";
 import { isFolder } from "./driveTypes";
 import { renameFile } from "../../services/driveApi";
 import { markSavePathsFoldersDirty } from "../../../shared/savePathsSettings";
+import { DriveWritePermissionDialog } from "../permissions/DriveWritePermissionDialog";
+import { useDriveWritePermissionGate } from "../permissions/useDriveWritePermissionGate";
 
 type RenameDialogProps = {
   item: DriveItem | null;
@@ -33,6 +35,7 @@ export function RenameDialog(props: RenameDialogProps) {
   const [extension, setExtension] = createSignal("");
   const [isRenaming, setIsRenaming] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const permissionGate = useDriveWritePermissionGate();
 
   createEffect(() => {
     if (props.open && props.item) {
@@ -54,6 +57,15 @@ export function RenameDialog(props: RenameDialogProps) {
     if (!item || !baseName().trim() || newFullName === item.name) return;
 
     setError(null);
+
+    const canProceed = await permissionGate.ensureDriveWriteOrRequest(
+      "Для переименования требуется доступ на изменение Google Drive.",
+      handleRename,
+    );
+    if (!canProceed) {
+      return;
+    }
+
     setIsRenaming(true);
 
     const result = await renameFile(item.id, newFullName);
@@ -68,6 +80,16 @@ export function RenameDialog(props: RenameDialogProps) {
       props.onOpenChange(false);
       props.onRenameSuccess(newFullName);
     } else {
+      const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
+        result.error,
+        "Для переименования требуется доступ на изменение Google Drive.",
+        handleRename,
+      );
+
+      if (isPermissionDenied) {
+        return;
+      }
+
       setError(result.error);
     }
   };
@@ -127,6 +149,14 @@ export function RenameDialog(props: RenameDialogProps) {
           </div>
         </Dialog.Content>
       </Dialog.Portal>
+
+      <DriveWritePermissionDialog
+        open={permissionGate.isPermissionDialogOpen()}
+        isRequestInProgress={permissionGate.isPermissionRequestInProgress()}
+        errorMessage={permissionGate.permissionRequestError()}
+        onOpenChange={permissionGate.setIsPermissionDialogOpen}
+        onRequestAccess={permissionGate.requestDriveWriteAccess}
+      />
     </Dialog>
   );
 }

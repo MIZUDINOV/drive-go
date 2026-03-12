@@ -1,4 +1,7 @@
-import { fetchDriveActivity, getAccessToken } from "./sidepanel/services/activityApi";
+import {
+  fetchDriveActivity,
+  getActivityAccessToken,
+} from "./sidepanel/services/activityApi";
 import { parseActivities } from "./sidepanel/services/activityManager";
 import {
   ActivityNotificationSound,
@@ -159,7 +162,9 @@ export default defineBackground(() => {
       })
       .catch((error: unknown) => {
         const message =
-          error instanceof Error ? error.message : "Ошибка обработки сообщения очереди";
+          error instanceof Error
+            ? error.message
+            : "Ошибка обработки сообщения очереди";
         sendResponse({ ok: false, error: message });
       });
 
@@ -209,8 +214,8 @@ export default defineBackground(() => {
   browser.runtime.onMessage.addListener(handleRuntimeMessage);
   browser.runtime.onConnect.addListener(handleRuntimeConnect);
 
-  const transferQueueSnapshotSubscription = transferQueueEventBus.subscribeSnapshotChanged(
-    async () => {
+  const transferQueueSnapshotSubscription =
+    transferQueueEventBus.subscribeSnapshotChanged(async () => {
       if (transferQueueUpdatePorts.size === 0) {
         return;
       }
@@ -228,13 +233,13 @@ export default defineBackground(() => {
           transferQueueUpdatePorts.delete(port);
         }
       }
-    },
-    140,
-  );
+    }, 140);
 
   backgroundLifecycle.add(() => {
     browser.runtime.onInstalled.removeListener(handleInstalled);
-    browser.contextMenus.onClicked.removeListener(handleContextMenuClickListener);
+    browser.contextMenus.onClicked.removeListener(
+      handleContextMenuClickListener,
+    );
     browser.runtime.onMessage.removeListener(handleRuntimeMessage);
     browser.runtime.onConnect.removeListener(handleRuntimeConnect);
   });
@@ -376,7 +381,9 @@ async function handleTransferQueueRuntimeMessage(
     await transferQueueCommandBus.enqueue(
       "history:clear",
       async () => {
-        await transferQueueEngine.clearHistory(transferMessage.payload.direction);
+        await transferQueueEngine.clearHistory(
+          transferMessage.payload.direction,
+        );
       },
       "high",
     );
@@ -387,7 +394,9 @@ async function handleTransferQueueRuntimeMessage(
     let blob: Blob;
 
     if (transferMessage.payload.stagingId) {
-      const stagedBlob = await getStagedTransferBlob(transferMessage.payload.stagingId);
+      const stagedBlob = await getStagedTransferBlob(
+        transferMessage.payload.stagingId,
+      );
       if (!stagedBlob) {
         throw new Error("Не удалось получить staged payload для загрузки");
       }
@@ -399,7 +408,9 @@ async function handleTransferQueueRuntimeMessage(
         transferMessage.payload.mimeType,
       );
     } else {
-      throw new Error("Некорректный payload enqueue-upload: отсутствуют данные файла");
+      throw new Error(
+        "Некорректный payload enqueue-upload: отсутствуют данные файла",
+      );
     }
 
     const fingerprint = buildEnqueueFingerprint({
@@ -409,40 +420,46 @@ async function handleTransferQueueRuntimeMessage(
       sizeBytes: blob.size,
     });
 
-    return transferQueueCommandBus.enqueue(`enqueue:${fingerprint}`, async () => {
-      const now = Date.now();
-      pruneRecentEnqueueCache(now);
+    return transferQueueCommandBus.enqueue(
+      `enqueue:${fingerprint}`,
+      async () => {
+        const now = Date.now();
+        pruneRecentEnqueueCache(now);
 
-      const existingEntry = recentEnqueueByFingerprint.get(fingerprint);
-      if (existingEntry && now - existingEntry.timestamp < ENQUEUE_DEDUPE_WINDOW_MS) {
-        return {
-          ok: true,
-          deduped: true,
-          existingJobId: existingEntry.jobId,
-        };
-      }
-
-      try {
-        const job = await transferQueueEngine.enqueueUpload({
-          source: transferMessage.payload.source,
-          parentId: transferMessage.payload.parentId,
-          name: transferMessage.payload.name,
-          mimeType: transferMessage.payload.mimeType,
-          blob,
-        });
-
-        recentEnqueueByFingerprint.set(fingerprint, {
-          timestamp: now,
-          jobId: job.id,
-        });
-
-        return { ok: true, jobId: job.id };
-      } finally {
-        if (transferMessage.payload.stagingId) {
-          await deleteStagedTransferBlob(transferMessage.payload.stagingId);
+        const existingEntry = recentEnqueueByFingerprint.get(fingerprint);
+        if (
+          existingEntry &&
+          now - existingEntry.timestamp < ENQUEUE_DEDUPE_WINDOW_MS
+        ) {
+          return {
+            ok: true,
+            deduped: true,
+            existingJobId: existingEntry.jobId,
+          };
         }
-      }
-    });
+
+        try {
+          const job = await transferQueueEngine.enqueueUpload({
+            source: transferMessage.payload.source,
+            parentId: transferMessage.payload.parentId,
+            name: transferMessage.payload.name,
+            mimeType: transferMessage.payload.mimeType,
+            blob,
+          });
+
+          recentEnqueueByFingerprint.set(fingerprint, {
+            timestamp: now,
+            jobId: job.id,
+          });
+
+          return { ok: true, jobId: job.id };
+        } finally {
+          if (transferMessage.payload.stagingId) {
+            await deleteStagedTransferBlob(transferMessage.payload.stagingId);
+          }
+        }
+      },
+    );
   }
 
   return undefined;
@@ -468,14 +485,22 @@ async function getActivitySettingsFromStorage(): Promise<ActivitySettings> {
 
   return new Promise((resolve) => {
     browser.storage.local.get([ACTIVITY_SETTINGS_KEY], (result) => {
-      const stored = result[ACTIVITY_SETTINGS_KEY] as Partial<ActivitySettings> | undefined;
+      const stored = result[ACTIVITY_SETTINGS_KEY] as
+        | Partial<ActivitySettings>
+        | undefined;
       resolve({ ...defaults, ...(stored || {}) });
     });
   });
 }
 
 function normalizeSyncInterval(minutes: number): 1 | 5 | 10 | 15 | 30 {
-  if (minutes === 1 || minutes === 5 || minutes === 10 || minutes === 15 || minutes === 30) {
+  if (
+    minutes === 1 ||
+    minutes === 5 ||
+    minutes === 10 ||
+    minutes === 15 ||
+    minutes === 30
+  ) {
     return minutes;
   }
 
@@ -491,19 +516,28 @@ async function scheduleNextSyncFromSettings(): Promise<void> {
   const settings = await getActivitySettingsFromStorage();
   const intervalMinutes = normalizeSyncInterval(settings.syncIntervalMinutes);
 
-  syncTimer = setTimeout(() => {
-    void syncActivities().finally(() => {
-      void scheduleNextSyncFromSettings();
-    });
-  }, intervalMinutes * 60 * 1000);
+  syncTimer = setTimeout(
+    () => {
+      void syncActivities().finally(() => {
+        void scheduleNextSyncFromSettings();
+      });
+    },
+    intervalMinutes * 60 * 1000,
+  );
 }
 
-function filterByEnabledTypes(items: ActivityItem[], enabledTypes: ActivityType[]): ActivityItem[] {
+function filterByEnabledTypes(
+  items: ActivityItem[],
+  enabledTypes: ActivityType[],
+): ActivityItem[] {
   const enabledSet = new Set(enabledTypes);
   return items.filter((item) => enabledSet.has(item.type));
 }
 
-function applyAutoCleanupByDays(items: ActivityItem[], days: number): ActivityItem[] {
+function applyAutoCleanupByDays(
+  items: ActivityItem[],
+  days: number,
+): ActivityItem[] {
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
 
   return items.filter((item) => {
@@ -538,7 +572,11 @@ async function notifyAboutNewActivities(
   newItems: ActivityItem[],
   settings: ActivitySettings,
 ): Promise<void> {
-  if (!settings.notificationsEnabled || newItems.length === 0 || !browser.notifications?.create) {
+  if (
+    !settings.notificationsEnabled ||
+    newItems.length === 0 ||
+    !browser.notifications?.create
+  ) {
     return;
   }
 
@@ -643,12 +681,14 @@ async function handleContextMenuClick(
 }
 
 function sanitizeFilePart(input: string): string {
-  return input
-    .trim()
-    .toLowerCase()
-    .replace(/^www\./, "")
-    .replace(/[^a-z0-9._-]+/g, "_")
-    .replace(/^_+|_+$/g, "") || "file";
+  return (
+    input
+      .trim()
+      .toLowerCase()
+      .replace(/^www\./, "")
+      .replace(/[^a-z0-9._-]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "file"
+  );
 }
 
 function getDomainFromUrl(url?: string): string {
@@ -719,7 +759,8 @@ async function saveSelectionTextToDrive(
   info: Browser.contextMenus.OnClickData,
   tab?: Browser.tabs.Tab,
 ): Promise<void> {
-  const selectedText = typeof info.selectionText === "string" ? info.selectionText.trim() : "";
+  const selectedText =
+    typeof info.selectionText === "string" ? info.selectionText.trim() : "";
   if (!selectedText) {
     throw new Error("Выделенный текст не найден");
   }
@@ -728,7 +769,9 @@ async function saveSelectionTextToDrive(
   const dateStamp = getDateStamp();
   const parentId = await getTargetParentFolderId("selectionText");
   const fileName = `${domain}_${dateStamp}.txt`;
-  const textFile = new File([selectedText], fileName, { type: "text/plain;charset=utf-8" });
+  const textFile = new File([selectedText], fileName, {
+    type: "text/plain;charset=utf-8",
+  });
 
   await enqueueFileForUpload(textFile, parentId, tab?.id);
 }
@@ -787,7 +830,9 @@ function isNetworkFetchError(error: unknown): boolean {
   }
 
   const message = error.message.toLowerCase();
-  return message.includes("failed to fetch") || message.includes("networkerror");
+  return (
+    message.includes("failed to fetch") || message.includes("networkerror")
+  );
 }
 
 /**
@@ -799,9 +844,11 @@ async function syncActivities(): Promise<void> {
 
     // Проверяем авторизацию
     try {
-      await getAccessToken();
+      await getActivityAccessToken();
     } catch (error) {
-      console.log("[Background] User not authenticated, skipping sync");
+      console.log(
+        "[Background] Activity scope is not granted (or user is not signed in), skipping activity sync",
+      );
       return;
     }
 
@@ -811,7 +858,9 @@ async function syncActivities(): Promise<void> {
       response = await fetchDriveActivity(undefined, MAX_ACTIVITIES);
     } catch (error) {
       if (isNetworkFetchError(error)) {
-        console.warn("[Background] Activity sync skipped: network is unavailable");
+        console.warn(
+          "[Background] Activity sync skipped: network is unavailable",
+        );
         return;
       }
 
@@ -822,16 +871,19 @@ async function syncActivities(): Promise<void> {
     const settings = await getActivitySettingsFromStorage();
     const filteredParsed = filterByEnabledTypes(parsed, settings.enabledTypes);
 
-    console.log(`[Background] Fetched ${parsed.length} activities (${filteredParsed.length} после фильтра)`);
+    console.log(
+      `[Background] Fetched ${parsed.length} activities (${filteredParsed.length} после фильтра)`,
+    );
 
     // Получить текущие данные из storage
     const storage = await browser.storage.local.get([
       STORAGE_KEY.ACTIVITIES,
       STORAGE_KEY.NOTIFIED_IDS,
     ]);
-    const existingActivities = (storage[STORAGE_KEY.ACTIVITIES] || []) as ActivityItem[];
+    const existingActivities = (storage[STORAGE_KEY.ACTIVITIES] ||
+      []) as ActivityItem[];
     const notifiedIds = new Set(
-      ((storage[STORAGE_KEY.NOTIFIED_IDS] as string[]) || []),
+      (storage[STORAGE_KEY.NOTIFIED_IDS] as string[]) || [],
     );
     const existingIds = new Set(existingActivities.map((item) => item.id));
     const newItems = filteredParsed.filter(
@@ -841,7 +893,10 @@ async function syncActivities(): Promise<void> {
     // Объединить: новые + старые, удалить дубликаты, сохранить MAX_ACTIVITIES
     const merged = mergeActivities(existingActivities, filteredParsed);
     const filteredMerged = filterByEnabledTypes(merged, settings.enabledTypes);
-    const cleaned = applyAutoCleanupByDays(filteredMerged, settings.autoCleanupDays);
+    const cleaned = applyAutoCleanupByDays(
+      filteredMerged,
+      settings.autoCleanupDays,
+    );
     const limited = cleaned.slice(0, MAX_ACTIVITIES);
 
     // Сохранить в storage
@@ -863,7 +918,9 @@ async function syncActivities(): Promise<void> {
     await updateBadge(limited);
   } catch (error) {
     if (isNetworkFetchError(error)) {
-      console.warn("[Background] Activity sync skipped due to transient network error");
+      console.warn(
+        "[Background] Activity sync skipped due to transient network error",
+      );
       return;
     }
 
@@ -874,7 +931,10 @@ async function syncActivities(): Promise<void> {
 /**
  * Объединить существующие активности с новыми, избегая дубликатов
  */
-function mergeActivities(existing: ActivityItem[], fresh: ActivityItem[]): ActivityItem[] {
+function mergeActivities(
+  existing: ActivityItem[],
+  fresh: ActivityItem[],
+): ActivityItem[] {
   const existingIds = new Set(existing.map((a) => a.id));
 
   // Добавить новые активности в начало

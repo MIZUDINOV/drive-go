@@ -6,6 +6,8 @@ import type { DriveItem } from "./driveTypes";
 import type { DriveApiFile } from "./driveTypes";
 import { listAllFolders, moveFile } from "../../services/driveApi";
 import { FileTypeIcon } from "../../fileTypes";
+import { DriveWritePermissionDialog } from "../permissions/DriveWritePermissionDialog";
+import { useDriveWritePermissionGate } from "../permissions/useDriveWritePermissionGate";
 
 type MoveFileDialogProps = {
   item: DriveItem | null;
@@ -17,10 +19,13 @@ type MoveFileDialogProps = {
 
 export function MoveFileDialog(props: MoveFileDialogProps) {
   const [folders, setFolders] = createSignal<DriveApiFile[]>([]);
-  const [selectedFolderId, setSelectedFolderId] = createSignal<string | null>(null);
+  const [selectedFolderId, setSelectedFolderId] = createSignal<string | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = createSignal(false);
   const [isMoving, setIsMoving] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const permissionGate = useDriveWritePermissionGate();
 
   createEffect(() => {
     if (props.open && props.item) {
@@ -44,6 +49,15 @@ export function MoveFileDialog(props: MoveFileDialogProps) {
     if (!folderId || !item) return;
 
     setError(null);
+
+    const canProceed = await permissionGate.ensureDriveWriteOrRequest(
+      "Для перемещения требуется доступ на изменение Google Drive.",
+      handleMove,
+    );
+    if (!canProceed) {
+      return;
+    }
+
     setIsMoving(true);
 
     const result = await moveFile(item.id, folderId, props.currentFolderId);
@@ -54,6 +68,16 @@ export function MoveFileDialog(props: MoveFileDialogProps) {
       props.onOpenChange(false);
       props.onMoveSuccess(folderId);
     } else {
+      const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
+        result.error,
+        "Для перемещения требуется доступ на изменение Google Drive.",
+        handleMove,
+      );
+
+      if (isPermissionDenied) {
+        return;
+      }
+
       setError(result.error);
     }
   };
@@ -70,15 +94,11 @@ export function MoveFileDialog(props: MoveFileDialogProps) {
           <div class="dialog-body move-file-dialog-body">
             <Show
               when={!isLoading()}
-              fallback={
-                <div class="move-file-loading">Загрузка папок...</div>
-              }
+              fallback={<div class="move-file-loading">Загрузка папок...</div>}
             >
               <Show
                 when={folders().length > 0}
-                fallback={
-                  <div class="move-file-empty">Папки не найдены</div>
-                }
+                fallback={<div class="move-file-empty">Папки не найдены</div>}
               >
                 <RadioGroup
                   value={selectedFolderId() ?? ""}
@@ -87,7 +107,10 @@ export function MoveFileDialog(props: MoveFileDialogProps) {
                 >
                   <For each={folders()}>
                     {(folder) => (
-                      <RadioGroup.Item value={folder.id} class="move-file-folder-item">
+                      <RadioGroup.Item
+                        value={folder.id}
+                        class="move-file-folder-item"
+                      >
                         <RadioGroup.ItemInput class="move-file-folder-input" />
                         <RadioGroup.ItemControl class="move-file-folder-control">
                           <RadioGroup.ItemIndicator class="move-file-folder-indicator" />
@@ -96,7 +119,9 @@ export function MoveFileDialog(props: MoveFileDialogProps) {
                           <span class="move-file-folder-icon">
                             <FileTypeIcon mimeType={folder.mimeType} />
                           </span>
-                          <span class="move-file-folder-name">{folder.name}</span>
+                          <span class="move-file-folder-name">
+                            {folder.name}
+                          </span>
                         </RadioGroup.ItemLabel>
                       </RadioGroup.Item>
                     )}
@@ -128,6 +153,14 @@ export function MoveFileDialog(props: MoveFileDialogProps) {
           </div>
         </Dialog.Content>
       </Dialog.Portal>
+
+      <DriveWritePermissionDialog
+        open={permissionGate.isPermissionDialogOpen()}
+        isRequestInProgress={permissionGate.isPermissionRequestInProgress()}
+        errorMessage={permissionGate.permissionRequestError()}
+        onOpenChange={permissionGate.setIsPermissionDialogOpen}
+        onRequestAccess={permissionGate.requestDriveWriteAccess}
+      />
     </Dialog>
   );
 }

@@ -1,10 +1,12 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, JSX, Show } from "solid-js";
 import { Dialog } from "@kobalte/core/dialog";
 import { Button } from "@kobalte/core/button";
 import type { DriveItem } from "./driveTypes";
 import { isFolder } from "./driveTypes";
 import { trashFile } from "../../services/driveApi";
 import { markSavePathsFoldersDirty } from "../../../shared/savePathsSettings";
+import { DriveWritePermissionDialog } from "../permissions/DriveWritePermissionDialog";
+import { useDriveWritePermissionGate } from "../permissions/useDriveWritePermissionGate";
 
 type TrashConfirmDialogProps = {
   item: DriveItem | null;
@@ -13,15 +15,27 @@ type TrashConfirmDialogProps = {
   onTrashSuccess: () => void;
 };
 
-export function TrashConfirmDialog(props: TrashConfirmDialogProps) {
+export function TrashConfirmDialog(
+  props: TrashConfirmDialogProps,
+): JSX.Element {
   const [isTrashing, setIsTrashing] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const permissionGate = useDriveWritePermissionGate();
 
   const handleTrash = async (): Promise<void> => {
     const item = props.item;
     if (!item) return;
 
     setError(null);
+
+    const canProceed = await permissionGate.ensureDriveWriteOrRequest(
+      "Для удаления в корзину требуется доступ на изменение Google Drive.",
+      handleTrash,
+    );
+    if (!canProceed) {
+      return;
+    }
+
     setIsTrashing(true);
 
     const result = await trashFile(item.id);
@@ -36,6 +50,16 @@ export function TrashConfirmDialog(props: TrashConfirmDialogProps) {
       props.onOpenChange(false);
       props.onTrashSuccess();
     } else {
+      const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
+        result.error,
+        "Для удаления в корзину требуется доступ на изменение Google Drive.",
+        handleTrash,
+      );
+
+      if (isPermissionDenied) {
+        return;
+      }
+
       setError(result.error);
     }
   };
@@ -45,9 +69,7 @@ export function TrashConfirmDialog(props: TrashConfirmDialogProps) {
       <Dialog.Portal>
         <Dialog.Overlay class="dialog-overlay" />
         <Dialog.Content class="dialog-content">
-          <Dialog.Title class="dialog-title">
-            Отправить в корзину
-          </Dialog.Title>
+          <Dialog.Title class="dialog-title">Отправить в корзину</Dialog.Title>
 
           <div class="dialog-body">
             <Dialog.Description>
@@ -77,6 +99,14 @@ export function TrashConfirmDialog(props: TrashConfirmDialogProps) {
           </div>
         </Dialog.Content>
       </Dialog.Portal>
+
+      <DriveWritePermissionDialog
+        open={permissionGate.isPermissionDialogOpen()}
+        isRequestInProgress={permissionGate.isPermissionRequestInProgress()}
+        errorMessage={permissionGate.permissionRequestError()}
+        onOpenChange={permissionGate.setIsPermissionDialogOpen}
+        onRequestAccess={permissionGate.requestDriveWriteAccess}
+      />
     </Dialog>
   );
 }

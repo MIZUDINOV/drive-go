@@ -22,6 +22,7 @@ import {
   type DriveSearchFilters,
 } from "./services/driveApi";
 import {
+  OAUTH_SCOPE_DRIVE_METADATA_READONLY,
   isAuthFlowCancelledError,
   startInteractiveSignIn,
   tryGetAuthTokenSilently,
@@ -51,6 +52,7 @@ const tabs: TabItem[] = [
 ];
 
 const AUTH_SILENT_POLL_INTERVAL_MS = 1500;
+const REQUIRED_SIGN_IN_SCOPES = [OAUTH_SCOPE_DRIVE_METADATA_READONLY];
 
 function playNotificationSound(
   sound: ActivitySettings["notificationSound"],
@@ -288,17 +290,19 @@ function App() {
         return;
       }
 
-      void tryGetAuthTokenSilently().then((silentToken) => {
-        if (silentToken) {
-          completeAuthSuccess();
-        }
-      });
+      void tryGetAuthTokenSilently(REQUIRED_SIGN_IN_SCOPES).then(
+        (silentToken) => {
+          if (silentToken) {
+            completeAuthSuccess();
+          }
+        },
+      );
     };
 
     window.addEventListener("focus", handleWindowFocus);
 
     try {
-      await startInteractiveSignIn();
+      await startInteractiveSignIn(REQUIRED_SIGN_IN_SCOPES);
       completeAuthSuccess();
     } catch (error) {
       if (!isCurrentAttempt()) {
@@ -333,7 +337,9 @@ function App() {
 
   onMount(() => {
     void (async () => {
-      const silentToken = await tryGetAuthTokenSilently();
+      const silentToken = await tryGetAuthTokenSilently(
+        REQUIRED_SIGN_IN_SCOPES,
+      );
       if (silentToken) {
         initializeSidepanelSession();
         setAuthState("authenticated");
@@ -462,7 +468,7 @@ function App() {
                   const optionsUrl = browser.runtime.getURL("/options.html");
                   window.open(optionsUrl, "google-drive-go-options");
                 }}
-                title="Настройки"
+                aria-label="Настройки"
               >
                 <span class="material-symbols-rounded">settings</span>
                 <span class="tab-label">Настройки</span>
@@ -543,7 +549,7 @@ function App() {
                   </Show>
 
                   <Show when={tab.id === "activity"}>
-                    <ActivityBrowser />
+                    <ActivityBrowser isActive={activeTabId() === "activity"} />
                   </Show>
 
                   <Show

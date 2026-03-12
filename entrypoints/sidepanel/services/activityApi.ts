@@ -1,5 +1,8 @@
 import type { DriveActivityResponse } from "./activityTypes";
-import { getAccessTokenSilently } from "./authService";
+import {
+  getAccessTokenSilently,
+  OAUTH_SCOPE_DRIVE_ACTIVITY_READONLY,
+} from "./authService";
 
 const ACTIVITY_API_BASE = "https://driveactivity.googleapis.com/v2";
 
@@ -10,13 +13,13 @@ export async function fetchDriveActivity(
   pageToken?: string,
   pageSize: number = 50,
 ): Promise<DriveActivityResponse> {
-  const token = await getAccessToken();
+  const token = await getActivityAccessToken();
 
   const body = {
     pageSize,
     ...(pageToken && { pageToken }),
     // Фильтрация: только действия других пользователей или важные события
-    filter: "time > \"2024-01-01T00:00:00Z\"",
+    filter: 'time > "2024-01-01T00:00:00Z"',
   };
 
   const response = await fetch(`${ACTIVITY_API_BASE}/activity:query`, {
@@ -39,14 +42,14 @@ export async function fetchDriveActivity(
 /**
  * Получить информацию о профиле пользователя через People API
  * @param resourceName - вида "people/1234567890" из Drive Activity API
- * 
+ *
  * ВАЖНО: People API возвращает только ОБЩЕДОСТУПНУЮ информацию других пользователей.
  * Многие пользователи скрывают имя и email в настройках приватности Google,
  * поэтому API может вернуть только фото или вообще пустой результат.
- * 
+ *
  * РЕКОМЕНДАЦИЯ: Используйте Drive API files.get с полями lastModifyingUser/owners
  * вместо People API — там информация более надежная и не зависит от настроек приватности.
- * 
+ *
  * @deprecated Используйте getFileWithUserInfo() из driveApi.ts
  */
 export async function fetchUserProfile(resourceName: string): Promise<{
@@ -71,15 +74,19 @@ export async function fetchUserProfile(resourceName: string): Promise<{
     });
 
     if (!response.ok) {
-      console.error(`[fetchUserProfile] API error: ${response.status} ${response.statusText}`);
+      console.error(
+        `[fetchUserProfile] API error: ${response.status} ${response.statusText}`,
+      );
       const text = await response.text();
       console.error(`[fetchUserProfile] Response: ${text}`);
-      
+
       // Проверка на отключенный People API
-      if (response.status === 403 && text.includes('SERVICE_DISABLED')) {
-        console.warn('[fetchUserProfile] People API is disabled. Enable it in Google Cloud Console: https://console.developers.google.com/apis/api/people.googleapis.com');
+      if (response.status === 403 && text.includes("SERVICE_DISABLED")) {
+        console.warn(
+          "[fetchUserProfile] People API is disabled. Enable it in Google Cloud Console: https://console.developers.google.com/apis/api/people.googleapis.com",
+        );
       }
-      
+
       return null;
     }
 
@@ -87,11 +94,13 @@ export async function fetchUserProfile(resourceName: string): Promise<{
     const displayName = data.names?.[0]?.displayName;
     const email = data.emailAddresses?.[0]?.value;
     const photoUrl = data.photos?.[0]?.url;
-    
+
     // Если нет ни имени, ни email - профиль недоступен
     if (!displayName && !email) {
-      console.warn(`[fetchUserProfile] Profile data not available for ${resourceName} (privacy settings or insufficient permissions)`);
-      
+      console.warn(
+        `[fetchUserProfile] Profile data not available for ${resourceName} (privacy settings or insufficient permissions)`,
+      );
+
       // Возвращаем хотя бы фото, если есть
       if (photoUrl) {
         return {
@@ -100,12 +109,14 @@ export async function fetchUserProfile(resourceName: string): Promise<{
           photoUrl,
         };
       }
-      
+
       return null;
     }
-    
-    console.log(`[fetchUserProfile] Successfully loaded: ${displayName || 'N/A'} (${email || 'N/A'})`);
-    
+
+    console.log(
+      `[fetchUserProfile] Successfully loaded: ${displayName || "N/A"} (${email || "N/A"})`,
+    );
+
     return {
       displayName,
       emailAddress: email,
@@ -150,7 +161,8 @@ export async function fetchFileComments(
   const token = await getAccessToken();
 
   const params = new URLSearchParams({
-    fields: "comments(id,content,author,createdTime,modifiedTime,resolved,replies),nextPageToken",
+    fields:
+      "comments(id,content,author,createdTime,modifiedTime,resolved,replies),nextPageToken",
     pageSize: "100",
     ...(pageToken && { pageToken }),
   });
@@ -176,5 +188,12 @@ export async function fetchFileComments(
  */
 export async function getAccessToken(): Promise<string> {
   const result = await getAccessTokenSilently();
+  return result.token;
+}
+
+export async function getActivityAccessToken(): Promise<string> {
+  const result = await getAccessTokenSilently([
+    OAUTH_SCOPE_DRIVE_ACTIVITY_READONLY,
+  ]);
   return result.token;
 }

@@ -6,6 +6,7 @@ import {
   DEFAULT_DRIVE_SEARCH_FILTERS,
   type DriveSearchFilters,
   getAccessToken,
+  getWriteAccessToken,
 } from "./driveApi";
 
 type DriveListResult = {
@@ -147,7 +148,7 @@ export async function removeFromStarred(
   fileId: string,
 ): Promise<StarredMutationResult> {
   try {
-    const token = await getAccessToken();
+    const token = await getWriteAccessToken();
 
     const response = await fetch(
       `https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true`,

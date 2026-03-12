@@ -5,9 +5,11 @@ import {
   createMemo,
   createSignal,
   JSX,
+  onCleanup,
   onMount,
 } from "solid-js";
 import { Breadcrumbs } from "@kobalte/core/breadcrumbs";
+import { Badge } from "@kobalte/core/badge";
 import { SegmentedControl } from "@kobalte/core/segmented-control";
 import { Button } from "@kobalte/core/button";
 import { Select } from "@kobalte/core/select";
@@ -31,9 +33,7 @@ import {
   getDriveViewModeForScope,
   setDriveViewModeForScope,
 } from "../../services/driveViewModePreferences";
-import {
-  enqueueFilesForUpload,
-} from "../../services/transferQueueClient";
+import { enqueueFilesForUpload } from "../../services/transferQueueClient";
 import {
   addSharedItemToStarred,
   removeSharedItem,
@@ -48,6 +48,14 @@ import { markSavePathsFoldersDirty as markFolderPathsDirty } from "../../../shar
 import { type DriveItemMenuConfig } from "./DriveItemMenu";
 import { DriveItemsContent } from "./DriveItemsContent";
 import { EmptyTrashDialog } from "./EmptyTrashDialog";
+import { DriveWritePermissionDialog } from "../permissions/DriveWritePermissionDialog";
+import { useDriveWritePermissionGate } from "../permissions/useDriveWritePermissionGate";
+import {
+  type DriveCapabilityStatus,
+  getPermissionCapabilitiesSnapshot,
+  subscribePermissionCapabilities,
+  syncGrantedScopes,
+} from "../../services/permissionCapabilities";
 
 type DriveBrowserProps = {
   formatDate: (dateIso: string) => string;
@@ -183,6 +191,7 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
 }
 
 export function DriveBrowser(props: DriveBrowserProps) {
+  const MY_DRIVE_TOAST_REGION_ID = "my-drive-actions";
   const SHARED_TOAST_REGION_ID = "shared-drive-actions";
   const RECENT_TOAST_REGION_ID = "recent-drive-actions";
   const STARRED_TOAST_REGION_ID = "starred-drive-actions";
@@ -202,6 +211,9 @@ export function DriveBrowser(props: DriveBrowserProps) {
   const [folderName, setFolderName] = createSignal("Без названия");
   const [isCreating, setIsCreating] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const permissionGate = useDriveWritePermissionGate();
+  const [driveWriteStatus, setDriveWriteStatus] =
+    createSignal<DriveCapabilityStatus>("unknown");
   let fileInputRef: HTMLInputElement | undefined;
   let hasFilterEffectInitialized = false;
 
@@ -274,7 +286,130 @@ export function DriveBrowser(props: DriveBrowserProps) {
     }
   };
 
+  const executeRestoreTrashItem = async (item: DriveItem): Promise<boolean> => {
+    const result = await restoreTrashItem(item.id);
+    if (!result.ok) {
+      const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
+        result.error,
+        "Для восстановления требуется доступ на изменение Google Drive.",
+        async () => {
+          await executeRestoreTrashItem(item);
+        },
+      );
+
+      if (isPermissionDenied) {
+        return false;
+      }
+
+      showActionToast(
+        "Не удалось восстановить",
+        result.error,
+        "error",
+        TRASH_TOAST_REGION_ID,
+      );
+      return false;
+    }
+
+    await applyLocalRemoval(item, { markFoldersDirty: true });
+
+    showActionToast(
+      "Восстановлено",
+      `Файл \"${item.name}\" восстановлен из корзины.`,
+      "success",
+      TRASH_TOAST_REGION_ID,
+    );
+    return false;
+  };
+
+  const executeDeleteForeverTrashItem = async (
+    item: DriveItem,
+  ): Promise<boolean> => {
+    const result = await deleteTrashItemForever(item.id);
+    if (!result.ok) {
+      const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
+        result.error,
+        "Для окончательного удаления требуется доступ на изменение Google Drive.",
+        async () => {
+          await executeDeleteForeverTrashItem(item);
+        },
+      );
+
+      if (isPermissionDenied) {
+        return false;
+      }
+
+      showActionToast(
+        "Не удалось удалить навсегда",
+        result.error,
+        "error",
+        TRASH_TOAST_REGION_ID,
+      );
+      return false;
+    }
+
+    await applyLocalRemoval(item, { markFoldersDirty: true });
+
+    showActionToast(
+      "Удалено навсегда",
+      `Файл \"${item.name}\" удален безвозвратно.`,
+      "success",
+      TRASH_TOAST_REGION_ID,
+    );
+    return true;
+  };
+
   const menuConfig = createMemo<DriveItemMenuConfig | undefined>(() => {
+    if (scope === "my-drive") {
+      return {
+        actions: ["open", "rename", "move", "trash", "share", "copy-link", "add-star"],
+        onAddStar: async (item) => {
+          const canProceed = await permissionGate.ensureDriveWriteOrRequest(
+            "Для добавления в помеченные требуется доступ на изменение Google Drive.",
+            async () => {
+              await addSharedItemToStarred(item.id);
+            },
+          );
+
+          if (!canProceed) {
+            return false;
+          }
+
+          const result = await addSharedItemToStarred(item.id);
+          if (!result.ok) {
+            const isPermissionDenied =
+              permissionGate.handleDriveWriteDeniedFallback(
+                result.error,
+                "Для добавления в помеченные требуется доступ на изменение Google Drive.",
+                async () => {
+                  await addSharedItemToStarred(item.id);
+                },
+              );
+
+            if (isPermissionDenied) {
+              return false;
+            }
+
+            showActionToast(
+              "Не удалось добавить в помеченные",
+              result.error,
+              "error",
+              MY_DRIVE_TOAST_REGION_ID,
+            );
+            return false;
+          }
+
+          showActionToast(
+            "Добавлено в помеченные",
+            `Файл \"${item.name}\" добавлен в Избранное Google Drive.`,
+            "success",
+            MY_DRIVE_TOAST_REGION_ID,
+          );
+
+          return false;
+        },
+      };
+    }
+
     if (!isSharedScope && !isRecentScope && !isStarredScope && !isTrashScope) {
       return undefined;
     }
@@ -283,48 +418,32 @@ export function DriveBrowser(props: DriveBrowserProps) {
       return {
         actions: ["restore", "delete-forever"],
         onRestore: async (item) => {
-          const result = await restoreTrashItem(item.id);
-          if (!result.ok) {
-            showActionToast(
-              "Не удалось восстановить",
-              result.error,
-              "error",
-              TRASH_TOAST_REGION_ID,
-            );
+          const canProceed = await permissionGate.ensureDriveWriteOrRequest(
+            "Для восстановления требуется доступ на изменение Google Drive.",
+            async () => {
+              await executeRestoreTrashItem(item);
+            },
+          );
+
+          if (!canProceed) {
             return false;
           }
 
-          await applyLocalRemoval(item, { markFoldersDirty: true });
-
-          showActionToast(
-            "Восстановлено",
-            `Файл \"${item.name}\" восстановлен из корзины.`,
-            "success",
-            TRASH_TOAST_REGION_ID,
-          );
-          return false;
+          return executeRestoreTrashItem(item);
         },
         onDeleteForever: async (item) => {
-          const result = await deleteTrashItemForever(item.id);
-          if (!result.ok) {
-            showActionToast(
-              "Не удалось удалить навсегда",
-              result.error,
-              "error",
-              TRASH_TOAST_REGION_ID,
-            );
+          const canProceed = await permissionGate.ensureDriveWriteOrRequest(
+            "Для окончательного удаления требуется доступ на изменение Google Drive.",
+            async () => {
+              await executeDeleteForeverTrashItem(item);
+            },
+          );
+
+          if (!canProceed) {
             return false;
           }
 
-          await applyLocalRemoval(item, { markFoldersDirty: true });
-
-          showActionToast(
-            "Удалено навсегда",
-            `Файл \"${item.name}\" удален безвозвратно.`,
-            "success",
-            TRASH_TOAST_REGION_ID,
-          );
-          return true;
+          return executeDeleteForeverTrashItem(item);
         },
       };
     }
@@ -333,8 +452,32 @@ export function DriveBrowser(props: DriveBrowserProps) {
       return {
         actions: ["open", "share", "copy-link", "remove-star"],
         onRemoveStar: async (item) => {
+          const canProceed = await permissionGate.ensureDriveWriteOrRequest(
+            "Для изменения помеченных требуется доступ на изменение Google Drive.",
+            async () => {
+              await removeFromStarred(item.id);
+            },
+          );
+
+          if (!canProceed) {
+            return false;
+          }
+
           const result = await removeFromStarred(item.id);
           if (!result.ok) {
+            const isPermissionDenied =
+              permissionGate.handleDriveWriteDeniedFallback(
+                result.error,
+                "Для изменения помеченных требуется доступ на изменение Google Drive.",
+                async () => {
+                  await removeFromStarred(item.id);
+                },
+              );
+
+            if (isPermissionDenied) {
+              return false;
+            }
+
             showActionToast(
               "Не удалось убрать пометку",
               result.error,
@@ -361,8 +504,32 @@ export function DriveBrowser(props: DriveBrowserProps) {
       return {
         actions: ["open", "share", "add-star", "copy-link"],
         onAddStar: async (item) => {
+          const canProceed = await permissionGate.ensureDriveWriteOrRequest(
+            "Для добавления в помеченные требуется доступ на изменение Google Drive.",
+            async () => {
+              await addSharedItemToStarred(item.id);
+            },
+          );
+
+          if (!canProceed) {
+            return false;
+          }
+
           const result = await addSharedItemToStarred(item.id);
           if (!result.ok) {
+            const isPermissionDenied =
+              permissionGate.handleDriveWriteDeniedFallback(
+                result.error,
+                "Для добавления в помеченные требуется доступ на изменение Google Drive.",
+                async () => {
+                  await addSharedItemToStarred(item.id);
+                },
+              );
+
+            if (isPermissionDenied) {
+              return false;
+            }
+
             showActionToast(
               "Не удалось добавить в помеченные",
               result.error,
@@ -387,8 +554,31 @@ export function DriveBrowser(props: DriveBrowserProps) {
     return {
       actions: ["open", "share", "add-star", "remove-shared"],
       onAddStar: async (item) => {
+        const canProceed = await permissionGate.ensureDriveWriteOrRequest(
+          "Для добавления в помеченные требуется доступ на изменение Google Drive.",
+          async () => {
+            await addSharedItemToStarred(item.id);
+          },
+        );
+
+        if (!canProceed) {
+          return false;
+        }
+
         const result = await addSharedItemToStarred(item.id);
         if (!result.ok) {
+          const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
+            result.error,
+            "Для добавления в помеченные требуется доступ на изменение Google Drive.",
+            async () => {
+              await addSharedItemToStarred(item.id);
+            },
+          );
+
+          if (isPermissionDenied) {
+            return false;
+          }
+
           showActionToast(
             "Не удалось добавить в помеченные",
             result.error,
@@ -409,8 +599,31 @@ export function DriveBrowser(props: DriveBrowserProps) {
         return false;
       },
       onRemoveShared: async (item) => {
+        const canProceed = await permissionGate.ensureDriveWriteOrRequest(
+          "Для удаления из раздела требуется доступ на изменение Google Drive.",
+          async () => {
+            await removeSharedItem(item.id);
+          },
+        );
+
+        if (!canProceed) {
+          return false;
+        }
+
         const result = await removeSharedItem(item.id);
         if (!result.ok) {
+          const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
+            result.error,
+            "Для удаления из раздела требуется доступ на изменение Google Drive.",
+            async () => {
+              await removeSharedItem(item.id);
+            },
+          );
+
+          if (isPermissionDenied) {
+            return false;
+          }
+
           showActionToast(
             "Не удалось удалить из доступа",
             result.error,
@@ -434,6 +647,19 @@ export function DriveBrowser(props: DriveBrowserProps) {
   });
 
   onMount(() => {
+    const permissionSubscription = subscribePermissionCapabilities((state) => {
+      setDriveWriteStatus(state.driveWrite);
+    });
+
+    const initialPermissionState = getPermissionCapabilitiesSnapshot();
+    setDriveWriteStatus(initialPermissionState.driveWrite);
+
+    void syncGrantedScopes();
+
+    onCleanup(() => {
+      permissionSubscription.unsubscribe();
+    });
+
     void getDriveViewModeForScope(scope).then((mode) => {
       setViewMode(mode);
     });
@@ -486,6 +712,15 @@ export function DriveBrowser(props: DriveBrowserProps) {
 
   const handleCreateFolder = async () => {
     setError(null);
+
+    const canProceed = await permissionGate.ensureDriveWriteOrRequest(
+      "Для создания папки требуется доступ на изменение Google Drive.",
+      handleCreateFolder,
+    );
+    if (!canProceed) {
+      return;
+    }
+
     setIsCreating(true);
 
     const result = await createFolder(
@@ -518,15 +753,61 @@ export function DriveBrowser(props: DriveBrowserProps) {
         });
       }
     } else {
+      const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
+        result.error,
+        "Для создания папки требуется доступ на изменение Google Drive.",
+        handleCreateFolder,
+      );
+
+      if (isPermissionDenied) {
+        return;
+      }
+
       setError(result.error);
     }
   };
 
-  const handleFileSelect = (event: Event) => {
+  const handleFileSelect = async (event: Event): Promise<void> => {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const files = Array.from(input.files);
-      void enqueueFilesForUpload(files, browserState.currentFolderId());
+      input.value = "";
+
+      const canProceed = await permissionGate.ensureDriveWriteOrRequest(
+        "Для загрузки файлов требуется доступ на изменение Google Drive.",
+        async () => {
+          await enqueueFilesForUpload(files, browserState.currentFolderId());
+        },
+      );
+      if (!canProceed) {
+        return;
+      }
+
+      try {
+        await enqueueFilesForUpload(files, browserState.currentFolderId());
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : "Не удалось загрузить файлы";
+
+        const isPermissionDenied =
+          permissionGate.handleDriveWriteDeniedFallback(
+            message,
+            "Для загрузки файлов требуется доступ на изменение Google Drive.",
+            async () => {
+              await enqueueFilesForUpload(
+                files,
+                browserState.currentFolderId(),
+              );
+            },
+          );
+
+        if (isPermissionDenied) {
+          return;
+        }
+
+        setError(message);
+      }
+
       input.value = "";
     }
   };
@@ -842,6 +1123,26 @@ export function DriveBrowser(props: DriveBrowserProps) {
         </div>
 
         <div class="drive-browser-left-actions">
+          <Show when={scope === "my-drive" && driveWriteStatus() === "denied"}>
+            <Tooltip placement="bottom" gutter={6}>
+              <Badge class="drive-access-indicator" aria-live="polite">
+                <span class="material-symbols-rounded" aria-hidden="true">
+                  lock
+                </span>
+                <span>Только просмотр</span>
+              </Badge>
+              <Tooltip.Portal>
+                <Tooltip.Content class="tab-tooltip">
+                  <Tooltip.Arrow />
+                  <span>
+                    Право на изменение не выдано. При действиях записи покажем
+                    запрос доступа.
+                  </span>
+                </Tooltip.Content>
+              </Tooltip.Portal>
+            </Tooltip>
+          </Show>
+
           <Button
             type="button"
             class="refresh-btn"
@@ -856,13 +1157,16 @@ export function DriveBrowser(props: DriveBrowserProps) {
       <Show when={isTrashScope}>
         <section class="trash-info-banner" aria-label="Информация о корзине">
           <p class="trash-info-text">
-            Объекты в корзине удаляются навсегда через 30 дней после попадания в нее.
+            Объекты в корзине удаляются навсегда через 30 дней после попадания в
+            нее.
           </p>
           <Button
             type="button"
             class="trash-empty-btn"
             onClick={() => setIsEmptyTrashDialogOpen(true)}
-            disabled={browserState.loading() || browserState.items().length === 0}
+            disabled={
+              browserState.loading() || browserState.items().length === 0
+            }
           >
             Очистить корзину
           </Button>
@@ -899,7 +1203,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
                 ? "Помеченных файлов пока нет."
                 : isTrashScope
                   ? "Корзина пуста."
-                : "В этой папке пока нет файлов и папок."
+                  : "В этой папке пока нет файлов и папок."
         }
       />
 
@@ -967,10 +1271,28 @@ export function DriveBrowser(props: DriveBrowserProps) {
               </Dialog.Content>
             </Dialog.Portal>
           </Dialog>
+
+          <DriveWritePermissionDialog
+            open={permissionGate.isPermissionDialogOpen()}
+            isRequestInProgress={permissionGate.isPermissionRequestInProgress()}
+            errorMessage={permissionGate.permissionRequestError()}
+            onOpenChange={permissionGate.setIsPermissionDialogOpen}
+            onRequestAccess={permissionGate.requestDriveWriteAccess}
+          />
         </>
       </Show>
 
       <Portal>
+        <Show when={scope === "my-drive"}>
+          <Toast.Region
+            class="drive-toast-region"
+            regionId={MY_DRIVE_TOAST_REGION_ID}
+            limit={4}
+          >
+            <Toast.List class="drive-toast-list" />
+          </Toast.Region>
+        </Show>
+
         <Show when={isSharedScope}>
           <Toast.Region
             class="drive-toast-region"

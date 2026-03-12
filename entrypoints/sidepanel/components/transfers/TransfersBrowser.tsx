@@ -3,6 +3,7 @@ import { Button } from "@kobalte/core/button";
 import { DropdownMenu } from "@kobalte/core/dropdown-menu";
 import { Select } from "@kobalte/core/select";
 import { TextField } from "@kobalte/core/text-field";
+import { Tooltip } from "@kobalte/core/tooltip";
 import { ToggleGroup } from "@kobalte/core/toggle-group";
 import {
   cancelTransferQueueItem,
@@ -95,6 +96,18 @@ function formatDateTime(timestamp: number): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function getTransferActionLabel(action: "cancel" | "retry" | "remove"): string {
+  if (action === "cancel") {
+    return "Пауза";
+  }
+
+  if (action === "retry") {
+    return "Повторить";
+  }
+
+  return "Удалить";
 }
 
 function queueStatusText(item: TransferQueueItem): string {
@@ -386,17 +399,29 @@ export function TransfersBrowser() {
                 </div>
 
                 <Show when={item.action !== null}>
-                  <Button
-                    class="transfer-item-action"
-                    title={item.action === "cancel" ? "Пауза" : item.action === "retry" ? "Повторить" : "Удалить"}
-                    onClick={() => {
-                      void handleAction(item);
-                    }}
-                  >
-                    <span class="material-symbols-rounded">
-                      {item.action === "cancel" ? "pause" : item.action === "retry" ? "refresh" : "close"}
-                    </span>
-                  </Button>
+                  <Tooltip placement="left" gutter={6}>
+                    <Button
+                      class="transfer-item-action"
+                      aria-label={getTransferActionLabel(item.action!)}
+                      onClick={() => {
+                        void handleAction(item);
+                      }}
+                    >
+                      <span class="material-symbols-rounded">
+                        {item.action === "cancel"
+                          ? "pause"
+                          : item.action === "retry"
+                            ? "refresh"
+                            : "close"}
+                      </span>
+                    </Button>
+                    <Tooltip.Portal>
+                      <Tooltip.Content class="tab-tooltip">
+                        <Tooltip.Arrow />
+                        <span>{getTransferActionLabel(item.action!)}</span>
+                      </Tooltip.Content>
+                    </Tooltip.Portal>
+                  </Tooltip>
                 </Show>
               </div>
             )}
