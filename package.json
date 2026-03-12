@@ -1,6 +1,6 @@
 {
   "name": "drive-go",
-  "description": "Drive Go - Chrome extension for managing your Google Drive files",
+  "description": "Drive GO - Chrome extension for managing your Google Drive files",
   "private": true,
   "version": "0.0.0",
   "type": "module",

@@ -652,7 +652,7 @@ async function setupContextMenus(): Promise<void> {
 
   browser.contextMenus.create({
     id: CONTEXT_MENU_ROOT_ID,
-    title: "Drive Go",
+    title: "Drive GO",
     contexts: ["all"],
   });
 

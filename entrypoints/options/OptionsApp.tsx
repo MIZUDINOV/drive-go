@@ -36,7 +36,7 @@ export function OptionsApp() {
           <div class="options-header">
             <div class="options-logo">
               <img src="/icon/128.png" alt="Logo" width="32" height="32" />
-              <h1>Drive Go</h1>
+              <h1>Drive GO</h1>
             </div>
           </div>
 
@@ -71,7 +71,7 @@ export function OptionsApp() {
             <div class="options-section">
               <h2>О расширении</h2>
               <p class="options-section-description">
-                Drive Go - компактное расширение для работы с Google Drive
+                Drive GO - компактное расширение для работы с Google Drive
               </p>
               <div class="options-about-version">
                 <strong>Версия:</strong> 1.0.0

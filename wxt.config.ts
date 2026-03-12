@@ -8,7 +8,7 @@ export default defineConfig({
   modules: ["@wxt-dev/module-solid"],
   manifestVersion: 3,
   manifest: {
-    name: "Drive Go",
+    name: "Drive GO",
     description: "Минималистичный клиент для Google Drive",
     key: EXTENSION_PUBLIC_KEY,
     content_security_policy: {
@@ -26,7 +26,7 @@ export default defineConfig({
     ],
     host_permissions: ["https://www.googleapis.com/*"],
     action: {
-      default_title: "Drive Go",
+      default_title: "Drive GO",
     },
     oauth2: {
       client_id:

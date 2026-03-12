@@ -362,7 +362,7 @@ function App() {
       fallback={
         <section class="auth-gate">
           <div class="auth-gate-card">
-            <h1>Войдите в Drive Go</h1>
+            <h1>Войдите в Drive GO</h1>
             <p>
               Для доступа к файлам и активности нужно авторизоваться через
               Google.
@@ -423,7 +423,7 @@ function App() {
             </Button>
 
             <Show when={!isMenuCollapsed()}>
-              <span class="sidebar-brand" aria-label="Drive Go">
+              <span class="sidebar-brand" aria-label="Drive GO">
                 <span class="brand-google" aria-hidden="true">
                   <span class="brand-google-letter brand-google-blue">D</span>
                   <span class="brand-google-letter brand-google-red">r</span>
@@ -507,7 +507,7 @@ function App() {
 
         <section class="content-area">
           <header class="topbar">
-            <h1 class="brand" aria-label="Drive Go">
+            <h1 class="brand" aria-label="Drive GO">
               <span class="brand-google" aria-hidden="true">
                 <span class="brand-google-letter brand-google-blue">D</span>
                 <span class="brand-google-letter brand-google-red">r</span>
