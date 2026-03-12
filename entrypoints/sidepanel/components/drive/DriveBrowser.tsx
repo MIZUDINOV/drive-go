@@ -1194,6 +1194,9 @@ export function DriveBrowser(props: DriveBrowserProps) {
       <DriveItemsContent
         items={browserState.items()}
         loading={browserState.loading()}
+        loadingMore={browserState.loadingMore()}
+        hasMore={Boolean(browserState.nextPageToken())}
+        onLoadMore={() => void browserState.loadMore()}
         error={browserState.error()}
         viewMode={viewMode()}
         currentFolderId={browserState.currentFolderId()}
@@ -1216,17 +1219,6 @@ export function DriveBrowser(props: DriveBrowserProps) {
                   : "В этой папке пока нет файлов и папок."
         }
       />
-
-      <Show when={Boolean(browserState.nextPageToken())}>
-        <Button
-          type="button"
-          class="drive-load-more-btn"
-          disabled={browserState.loading()}
-          onClick={() => void browserState.loadMore()}
-        >
-          {browserState.loading() ? "Загрузка..." : "Показать еще"}
-        </Button>
-      </Show>
 
       <Show when={scope === "my-drive"}>
         <>

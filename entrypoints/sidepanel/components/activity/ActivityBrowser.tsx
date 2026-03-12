@@ -13,6 +13,7 @@ import {
   ensureActivityReadCapability,
 } from "../../services/permissionCapabilities";
 import { ActivityItem as ActivityItemComponent } from "./ActivityItem";
+import { ScrollToTopButton } from "../drive/ScrollToTopButton";
 import "./Activity.css";
 
 type ActivityBrowserProps = {
@@ -93,6 +94,8 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
   const [permissionRequestError, setPermissionRequestError] = createSignal<
     string | null
   >(null);
+  const [showScrollTop, setShowScrollTop] = createSignal(false);
+  let activityScrollRef: HTMLDivElement | undefined;
 
   const syncActivityAccessFromStorage = async (): Promise<void> => {
     const hasAccess = await checkActivityReadCapabilityLocally();
@@ -267,18 +270,34 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
         fallback={
           <Show when={hasActivityAccess()}>
             <div class="activity-groups">
-              <For each={groupedActivities()}>
-                {(group) => (
-                  <section class="activity-group">
-                    <div class="activity-group-date">{group.date}</div>
-                    <div class="activity-group-items">
-                      <For each={group.items}>
-                        {(item) => <ActivityItemComponent item={item} />}
-                      </For>
-                    </div>
-                  </section>
-                )}
-              </For>
+              <div class="activity-scroll-area">
+                <div
+                  class="activity-groups-inner"
+                  onScroll={(e) => {
+                    setShowScrollTop(e.currentTarget.scrollTop > 220);
+                    activityScrollRef = e.currentTarget;
+                  }}
+                >
+                  <For each={groupedActivities()}>
+                    {(group) => (
+                      <section class="activity-group">
+                        <div class="activity-group-date">{group.date}</div>
+                        <div class="activity-group-items">
+                          <For each={group.items}>
+                            {(item) => <ActivityItemComponent item={item} />}
+                          </For>
+                        </div>
+                      </section>
+                    )}
+                  </For>
+                </div>
+                <ScrollToTopButton
+                  visible={showScrollTop()}
+                  onScrollTop={() =>
+                    activityScrollRef?.scrollTo({ top: 0, behavior: "smooth" })
+                  }
+                />
+              </div>
             </div>
           </Show>
         }

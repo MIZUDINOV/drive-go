@@ -67,6 +67,7 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
   const isTrashScope = scope === "trash";
   const [items, setItems] = createSignal<DriveItem[]>([]);
   const [loading, setLoading] = createSignal(false);
+  const [loadingMore, setLoadingMore] = createSignal(false);
   const [error, setError] = createSignal("");
   const [nextPageToken, setNextPageToken] = createSignal<string>();
   const [loadedFolderId, setLoadedFolderId] = createSignal<string>();
@@ -115,9 +116,12 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
     if (reset) {
       setItems([]);
       setNextPageToken(undefined);
+      setLoadingMore(false);
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
     }
 
-    setLoading(true);
     setError("");
 
     try {
@@ -183,6 +187,7 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
         // Prevent auto-load effect from entering an endless retry loop on persistent API errors.
         setLoadedFolderId(folderId);
         setLoading(false);
+        setLoadingMore(false);
       }
     }
   };
@@ -265,6 +270,7 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
     scope,
     items,
     loading,
+    loadingMore,
     error,
     filters,
     setFilters,

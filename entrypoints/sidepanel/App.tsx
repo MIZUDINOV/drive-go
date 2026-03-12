@@ -417,7 +417,9 @@ function App() {
               data-expanded={!isMenuCollapsed() || undefined}
               onClick={() => setIsMenuCollapsed((prev) => !prev)}
             >
-              <span class="material-symbols-rounded menu-btn-icon">menu_open</span>
+              <span class="material-symbols-rounded menu-btn-icon">
+                menu_open
+              </span>
             </Button>
 
             <Show when={!isMenuCollapsed()}>

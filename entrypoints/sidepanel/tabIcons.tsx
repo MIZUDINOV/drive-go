@@ -27,7 +27,9 @@ export function TabIcon(props: {
   isSelected?: boolean;
 }): JSX.Element {
   if (props.name === "drive") {
-    return <img class="tab-icon-logo" src={gdLogoUrl} alt="" aria-hidden="true" />;
+    return (
+      <img class="tab-icon-logo" src={gdLogoUrl} alt="" aria-hidden="true" />
+    );
   }
 
   const iconName = tabIconbyName.get(props.name) ?? "delete";
