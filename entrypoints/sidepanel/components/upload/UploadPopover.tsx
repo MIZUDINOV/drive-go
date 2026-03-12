@@ -151,7 +151,8 @@ function UploadTaskItem(props: UploadTaskItemProps) {
       <div class="upload-task-actions">
         <Show when={canCancel()}>
           <Tooltip placement="bottom" gutter={4}>
-            <Button
+            <Tooltip.Trigger
+              as={Button}
               class="upload-task-action-btn"
               type="button"
               onClick={() => {
@@ -159,10 +160,10 @@ function UploadTaskItem(props: UploadTaskItemProps) {
               }}
             >
               <span class="material-symbols-rounded">close</span>
-            </Button>
+            </Tooltip.Trigger>
             <Tooltip.Portal>
               <Tooltip.Content class="tab-tooltip">
-                <Tooltip.Arrow />
+                <Tooltip.Arrow class="tab-tooltip-arrow" />
                 <span>Отменить</span>
               </Tooltip.Content>
             </Tooltip.Portal>
@@ -170,7 +171,8 @@ function UploadTaskItem(props: UploadTaskItemProps) {
         </Show>
         <Show when={canRetry()}>
           <Tooltip placement="bottom" gutter={4}>
-            <Button
+            <Tooltip.Trigger
+              as={Button}
               class="upload-task-action-btn"
               type="button"
               onClick={() => {
@@ -178,10 +180,10 @@ function UploadTaskItem(props: UploadTaskItemProps) {
               }}
             >
               <span class="material-symbols-rounded">refresh</span>
-            </Button>
+            </Tooltip.Trigger>
             <Tooltip.Portal>
               <Tooltip.Content class="tab-tooltip">
-                <Tooltip.Arrow />
+                <Tooltip.Arrow class="tab-tooltip-arrow" />
 
                 <span>Повторить</span>
               </Tooltip.Content>
@@ -190,7 +192,8 @@ function UploadTaskItem(props: UploadTaskItemProps) {
         </Show>
         <Show when={canRemove()}>
           <Tooltip placement="bottom" gutter={4}>
-            <Button
+            <Tooltip.Trigger
+              as={Button}
               class="upload-task-action-btn"
               type="button"
               onClick={() => {
@@ -198,10 +201,10 @@ function UploadTaskItem(props: UploadTaskItemProps) {
               }}
             >
               <span class="material-symbols-rounded">close</span>
-            </Button>
+            </Tooltip.Trigger>
             <Tooltip.Portal>
               <Tooltip.Content class="tab-tooltip">
-                <Tooltip.Arrow />
+                <Tooltip.Arrow class="tab-tooltip-arrow" />
                 <span>Удалить</span>
               </Tooltip.Content>
             </Tooltip.Portal>
@@ -447,7 +450,8 @@ export function UploadPopover() {
             <h3 class="upload-popover-title">Загрузки</h3>
             <Show when={hasCompletedTasks()}>
               <Tooltip placement="bottom" gutter={4}>
-                <Button
+                <Tooltip.Trigger
+                  as={Button}
                   class="upload-popover-clear-btn"
                   type="button"
                   onClick={() => {
@@ -455,10 +459,10 @@ export function UploadPopover() {
                   }}
                 >
                   Очистить
-                </Button>
+                </Tooltip.Trigger>
                 <Tooltip.Portal>
                   <Tooltip.Content class="tab-tooltip">
-                    <Tooltip.Arrow />
+                    <Tooltip.Arrow class="tab-tooltip-arrow" />
                     <span>Очистить завершённые</span>
                   </Tooltip.Content>
                 </Tooltip.Portal>

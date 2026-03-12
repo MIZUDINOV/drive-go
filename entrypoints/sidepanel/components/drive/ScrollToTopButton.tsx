@@ -10,7 +10,8 @@ type ScrollToTopButtonProps = {
 export function ScrollToTopButton(props: ScrollToTopButtonProps) {
   return (
     <Tooltip placement="left" gutter={8}>
-      <Button
+      <Tooltip.Trigger
+        as={Button}
         type="button"
         class={`scroll-to-top-btn${props.visible ? " scroll-to-top-btn--visible" : ""}`}
         aria-label="Прокрутить в начало"
@@ -21,10 +22,10 @@ export function ScrollToTopButton(props: ScrollToTopButtonProps) {
         <span class="material-symbols-rounded" aria-hidden="true">
           arrow_upward
         </span>
-      </Button>
+      </Tooltip.Trigger>
       <Tooltip.Portal>
         <Tooltip.Content class="tab-tooltip">
-          <Tooltip.Arrow />
+          <Tooltip.Arrow class="tab-tooltip-arrow" />
           <span>Наверх</span>
         </Tooltip.Content>
       </Tooltip.Portal>

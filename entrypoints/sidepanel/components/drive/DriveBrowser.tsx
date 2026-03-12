@@ -170,7 +170,9 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
                 </span>
               </Show>
 
-              <Select.ItemLabel>{props.labels[option]}</Select.ItemLabel>
+              <Select.ItemLabel class="drive-browser-filter-item-label">
+                {props.labels[option]}
+              </Select.ItemLabel>
 
               <Select.ItemIndicator class="drive-browser-filter-item-indicator">
                 <span class="material-symbols-rounded">done</span>
@@ -1055,54 +1057,91 @@ export function DriveBrowser(props: DriveBrowserProps) {
           </Breadcrumbs>
         </div>
 
-        <SegmentedControl
-          class="drive-view-toggle"
-          value={viewMode()}
-          onChange={(value) => {
-            if (value === DriveViewMode.List || value === DriveViewMode.Grid) {
-              setViewMode(value);
-              void setDriveViewModeForScope(scope, value);
-            }
-          }}
-          aria-label="Режим отображения"
-        >
-          <Tooltip placement="bottom" gutter={4}>
-            <SegmentedControl.Item
-              class="drive-view-toggle-item"
-              value={DriveViewMode.List}
-              aria-label="Режим списка"
+        <div class="folder-header-actions">
+          <Tooltip placement="bottom" gutter={6}>
+            <Tooltip.Trigger
+              as={Button}
+              type="button"
+              class="drive-refresh-icon-btn"
+              classList={{ "is-loading": browserState.loading() }}
+              onClick={() => void browserState.refresh()}
+              disabled={browserState.loading()}
+              aria-label={
+                browserState.loading()
+                  ? "Обновляем содержимое диска"
+                  : "Обновить диск"
+              }
             >
-              <SegmentedControl.ItemInput class="drive-view-toggle-input" />
-              <SegmentedControl.ItemLabel class="drive-view-toggle-item-label">
-                <span class="material-symbols-rounded">list</span>
-              </SegmentedControl.ItemLabel>
-            </SegmentedControl.Item>
+              <span class="material-symbols-rounded" aria-hidden="true">
+                sync
+              </span>
+            </Tooltip.Trigger>
             <Tooltip.Portal>
               <Tooltip.Content class="tab-tooltip">
-                <Tooltip.Arrow />
-                <span>Список</span>
+                <Tooltip.Arrow class="tab-tooltip-arrow" />
+                <span>
+                  {browserState.loading()
+                    ? "Обновляем содержимое диска..."
+                    : "Обновить диск"}
+                </span>
               </Tooltip.Content>
             </Tooltip.Portal>
           </Tooltip>
-          <Tooltip placement="bottom" gutter={4}>
-            <SegmentedControl.Item
-              class="drive-view-toggle-item"
-              value={DriveViewMode.Grid}
-              aria-label="Режим плиток"
-            >
-              <SegmentedControl.ItemInput class="drive-view-toggle-input" />
-              <SegmentedControl.ItemLabel class="drive-view-toggle-item-label">
-                <span class="material-symbols-rounded">grid_view</span>
-              </SegmentedControl.ItemLabel>
-            </SegmentedControl.Item>
-            <Tooltip.Portal>
-              <Tooltip.Content class="tab-tooltip">
-                <Tooltip.Arrow />
-                <span>Плитка</span>
-              </Tooltip.Content>
-            </Tooltip.Portal>
-          </Tooltip>
-        </SegmentedControl>
+
+          <SegmentedControl
+            class="drive-view-toggle"
+            value={viewMode()}
+            onChange={(value) => {
+              if (
+                value === DriveViewMode.List ||
+                value === DriveViewMode.Grid
+              ) {
+                setViewMode(value);
+                void setDriveViewModeForScope(scope, value);
+              }
+            }}
+            aria-label="Режим отображения"
+          >
+            <Tooltip placement="bottom" gutter={4}>
+              <Tooltip.Trigger
+                as={SegmentedControl.Item}
+                class="drive-view-toggle-item"
+                value={DriveViewMode.List}
+                aria-label="Режим списка"
+              >
+                <SegmentedControl.ItemInput class="drive-view-toggle-input" />
+                <SegmentedControl.ItemLabel class="drive-view-toggle-item-label">
+                  <span class="material-symbols-rounded">list</span>
+                </SegmentedControl.ItemLabel>
+              </Tooltip.Trigger>
+              <Tooltip.Portal>
+                <Tooltip.Content class="tab-tooltip">
+                  <Tooltip.Arrow class="tab-tooltip-arrow" />
+                  <span>Список</span>
+                </Tooltip.Content>
+              </Tooltip.Portal>
+            </Tooltip>
+            <Tooltip placement="bottom" gutter={4}>
+              <Tooltip.Trigger
+                as={SegmentedControl.Item}
+                class="drive-view-toggle-item"
+                value={DriveViewMode.Grid}
+                aria-label="Режим плиток"
+              >
+                <SegmentedControl.ItemInput class="drive-view-toggle-input" />
+                <SegmentedControl.ItemLabel class="drive-view-toggle-item-label">
+                  <span class="material-symbols-rounded">grid_view</span>
+                </SegmentedControl.ItemLabel>
+              </Tooltip.Trigger>
+              <Tooltip.Portal>
+                <Tooltip.Content class="tab-tooltip">
+                  <Tooltip.Arrow class="tab-tooltip-arrow" />
+                  <span>Плитка</span>
+                </Tooltip.Content>
+              </Tooltip.Portal>
+            </Tooltip>
+          </SegmentedControl>
+        </div>
       </div>
 
       <header class="drive-browser-header">
@@ -1157,15 +1196,20 @@ export function DriveBrowser(props: DriveBrowserProps) {
         <div class="drive-browser-left-actions">
           <Show when={scope === "my-drive" && driveWriteStatus() === "denied"}>
             <Tooltip placement="bottom" gutter={6}>
-              <Badge class="drive-access-indicator" aria-live="polite">
+              <Tooltip.Trigger
+                as={Badge}
+                class="drive-access-indicator"
+                aria-live="polite"
+                tabIndex={0}
+              >
                 <span class="material-symbols-rounded" aria-hidden="true">
                   lock
                 </span>
                 <span>Только просмотр</span>
-              </Badge>
+              </Tooltip.Trigger>
               <Tooltip.Portal>
                 <Tooltip.Content class="tab-tooltip">
-                  <Tooltip.Arrow />
+                  <Tooltip.Arrow class="tab-tooltip-arrow" />
                   <span>
                     Право на изменение не выдано. При действиях записи покажем
                     запрос доступа.
@@ -1174,15 +1218,6 @@ export function DriveBrowser(props: DriveBrowserProps) {
               </Tooltip.Portal>
             </Tooltip>
           </Show>
-
-          <Button
-            type="button"
-            class="refresh-btn"
-            onClick={() => void browserState.refresh()}
-            disabled={browserState.loading()}
-          >
-            {browserState.loading() ? "Обновление..." : "Обновить"}
-          </Button>
         </div>
       </header>
 

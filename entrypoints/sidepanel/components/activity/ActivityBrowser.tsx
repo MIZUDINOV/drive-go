@@ -178,17 +178,18 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
 
         <div class="activity-header-actions">
           <Tooltip placement="bottom" gutter={6}>
-            <Button
+            <Tooltip.Trigger
+              as={Button}
               class="activity-action-btn"
               onClick={handleRefresh}
               disabled={activityStore.isLoading || !hasActivityAccess()}
               aria-label="Обновить"
             >
               <span class="material-symbols-rounded">refresh</span>
-            </Button>
+            </Tooltip.Trigger>
             <Tooltip.Portal>
               <Tooltip.Content class="tab-tooltip">
-                <Tooltip.Arrow />
+                <Tooltip.Arrow class="tab-tooltip-arrow" />
                 <span>Обновить</span>
               </Tooltip.Content>
             </Tooltip.Portal>
@@ -196,16 +197,17 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
 
           <Show when={activityStore.unreadCount > 0}>
             <Tooltip placement="bottom" gutter={6}>
-              <Button
+              <Tooltip.Trigger
+                as={Button}
                 class="activity-action-btn"
                 onClick={handleMarkAllRead}
                 aria-label="Отметить все как прочитанные"
               >
                 <span class="material-symbols-rounded">done_all</span>
-              </Button>
+              </Tooltip.Trigger>
               <Tooltip.Portal>
                 <Tooltip.Content class="tab-tooltip">
-                  <Tooltip.Arrow />
+                  <Tooltip.Arrow class="tab-tooltip-arrow" />
                   <span>Отметить все как прочитанные</span>
                 </Tooltip.Content>
               </Tooltip.Portal>

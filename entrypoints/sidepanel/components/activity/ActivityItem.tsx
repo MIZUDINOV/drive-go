@@ -179,7 +179,8 @@ export function ActivityItem(props: Props) {
       </div>
 
       <Tooltip placement="left" gutter={6}>
-        <Button
+        <Tooltip.Trigger
+          as={Button}
           class="activity-item-action-btn"
           onClick={(e) => {
             e.stopPropagation();
@@ -188,10 +189,10 @@ export function ActivityItem(props: Props) {
           aria-label="Открыть файл"
         >
           <span class="material-symbols-rounded">open_in_new</span>
-        </Button>
+        </Tooltip.Trigger>
         <Tooltip.Portal>
           <Tooltip.Content class="tab-tooltip">
-            <Tooltip.Arrow />
+            <Tooltip.Arrow class="tab-tooltip-arrow" />
             <span>Открыть файл</span>
           </Tooltip.Content>
         </Tooltip.Portal>

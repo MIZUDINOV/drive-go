@@ -449,7 +449,8 @@ export function TransfersBrowser() {
 
                 <Show when={item.action !== null}>
                   <Tooltip placement="left" gutter={6}>
-                    <Button
+                    <Tooltip.Trigger
+                      as={Button}
                       class="transfer-item-action"
                       aria-label={getTransferActionLabel(item.action!)}
                       onClick={() => {
@@ -463,10 +464,10 @@ export function TransfersBrowser() {
                             ? "refresh"
                             : "close"}
                       </span>
-                    </Button>
+                    </Tooltip.Trigger>
                     <Tooltip.Portal>
                       <Tooltip.Content class="tab-tooltip">
-                        <Tooltip.Arrow />
+                        <Tooltip.Arrow class="tab-tooltip-arrow" />
                         <span>{getTransferActionLabel(item.action!)}</span>
                       </Tooltip.Content>
                     </Tooltip.Portal>

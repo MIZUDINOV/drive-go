@@ -333,16 +333,29 @@
 
 /* Tooltip styles */
 .tab-tooltip {
-  background: rgba(20, 23, 26, 0.95);
-  color: white;
-  padding: 6px 10px;
-  border-radius: 6px;
+  position: relative;
+  z-index: 1200;
+  background-color: #1a73e8;
+  color: #fff;
+  border: 1px solid #8ab4f8;
+  box-shadow: 0 10px 18px rgba(11, 87, 208, 0.25);
+  padding: 7px 11px;
+  border-radius: 8px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   white-space: nowrap;
-  backdrop-filter: blur(4px);
+  overflow: visible;
   animation: tooltipShow 150ms ease-out;
   transform-origin: var(--kb-tooltip-content-transform-origin);
+}
+
+.tab-tooltip-arrow {
+  font-size: 16px;
+}
+
+.tab-tooltip-arrow svg {
+  display: block;
 }
 
 .tab-tooltip[data-expanded] {
@@ -545,7 +558,7 @@
 
 .drive-search-filters {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 8px;
   padding: 10px;
   border-bottom: 1px solid #e3e8ef;
@@ -554,6 +567,7 @@
 .drive-search-filter {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 
 .drive-search-filter > span {
@@ -573,6 +587,7 @@
 
 .drive-search-filter-type-trigger {
   width: 100%;
+  min-width: 0;
   height: 30px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -596,13 +611,26 @@
   flex: 0 0 auto;
 }
 
+.drive-search-filter-type-trigger .material-symbols-rounded {
+  font-size: 18px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
 .drive-search-filter-type-value {
   font-size: 12px;
   color: var(--text-main);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
 }
 
 .drive-search-filter-type-content {
-  min-width: 220px;
+  width: var(--kb-popper-anchor-width);
+  min-width: 148px;
+  max-width: min(280px, calc(100vw - 24px));
   max-height: 260px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -634,6 +662,13 @@
   align-items: center;
   gap: 8px;
   user-select: none;
+}
+
+.drive-search-filter-type-item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .drive-search-filter-type-item[data-highlighted] {
@@ -894,15 +929,6 @@
   color: var(--text-muted);
 }
 
-.refresh-btn {
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  font-size: 12px;
-}
-
 @media (max-width: 780px) {
   .drive-browser-header {
     display: grid;
@@ -922,19 +948,11 @@
   .drive-browser-filter {
     min-width: 0;
   }
-
-  .refresh-btn {
-    justify-self: start;
-  }
 }
 
 @media (max-width: 560px) {
   .drive-browser-filters {
     grid-template-columns: 1fr;
-  }
-
-  .refresh-btn {
-    width: 100%;
   }
 }
 
@@ -986,6 +1004,7 @@
 
 .drive-browser-filter-trigger {
   width: 100%;
+  min-width: 0;
   height: 30px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1009,13 +1028,26 @@
   flex: 0 0 auto;
 }
 
+.drive-browser-filter-trigger .material-symbols-rounded {
+  font-size: 18px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
 .drive-browser-filter-value {
   font-size: 12px;
   color: var(--text-main);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
 }
 
 .drive-browser-filter-content {
-  min-width: 220px;
+  width: var(--kb-popper-anchor-width);
+  min-width: 148px;
+  max-width: min(280px, calc(100vw - 24px));
   max-height: 260px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1047,6 +1079,13 @@
   align-items: center;
   gap: 8px;
   user-select: none;
+}
+
+.drive-browser-filter-item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .drive-browser-filter-item[data-highlighted] {
@@ -1092,6 +1131,12 @@
   width: 14px;
   height: 14px;
   color: var(--accent);
+}
+
+@media (max-width: 560px) {
+  .drive-search-filters {
+    grid-template-columns: 1fr;
+  }
 }
 
 .drive-browser-clear-filters-btn {
@@ -1309,11 +1354,68 @@
   /* margin-bottom: 12px; */
 }
 
+.folder-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
 .folder-header-left {
   display: flex;
   align-items: center;
   flex: 1;
   min-width: 0;
+}
+
+.drive-refresh-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid #dadce0;
+  background: #fff;
+  color: #444746;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.drive-refresh-icon-btn:hover:not(:disabled) {
+  background: #f1f4f9;
+  border-color: #ccd3df;
+}
+
+.drive-refresh-icon-btn:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 1px;
+}
+
+.drive-refresh-icon-btn .material-symbols-rounded {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.drive-refresh-icon-btn.is-loading {
+  color: #0b57d0;
+}
+
+.drive-refresh-icon-btn.is-loading .material-symbols-rounded {
+  animation: drive-refresh-spin 900ms linear infinite;
+}
+
+@keyframes drive-refresh-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .folder-breadcrumbs {

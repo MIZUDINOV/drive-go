@@ -446,7 +446,11 @@ function App() {
                   gutter={8}
                   disabled={!isMenuCollapsed()}
                 >
-                  <Tabs.Trigger class="tab-item" value={tab.id}>
+                  <Tooltip.Trigger
+                    as={Tabs.Trigger}
+                    class="tab-item"
+                    value={tab.id}
+                  >
                     <span class="tab-icon">
                       <TabIcon
                         name={tab.icon}
@@ -466,10 +470,10 @@ function App() {
                           : activityUnreadCount()}
                       </Badge>
                     </Show>
-                  </Tabs.Trigger>
+                  </Tooltip.Trigger>
                   <Tooltip.Portal>
                     <Tooltip.Content class="tab-tooltip">
-                      <Tooltip.Arrow />
+                      <Tooltip.Arrow class="tab-tooltip-arrow" />
                       <span>{tab.title}</span>
                     </Tooltip.Content>
                   </Tooltip.Portal>
@@ -480,7 +484,8 @@ function App() {
 
           <div class="sidebar-bottom">
             <Tooltip placement="right" gutter={8} disabled={!isMenuCollapsed()}>
-              <Button
+              <Tooltip.Trigger
+                as={Button}
                 class="settings-btn"
                 onClick={() => {
                   void openOrFocusOptionsPage();
@@ -489,10 +494,10 @@ function App() {
               >
                 <span class="material-symbols-rounded">settings</span>
                 <span class="tab-label">Настройки</span>
-              </Button>
+              </Tooltip.Trigger>
               <Tooltip.Portal>
                 <Tooltip.Content class="tab-tooltip">
-                  <Tooltip.Arrow />
+                  <Tooltip.Arrow class="tab-tooltip-arrow" />
                   <span>Настройки</span>
                 </Tooltip.Content>
               </Tooltip.Portal>

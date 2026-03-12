@@ -168,7 +168,9 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
                 </span>
               </Show>
 
-              <Select.ItemLabel>{props.labels[option]}</Select.ItemLabel>
+              <Select.ItemLabel class="drive-search-filter-type-item-label">
+                {props.labels[option]}
+              </Select.ItemLabel>
 
               <Select.ItemIndicator class="drive-search-filter-type-item-indicator">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
