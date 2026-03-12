@@ -51,7 +51,6 @@ const tabs: TabItem[] = [
   { id: "trash", title: "Корзина", icon: "trash" },
 ];
 
-const AUTH_SILENT_POLL_INTERVAL_MS = 1500;
 const REQUIRED_SIGN_IN_SCOPES = [OAUTH_SCOPE_DRIVE_METADATA_READONLY];
 
 function playNotificationSound(
@@ -465,8 +464,7 @@ function App() {
               <Button
                 class="settings-btn"
                 onClick={() => {
-                  const optionsUrl = browser.runtime.getURL("/options.html");
-                  window.open(optionsUrl, "google-drive-go-options");
+                  browser.runtime.openOptionsPage();
                 }}
                 aria-label="Настройки"
               >

@@ -32,6 +32,8 @@ import {
 } from "./transferQueueConstants";
 import { transferUploadExecutor } from "./transferUploadExecutor";
 
+const OAUTH_SCOPE_DRIVE_WRITE = "https://www.googleapis.com/auth/drive";
+
 type EnqueueUploadParams = {
   source: TransferSource;
   parentId: string | null;
@@ -54,7 +56,10 @@ function createTransferId(): string {
 }
 
 async function getAccessToken(): Promise<string> {
-  const result = await browser.identity.getAuthToken({ interactive: true });
+  const result = await browser.identity.getAuthToken({
+    interactive: true,
+    scopes: [OAUTH_SCOPE_DRIVE_WRITE],
+  });
   if (!result?.token) {
     throw new Error("Не удалось получить токен доступа");
   }

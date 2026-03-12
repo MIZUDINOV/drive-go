@@ -3,6 +3,8 @@ import { CHUNK_SIZE } from "./transferQueueConstants";
 import { getSession, upsertSession } from "./transferQueueDb";
 import type { TransferQueueItem } from "../../shared/transferQueueTypes";
 
+const OAUTH_SCOPE_DRIVE_WRITE = "https://www.googleapis.com/auth/drive";
+
 type ExecuteUploadParams = {
   job: TransferQueueItem;
   payload: Blob;
@@ -16,7 +18,10 @@ type ResumableProbeResult = {
 };
 
 async function getAccessToken(): Promise<string> {
-  const result = await browser.identity.getAuthToken({ interactive: true });
+  const result = await browser.identity.getAuthToken({
+    interactive: true,
+    scopes: [OAUTH_SCOPE_DRIVE_WRITE],
+  });
   if (!result?.token) {
     throw new Error("Не удалось получить токен доступа");
   }

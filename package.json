@@ -1,12 +1,14 @@
 {
-  "name": "google-drive-go",
-  "description": "Google Drive Go - Chrome extension for managing your Google Drive files",
+  "name": "drive-go",
+  "description": "Drive Go - Chrome extension for managing your Google Drive files",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",
+    "lint": "npx prettier --check entrypoints/",
+    "lint:fix": "npx prettier --write entrypoints/",
     "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",

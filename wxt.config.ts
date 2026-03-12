@@ -20,7 +20,7 @@ export default defineConfig({
     ],
     host_permissions: ["https://www.googleapis.com/*"],
     action: {
-      default_title: "Google Drive Go",
+      default_title: "Drive Go",
     },
     oauth2: {
       client_id:
