@@ -1,6 +1,6 @@
 .panel-layout {
   display: grid;
-  grid-template-columns: 248px 1fr;
+  grid-template-columns: 50px 1fr;
   gap: 0;
   width: 100%;
   min-height: 100vh;
@@ -8,7 +8,7 @@
   border-radius: 14px;
   overflow: hidden;
   background: var(--surface);
-  transition: grid-template-columns 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: none;
 }
 
 .auth-gate {
@@ -104,31 +104,46 @@
   flex-direction: column;
   height: 100%;
   width: 50px;
+  min-width: 0;
+  position: relative;
+  z-index: 20;
   overflow: hidden;
+  transition:
+    width 250ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.panel-layout:not(.collapsed) .sidebar {
+  width: 248px;
+  box-shadow: 8px 0 22px rgba(20, 37, 58, 0.12);
 }
 
 .sidebar-top {
-  height: 36px;
+  height: 40px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding-left: 2px;
   margin-bottom: 15px;
 }
 
+.collapsed .sidebar-top {
+  justify-content: center;
+}
+
 .menu-btn {
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  background: var(--surface);
+  height: 40px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text-main);
   display: grid;
   place-items: center;
   line-height: 0;
   cursor: pointer;
-  transition:
-    background 200ms ease-out,
-    border-color 200ms ease-out;
+  transition: background 200ms ease-out;
 }
 
 .menu-btn:hover {
@@ -140,13 +155,28 @@
 }
 
 .menu-btn:focus-visible {
-  outline: none;
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 1px;
 }
 
-.menu-btn svg {
-  display: block;
-  width: 18px;
-  height: 18px;
+.menu-btn-icon {
+  font-size: 28px;
+  line-height: 1;
+  transition: transform 200ms ease-out;
+}
+
+.menu-btn[data-expanded] .menu-btn-icon {
+  transform: rotate(180deg);
+}
+
+.sidebar-brand {
+  font-family:
+    "Google Sans", "Product Sans", "Roboto", "Segoe UI", "Arial", sans-serif;
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 .tab-list {
@@ -200,6 +230,12 @@
   justify-content: center;
   flex: 0 0 auto;
   transition: color 200ms ease-out;
+}
+
+.tab-icon-logo {
+  display: block;
+  width: 18px;
+  height: 18px;
 }
 
 .tab-icon .material-symbols-rounded {
@@ -323,10 +359,6 @@
   }
 }
 
-.collapsed {
-  grid-template-columns: 50px 1fr;
-}
-
 .collapsed .tab-item {
   justify-content: center;
   padding: 0 4px;
@@ -351,11 +383,13 @@
   display: grid;
   grid-template-rows: auto 1fr;
   min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .topbar {
   display: grid;
-  grid-template-columns: minmax(120px, auto) minmax(0, 1fr);
+  grid-template-columns: minmax(100px, auto) minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   padding: 10px;
@@ -364,10 +398,43 @@
 
 .brand {
   margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-family:
+    "Google Sans", "Product Sans", "Roboto", "Segoe UI", "Arial", sans-serif;
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   white-space: nowrap;
+}
+
+.brand-google {
+  display: inline-flex;
+  align-items: baseline;
+  letter-spacing: 0.01em;
+}
+
+.brand-google-letter {
+  font-weight: 700;
+}
+
+.brand-google-gap {
+  width: 0.28em;
+}
+
+.brand-google-blue {
+  color: #4285f4;
+}
+
+.brand-google-red {
+  color: #ea4335;
+}
+
+.brand-google-yellow {
+  color: #fbbc05;
+}
+
+.brand-google-green {
+  color: #34a853;
 }
 
 .search-block {
@@ -1081,23 +1148,30 @@
   cursor: not-allowed;
 }
 
+/* Pill-shaped segmented toggle — единая таблетка с вертикальным разделителем */
 .drive-view-toggle {
   display: inline-flex;
-  border: 1px solid var(--line);
+  border: 1px solid #dadce0;
   border-radius: 999px;
-  overflow: hidden;
-  background: #f1f3f4;
-  padding: 1px;
+  overflow: hidden;          /* обрезает углы кнопок по форме таблетки */
+  background: transparent;
+  padding: 0;
 }
 
 .drive-view-toggle-item {
   position: relative;
-  height: 30px;
-  width: 34px;
+  height: 32px;
+  width: 40px;
   border: 0;
   background: transparent;
   font-size: 0;
   padding: 0;
+  /* разделитель — правая граница первой кнопки */
+  border-right: 1px solid #dadce0;
+}
+
+.drive-view-toggle-item:last-child {
+  border-right: 0;
 }
 
 .drive-view-toggle-input {
@@ -1113,27 +1187,32 @@
 }
 
 .drive-view-toggle-item-label {
-  height: 100%;
-  width: 100%;
-  color: var(--text-main);
-  border-radius: 999px;
   display: grid;
   place-items: center;
-  padding: 0;
-  line-height: 0;
+  height: 100%;
+  width: 100%;
+  color: #444746;
+  /* без border-radius — заполняет свою половину, скругление даёт overflow:hidden */
+  border-radius: 0;
   cursor: pointer;
+  line-height: 0;
+  transition: background 120ms ease, color 120ms ease;
 }
 
-.drive-view-toggle-item-label svg {
-  width: 17px;
-  height: 17px;
-  display: block;
+.drive-view-toggle-item-label .material-symbols-rounded {
+  font-size: 20px;
 }
 
-.drive-view-toggle-item[data-checked] .drive-view-toggle-item-label {
-  background: #fff;
+/* hover — только для неактивного */
+.drive-view-toggle-item:not([data-checked]):hover .drive-view-toggle-item-label {
+  background: color-mix(in srgb, #1a73e8 10%, transparent);
   color: #1a73e8;
-  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3);
+}
+
+/* активная кнопка заливает свою половину */
+.drive-view-toggle-item[data-checked] .drive-view-toggle-item-label {
+  background: #d3e3fd;
+  color: #0b57d0;
 }
 
 .drive-breadcrumbs {

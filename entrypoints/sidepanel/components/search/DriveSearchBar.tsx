@@ -405,7 +405,7 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
     >
       <Search.Control
         class="drive-search-input-wrap"
-        aria-label="Поиск в Google Drive"
+        aria-label="Поиск на Диске"
         ref={searchControlRef}
       >
         <Search.Indicator
@@ -453,7 +453,7 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
 
         <Search.Input
           class="drive-search-input"
-          placeholder="Поиск в Google Drive"
+          placeholder="Поиск на Диске"
           value={props.value}
           disabled={!props.active}
           onBlur={(event) => {

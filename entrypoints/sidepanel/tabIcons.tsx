@@ -1,4 +1,5 @@
 import { type JSX } from "solid-js";
+import gdLogoUrl from "@/assets/gd-logo.svg?url";
 
 export type TabIconName =
   | "drive"
@@ -25,6 +26,10 @@ export function TabIcon(props: {
   name: TabIconName;
   isSelected?: boolean;
 }): JSX.Element {
+  if (props.name === "drive") {
+    return <img class="tab-icon-logo" src={gdLogoUrl} alt="" aria-hidden="true" />;
+  }
+
   const iconName = tabIconbyName.get(props.name) ?? "delete";
 
   return (

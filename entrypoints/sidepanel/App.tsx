@@ -413,11 +413,27 @@ function App() {
             <Button
               class="menu-btn"
               type="button"
-              aria-label="Переключить меню"
+              aria-label={isMenuCollapsed() ? "Раскрыть меню" : "Свернуть меню"}
+              data-expanded={!isMenuCollapsed() || undefined}
               onClick={() => setIsMenuCollapsed((prev) => !prev)}
             >
-              <span class="material-symbols-rounded">menu</span>
+              <span class="material-symbols-rounded menu-btn-icon">menu_open</span>
             </Button>
+
+            <Show when={!isMenuCollapsed()}>
+              <span class="sidebar-brand" aria-label="Drive Go">
+                <span class="brand-google" aria-hidden="true">
+                  <span class="brand-google-letter brand-google-blue">D</span>
+                  <span class="brand-google-letter brand-google-red">r</span>
+                  <span class="brand-google-letter brand-google-yellow">i</span>
+                  <span class="brand-google-letter brand-google-blue">v</span>
+                  <span class="brand-google-letter brand-google-green">e</span>
+                  <span class="brand-google-gap"> </span>
+                  <span class="brand-google-letter brand-google-blue">G</span>
+                  <span class="brand-google-letter brand-google-red">o</span>
+                </span>
+              </span>
+            </Show>
           </div>
 
           <Tabs.List class="tab-list" aria-label="Разделы Google Drive">
@@ -484,7 +500,18 @@ function App() {
 
         <section class="content-area">
           <header class="topbar">
-            <h1 class="brand">Drive Go</h1>
+            <h1 class="brand" aria-label="Drive Go">
+              <span class="brand-google" aria-hidden="true">
+                <span class="brand-google-letter brand-google-blue">D</span>
+                <span class="brand-google-letter brand-google-red">r</span>
+                <span class="brand-google-letter brand-google-yellow">i</span>
+                <span class="brand-google-letter brand-google-blue">v</span>
+                <span class="brand-google-letter brand-google-green">e</span>
+                <span class="brand-google-gap"> </span>
+                <span class="brand-google-letter brand-google-blue">G</span>
+                <span class="brand-google-letter brand-google-red">o</span>
+              </span>
+            </h1>
 
             <div class="search-block">
               <DriveSearchBar
