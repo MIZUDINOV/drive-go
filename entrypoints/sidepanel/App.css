@@ -610,12 +610,18 @@
   background: #fff;
   box-shadow: 0 10px 24px rgba(20, 41, 64, 0.14);
   z-index: 40;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .drive-search-filter-type-listbox {
   margin: 0;
   padding: 0;
   list-style: none;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .drive-search-filter-type-item {
@@ -652,6 +658,11 @@
   width: 16px;
   height: 16px;
   display: block;
+}
+
+.drive-search-filter-type-item-icon .drive-file-icon-new-format {
+  width: 16px;
+  height: 16px;
 }
 
 .drive-search-filter-type-item-indicator {
@@ -862,7 +873,7 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  padding: 10px;
+  padding: 5px;
 }
 
 .content-card {
@@ -937,6 +948,7 @@
   flex-direction: column;
   gap: 10px;
   height: 100%;
+  padding: 5px;
   min-height: 0;
   overflow: hidden;
 }
@@ -1011,12 +1023,18 @@
   background: #fff;
   box-shadow: 0 10px 24px rgba(20, 41, 64, 0.14);
   z-index: 40;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .drive-browser-filter-listbox {
   margin: 0;
   padding: 0;
   list-style: none;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .drive-browser-filter-item {
@@ -1050,6 +1068,11 @@
 .drive-browser-filter-item-icon svg,
 .drive-browser-filter-item-icon .drive-file-icon,
 .drive-browser-filter-item-icon .drive-file-icon-folder {
+  width: 16px;
+  height: 16px;
+}
+
+.drive-browser-filter-item-icon .drive-file-icon-new-format {
   width: 16px;
   height: 16px;
 }
@@ -1987,6 +2010,16 @@
 }
 
 .drive-grid-preview .drive-file-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.name-icon .drive-file-icon-new-format {
+  width: 16px;
+  height: 16px;
+}
+
+.drive-grid-preview .drive-file-icon-new-format {
   width: 28px;
   height: 28px;
 }

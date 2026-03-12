@@ -9,6 +9,9 @@ export type FileKind =
   | "slide"
   | "form"
   | "archive"
+  | "audio"
+  | "video"
+  | "vids"
   | "image"
   | "text"
   | "file";
@@ -40,10 +43,17 @@ const exactMimeTypeToKind = new Map<string, FileKind>([
   ["application/zip", "archive"],
   ["application/x-zip-compressed", "archive"],
   ["application/x-rar-compressed", "archive"],
+  ["application/x-7z-compressed", "archive"],
+  ["application/x-tar", "archive"],
+  ["application/gzip", "archive"],
+  ["application/vnd.google-apps.vid", "vids"],
+  ["application/vnd.google-apps.video", "video"],
 ]);
 
 const mimeTypePrefixToKind = new Map<string, FileKind>([
   ["image/", "image"],
+  ["audio/", "audio"],
+  ["video/", "video"],
   ["text/", "text"],
 ]);
 
@@ -135,9 +145,13 @@ const fileTypeIconByKind = new Map<FileKind, () => JSX.Element>([
   [
     "form",
     () => (
-      <svg class="drive-file-icon" viewBox="0 0 16 16" aria-hidden="true">
+      <svg
+        class="drive-file-icon drive-file-icon-new-format drive-file-icon-form"
+        viewBox="0 0 16 16"
+        aria-hidden="true"
+      >
         <path
-          fill="#7B1FA2"
+          fill="#7b1fa2"
           d="M14.222 0H1.778C.8 0 0 .8 0 1.778v12.444C0 15.2.8 16 1.778 16h12.444C15.2 16 16 15.2 16 14.222V1.778C16 .8 15.2 0 14.222 0zM5.333 12.444H3.556v-1.777h1.777v1.777zm0-3.555H3.556V7.11h1.777V8.89zm0-3.556H3.556V3.556h1.777v1.777zm7.111 7.111H6.222v-1.777h6.222v1.777zm0-3.555H6.222V7.11h6.222V8.89zm0-3.556H6.222V3.556h6.222v1.777z"
         />
       </svg>
@@ -146,10 +160,62 @@ const fileTypeIconByKind = new Map<FileKind, () => JSX.Element>([
   [
     "archive",
     () => (
-      <svg class="drive-file-icon" viewBox="0 -960 960 960" aria-hidden="true">
+      <svg
+        class="drive-file-icon drive-file-icon-new-format drive-file-icon-archive"
+        viewBox="3 3 18 18"
+        aria-hidden="true"
+      >
+        <path d="M0 0h24v24H0z" fill="none" />
         <path
           fill="#5f6368"
-          d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm200-560h80v-80h-80v80Zm80 240h80v-80h-80v80Zm0-160h80v-80h-80v80Zm-80 80h80v-80h-80v80Zm0 160h80v-80h-80v80Zm80 80h80v-80h-80v80Z"
+          d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 15l-4-4h8l-4 4zm4-6H8v-2h8v2zm0-4H8V6h8v2z"
+        />
+      </svg>
+    ),
+  ],
+  [
+    "audio",
+    () => (
+      <svg
+        class="drive-file-icon drive-file-icon-new-format drive-file-icon-audio"
+        viewBox="3 3 18 18"
+        aria-hidden="true"
+      >
+        <path
+          fill="#d93025"
+          d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM7.2 18c-.66 0-1.2-.54-1.2-1.2V12c0-3.31 2.69-6 6-6s6 2.69 6 6v4.8c0 .66-.54 1.2-1.2 1.2H14v-4h2v-2c0-2.21-1.79-4-4-4s-4 1.79-4 4v2h2v4H7.2z"
+        />
+        <path d="M0 0h24v24H0z" fill="none" />
+      </svg>
+    ),
+  ],
+  [
+    "video",
+    () => (
+      <svg
+        class="drive-file-icon drive-file-icon-new-format drive-file-icon-video"
+        viewBox="0 -2 16 16"
+        aria-hidden="true"
+      >
+        <path
+          fill="#d93025"
+          d="M12.8 0l1.6 3.2H12L10.4 0H8.8l1.6 3.2H8L6.4 0H4.8l1.6 3.2H4L2.4 0h-.8C.72 0 .008.72.008 1.6L0 11.2c0 .88.72 1.6 1.6 1.6h12.8c.88 0 1.6-.72 1.6-1.6V0h-3.2z"
+        />
+      </svg>
+    ),
+  ],
+  [
+    "vids",
+    () => (
+      <svg
+        class="drive-file-icon drive-file-icon-new-format drive-file-icon-vids"
+        viewBox="0 0 16 16"
+        aria-hidden="true"
+      >
+        <path fill="#1a73e8" d="M5.778 5.803v4.392L9.333 8 5.778 5.803z" />
+        <path
+          fill="#1a73e8"
+          d="M14.222 0H1.778C.798 0 0 .798 0 1.778v12.444C0 15.202.798 16 1.778 16h12.444c.98 0 1.778-.798 1.778-1.778V1.778C16 .798 15.202 0 14.222 0ZM4 13.333V2.667L12.889 8 4 13.333Z"
         />
       </svg>
     ),

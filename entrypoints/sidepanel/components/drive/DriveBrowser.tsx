@@ -72,6 +72,11 @@ const TYPE_OPTIONS: DriveSearchFilters["type"][] = [
   "presentations",
   "pdf",
   "images",
+  "forms",
+  "archives",
+  "audio",
+  "videos",
+  "vids",
 ];
 
 const TYPE_LABEL: Record<DriveSearchFilters["type"], string> = {
@@ -82,6 +87,11 @@ const TYPE_LABEL: Record<DriveSearchFilters["type"], string> = {
   presentations: "Презентации",
   pdf: "PDF",
   images: "Изображения",
+  forms: "Формы",
+  archives: "Архивы",
+  audio: "Аудио",
+  videos: "Видео",
+  vids: "Vids",
 };
 
 const TYPE_MIME: Partial<Record<DriveSearchFilters["type"], string>> = {
@@ -91,6 +101,11 @@ const TYPE_MIME: Partial<Record<DriveSearchFilters["type"], string>> = {
   presentations: "application/vnd.google-apps.presentation",
   pdf: "application/pdf",
   images: "image/png",
+  forms: "application/vnd.google-apps.form",
+  archives: "application/zip",
+  audio: "audio/mpeg",
+  videos: "video/mp4",
+  vids: "application/vnd.google-apps.vid",
 };
 
 const OWNER_OPTIONS: DriveSearchFilters["owner"][] = ["all", "me"];

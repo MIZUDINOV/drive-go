@@ -23,7 +23,12 @@ export type DriveSearchFilters = {
     | "spreadsheets"
     | "presentations"
     | "pdf"
-    | "images";
+    | "images"
+    | "forms"
+    | "archives"
+    | "audio"
+    | "videos"
+    | "vids";
   owner: "all" | "me";
   modified: "any" | "7d" | "30d" | "365d";
 };
@@ -73,6 +78,16 @@ function getTypeCondition(type: DriveSearchFilters["type"]): string | null {
       return "mimeType = 'application/pdf'";
     case "images":
       return "mimeType contains 'image/'";
+    case "forms":
+      return "mimeType = 'application/vnd.google-apps.form'";
+    case "archives":
+      return "(mimeType = 'application/zip' or mimeType = 'application/x-zip-compressed' or mimeType = 'application/x-rar-compressed' or mimeType = 'application/x-7z-compressed' or mimeType = 'application/x-tar' or mimeType = 'application/gzip')";
+    case "audio":
+      return "mimeType contains 'audio/'";
+    case "videos":
+      return "(mimeType contains 'video/' or mimeType = 'application/vnd.google-apps.video')";
+    case "vids":
+      return "mimeType = 'application/vnd.google-apps.vid'";
     default:
       return null;
   }
