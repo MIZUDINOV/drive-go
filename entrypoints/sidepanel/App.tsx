@@ -516,7 +516,7 @@ function App() {
                 <span class="brand-google-letter brand-google-green">e</span>
                 <span class="brand-google-gap"> </span>
                 <span class="brand-google-letter brand-google-blue">G</span>
-                <span class="brand-google-letter brand-google-red">o</span>
+                <span class="brand-google-letter brand-google-red">O</span>
               </span>
             </h1>
 
