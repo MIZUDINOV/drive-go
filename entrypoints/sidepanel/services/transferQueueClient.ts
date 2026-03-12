@@ -18,7 +18,9 @@ import {
 } from "../../shared/transferQueueMessages";
 import { putStagedTransferBlob } from "../../shared/transferQueueStagingDb";
 
-function isTransferQueueListResponse(value: unknown): value is TransferQueueListResponse {
+function isTransferQueueListResponse(
+  value: unknown,
+): value is TransferQueueListResponse {
   if (typeof value !== "object" || value === null) {
     return false;
   }
@@ -28,7 +30,10 @@ function isTransferQueueListResponse(value: unknown): value is TransferQueueList
 }
 
 function createStagingId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
 

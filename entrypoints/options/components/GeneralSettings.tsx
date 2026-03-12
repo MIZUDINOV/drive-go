@@ -13,9 +13,8 @@ const DEFAULT_SETTINGS: TransferQueueGeneralSettings = {
 };
 
 export function GeneralSettings() {
-  const [settings, setSettings] = createSignal<TransferQueueGeneralSettings | null>(
-    null,
-  );
+  const [settings, setSettings] =
+    createSignal<TransferQueueGeneralSettings | null>(null);
   const [saveError, setSaveError] = createSignal<string | null>(null);
   let isInitialSync = true;
 
@@ -25,7 +24,9 @@ export function GeneralSettings() {
       setSettings(loadedSettings);
     } catch (error: unknown) {
       const message =
-        error instanceof Error ? error.message : "Не удалось загрузить общие настройки";
+        error instanceof Error
+          ? error.message
+          : "Не удалось загрузить общие настройки";
       setSaveError(message);
       setSettings(DEFAULT_SETTINGS);
     }
@@ -44,11 +45,15 @@ export function GeneralSettings() {
 
     setSaveError(null);
 
-    void saveTransferQueueGeneralSettings(nextSettings).catch((error: unknown) => {
-      const message =
-        error instanceof Error ? error.message : "Не удалось сохранить общие настройки";
-      setSaveError(message);
-    });
+    void saveTransferQueueGeneralSettings(nextSettings).catch(
+      (error: unknown) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Не удалось сохранить общие настройки";
+        setSaveError(message);
+      },
+    );
   });
 
   return (
@@ -76,9 +81,9 @@ export function GeneralSettings() {
             <div class="options-setting-label">
               <div>Фоновая загрузка</div>
               <div class="options-setting-hint">
-                Если включено, загрузки продолжаются после закрытия расширения. Если
-                выключено, загрузки ставятся на паузу и продолжаются при открытии боковой
-                панели.
+                Если включено, загрузки продолжаются после закрытия расширения.
+                Если выключено, загрузки ставятся на паузу и продолжаются при
+                открытии боковой панели.
               </div>
             </div>
 
@@ -102,8 +107,13 @@ export function GeneralSettings() {
       </Show>
 
       <Show when={saveError()}>
-        <Alert class="options-alert options-alert-error" style="margin-top: 12px;">
-          <span class="material-symbols-rounded" aria-hidden="true">error</span>
+        <Alert
+          class="options-alert options-alert-error"
+          style="margin-top: 12px;"
+        >
+          <span class="material-symbols-rounded" aria-hidden="true">
+            error
+          </span>
           <span>{saveError()}</span>
         </Alert>
       </Show>

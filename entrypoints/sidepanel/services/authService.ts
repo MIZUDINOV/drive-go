@@ -141,7 +141,9 @@ async function collectGrantedScopesFromAvailableTokens(): Promise<string[]> {
   const fallbackToken = await tryGetAuthTokenSilently();
   if (fallbackToken) {
     try {
-      const fallbackScopes = await fetchGrantedScopesForToken(fallbackToken.token);
+      const fallbackScopes = await fetchGrantedScopesForToken(
+        fallbackToken.token,
+      );
       for (const grantedScope of fallbackScopes) {
         aggregated.add(grantedScope);
       }

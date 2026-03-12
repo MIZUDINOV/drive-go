@@ -29,7 +29,10 @@ export function runTransferQueueStateReducerChecks(): void {
     type: "claim",
     direction: "upload",
   });
-  assert(claimed.status === "uploading", "pending -> claim(upload) must set uploading");
+  assert(
+    claimed.status === "uploading",
+    "pending -> claim(upload) must set uploading",
+  );
 
   const retry = reduceTransferQueueItem(createMockJob("error"), {
     type: "retry",
@@ -43,7 +46,10 @@ export function runTransferQueueStateReducerChecks(): void {
       progressBytes: 500,
     },
   );
-  assert(progress.progressBytes === 500, "uploading -> progress should update bytes");
+  assert(
+    progress.progressBytes === 500,
+    "uploading -> progress should update bytes",
+  );
 
   const paused = reduceTransferQueueItem(createMockJob("uploading"), {
     type: "pause",

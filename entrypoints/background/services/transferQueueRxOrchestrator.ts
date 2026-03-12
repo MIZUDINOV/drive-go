@@ -1,5 +1,12 @@
 import { BehaviorSubject, EMPTY, Subject, from } from "rxjs";
-import { auditTime, catchError, concatMap, distinctUntilChanged, filter, withLatestFrom } from "rxjs/operators";
+import {
+  auditTime,
+  catchError,
+  concatMap,
+  distinctUntilChanged,
+  filter,
+  withLatestFrom,
+} from "rxjs/operators";
 
 type TransferQueueRxOrchestratorOptions = {
   runPump: () => Promise<void>;
@@ -13,13 +20,11 @@ export class TransferQueueRxOrchestrator {
   private readonly pumpRequests$ = new Subject<void>();
 
   private readonly subscriptions = [
-    this.enabled$
-      .pipe(distinctUntilChanged())
-      .subscribe((enabled) => {
-        if (!enabled) {
-          this.options.onDisabled();
-        }
-      }),
+    this.enabled$.pipe(distinctUntilChanged()).subscribe((enabled) => {
+      if (!enabled) {
+        this.options.onDisabled();
+      }
+    }),
     this.pumpRequests$
       .pipe(
         auditTime(12),
@@ -37,7 +42,9 @@ export class TransferQueueRxOrchestrator {
       .subscribe(),
   ];
 
-  public constructor(private readonly options: TransferQueueRxOrchestratorOptions) {}
+  public constructor(
+    private readonly options: TransferQueueRxOrchestratorOptions,
+  ) {}
 
   public setProcessingEnabled(enabled: boolean): void {
     this.enabled$.next(enabled);

@@ -4,9 +4,10 @@ export type TransferQueueGeneralSettings = {
 
 const STORAGE_KEY = "transfer_queue_general_settings";
 
-export const DEFAULT_TRANSFER_QUEUE_GENERAL_SETTINGS: TransferQueueGeneralSettings = {
-  backgroundTransfersEnabled: true,
-};
+export const DEFAULT_TRANSFER_QUEUE_GENERAL_SETTINGS: TransferQueueGeneralSettings =
+  {
+    backgroundTransfersEnabled: true,
+  };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;

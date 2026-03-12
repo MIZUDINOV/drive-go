@@ -3,10 +3,7 @@ import type { TransferQueueLifecycleEvent } from "./transferQueueLifecycleEvent"
 export function logTransferQueueLifecycleEvent(
   event: TransferQueueLifecycleEvent,
 ): void {
-  const parts = [
-    `[TransferQueue][${event.type}]`,
-    `jobId=${event.jobId}`,
-  ];
+  const parts = [`[TransferQueue][${event.type}]`, `jobId=${event.jobId}`];
 
   if (event.status) {
     parts.push(`status=${event.status}`);

@@ -9,9 +9,7 @@ import {
   getSettings,
   saveSettings,
 } from "../../sidepanel/services/activityManager";
-import {
-  ActivityNotificationSound,
-} from "../../sidepanel/services/activityTypes";
+import { ActivityNotificationSound } from "../../sidepanel/services/activityTypes";
 import type {
   ActivityType,
   ActivitySettings as ActivitySettingsType,
@@ -96,7 +94,10 @@ const NOTIFICATION_SOUND_LABEL: Record<NotificationSoundOption, string> = {
 };
 
 function playPreviewSound(sound: NotificationSoundOption): void {
-  const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  const AudioContextCtor =
+    window.AudioContext ||
+    (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+      .webkitAudioContext;
   if (!AudioContextCtor) {
     return;
   }
@@ -113,7 +114,10 @@ function playPreviewSound(sound: NotificationSoundOption): void {
 
     gain.gain.setValueAtTime(0.0001, now + startOffset);
     gain.gain.exponentialRampToValueAtTime(0.12, now + startOffset + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + startOffset + duration);
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      now + startOffset + duration,
+    );
 
     oscillator.connect(gain);
     gain.connect(context.destination);
@@ -371,7 +375,9 @@ export function ActivitySettings() {
                 <Button
                   class="options-sound-preview-btn"
                   aria-label="Прослушать звук"
-                  onClick={() => playPreviewSound(settings()!.notificationSound)}
+                  onClick={() =>
+                    playPreviewSound(settings()!.notificationSound)
+                  }
                 >
                   <span class="material-symbols-rounded">play_arrow</span>
                 </Button>

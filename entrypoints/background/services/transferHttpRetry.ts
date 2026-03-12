@@ -51,7 +51,9 @@ export async function fetchWithRetry(
     defer(request).pipe(
       mergeMap((response) => {
         if (isRetryableStatus(response.status)) {
-          return throwError(() => new RetryableHttpStatusError(response.status));
+          return throwError(
+            () => new RetryableHttpStatusError(response.status),
+          );
         }
 
         return of(response);
@@ -63,7 +65,10 @@ export async function fetchWithRetry(
             return throwError(() => error);
           }
 
-          if (error instanceof RetryableHttpStatusError || error instanceof TypeError) {
+          if (
+            error instanceof RetryableHttpStatusError ||
+            error instanceof TypeError
+          ) {
             return timer(backoffDelay(retryCount, baseDelayMs, maxDelayMs));
           }
 

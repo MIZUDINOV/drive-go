@@ -183,10 +183,7 @@ export function ShareDialog(props: ShareDialogProps) {
                 optionValue="value"
                 optionTextValue="label"
                 itemComponent={(itemProps) => (
-                  <Select.Item
-                    item={itemProps.item}
-                    class="share-role-option"
-                  >
+                  <Select.Item item={itemProps.item} class="share-role-option">
                     <Select.ItemLabel>
                       {itemProps.item.rawValue.label}
                     </Select.ItemLabel>
@@ -224,9 +221,7 @@ export function ShareDialog(props: ShareDialogProps) {
 
               <Show
                 when={!isLoading()}
-                fallback={
-                  <div class="share-loading">Загрузка...</div>
-                }
+                fallback={<div class="share-loading">Загрузка...</div>}
               >
                 <div class="share-permissions-list">
                   <For each={permissions()}>

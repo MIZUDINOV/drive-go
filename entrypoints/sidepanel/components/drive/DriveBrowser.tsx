@@ -361,7 +361,15 @@ export function DriveBrowser(props: DriveBrowserProps) {
   const menuConfig = createMemo<DriveItemMenuConfig | undefined>(() => {
     if (scope === "my-drive") {
       return {
-        actions: ["open", "rename", "move", "trash", "share", "copy-link", "add-star"],
+        actions: [
+          "open",
+          "rename",
+          "move",
+          "trash",
+          "share",
+          "copy-link",
+          "add-star",
+        ],
         onAddStar: async (item) => {
           const canProceed = await permissionGate.ensureDriveWriteOrRequest(
             "Для добавления в помеченные требуется доступ на изменение Google Drive.",
@@ -567,13 +575,14 @@ export function DriveBrowser(props: DriveBrowserProps) {
 
         const result = await addSharedItemToStarred(item.id);
         if (!result.ok) {
-          const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
-            result.error,
-            "Для добавления в помеченные требуется доступ на изменение Google Drive.",
-            async () => {
-              await addSharedItemToStarred(item.id);
-            },
-          );
+          const isPermissionDenied =
+            permissionGate.handleDriveWriteDeniedFallback(
+              result.error,
+              "Для добавления в помеченные требуется доступ на изменение Google Drive.",
+              async () => {
+                await addSharedItemToStarred(item.id);
+              },
+            );
 
           if (isPermissionDenied) {
             return false;
@@ -612,13 +621,14 @@ export function DriveBrowser(props: DriveBrowserProps) {
 
         const result = await removeSharedItem(item.id);
         if (!result.ok) {
-          const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
-            result.error,
-            "Для удаления из раздела требуется доступ на изменение Google Drive.",
-            async () => {
-              await removeSharedItem(item.id);
-            },
-          );
+          const isPermissionDenied =
+            permissionGate.handleDriveWriteDeniedFallback(
+              result.error,
+              "Для удаления из раздела требуется доступ на изменение Google Drive.",
+              async () => {
+                await removeSharedItem(item.id);
+              },
+            );
 
           if (isPermissionDenied) {
             return false;

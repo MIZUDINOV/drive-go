@@ -12,11 +12,9 @@ export class TransferQueueEventBus {
     listener: () => Promise<void> | void,
     throttleMs: number = 120,
   ): Subscription {
-    return this.snapshotChanged$
-      .pipe(auditTime(throttleMs))
-      .subscribe(() => {
-        void listener();
-      });
+    return this.snapshotChanged$.pipe(auditTime(throttleMs)).subscribe(() => {
+      void listener();
+    });
   }
 
   public dispose(): void {

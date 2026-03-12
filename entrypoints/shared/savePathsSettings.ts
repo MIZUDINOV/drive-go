@@ -20,7 +20,9 @@ export const DEFAULT_SAVE_PATHS_SETTINGS: SavePathsSettings = {
 export async function getSavePathsSettings(): Promise<SavePathsSettings> {
   return new Promise((resolve) => {
     browser.storage.local.get([STORAGE_KEY], (result) => {
-      const stored = result[STORAGE_KEY] as Partial<SavePathsSettings> | undefined;
+      const stored = result[STORAGE_KEY] as
+        | Partial<SavePathsSettings>
+        | undefined;
       resolve({ ...DEFAULT_SAVE_PATHS_SETTINGS, ...(stored || {}) });
     });
   });

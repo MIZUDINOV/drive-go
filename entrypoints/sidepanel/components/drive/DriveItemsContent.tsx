@@ -41,7 +41,10 @@ export function DriveItemsContent(props: DriveItemsContentProps) {
   const files = () => props.items.filter((item) => !isFolder(item));
 
   return (
-    <Show when={!props.error} fallback={<p class="drive-error">Ошибка: {props.error}</p>}>
+    <Show
+      when={!props.error}
+      fallback={<p class="drive-error">Ошибка: {props.error}</p>}
+    >
       <Show
         when={props.items.length > 0 || props.loading}
         fallback={

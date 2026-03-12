@@ -12,7 +12,10 @@ export function SettingsBrowser() {
         <div class="settings-empty-state">
           <span class="material-symbols-rounded">settings</span>
           <h2>Настройки</h2>
-          <p>Откройте полную страницу настроек для управления всеми опциями расширения</p>
+          <p>
+            Откройте полную страницу настроек для управления всеми опциями
+            расширения
+          </p>
 
           <Button class="settings-open-btn" onClick={handleOpenSettings}>
             <span class="material-symbols-rounded">open_in_new</span>
@@ -23,7 +26,10 @@ export function SettingsBrowser() {
         <div class="settings-info">
           <div class="settings-section">
             <h3>Активность</h3>
-            <p>Настройте типы уведомлений, интервал синхронизации и другие параметры активности</p>
+            <p>
+              Настройте типы уведомлений, интервал синхронизации и другие
+              параметры активности
+            </p>
           </div>
 
           <div class="settings-section">
@@ -32,7 +38,7 @@ export function SettingsBrowser() {
           </div>
 
           <div class="settings-section">
-            <h3>О расширении</h3>  
+            <h3>О расширении</h3>
             <p>Информация о версии и ссылки на ресурсы</p>
           </div>
         </div>

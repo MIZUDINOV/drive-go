@@ -33,7 +33,10 @@
   padding: 0 10px;
   font-size: 12px;
   cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
 }
 
 .transfers-filter-btn:hover {
@@ -81,7 +84,10 @@
   gap: 8px;
   font-size: 12px;
   cursor: pointer;
-  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
 }
 
 .transfers-sort-trigger:hover {
@@ -109,7 +115,9 @@
   transition: transform 180ms ease;
 }
 
-.transfers-sort-trigger[data-expanded] .transfers-sort-icon .material-symbols-rounded {
+.transfers-sort-trigger[data-expanded]
+  .transfers-sort-icon
+  .material-symbols-rounded {
   transform: rotate(180deg);
 }
 
@@ -168,7 +176,10 @@
   align-items: center;
   gap: 4px;
   cursor: pointer;
-  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
 }
 
 .transfers-clear-trigger:hover {
@@ -190,7 +201,9 @@
   transition: transform 180ms ease;
 }
 
-.transfers-clear-trigger[data-expanded] .transfers-clear-trigger-icon .material-symbols-rounded {
+.transfers-clear-trigger[data-expanded]
+  .transfers-clear-trigger-icon
+  .material-symbols-rounded {
   transform: rotate(180deg);
 }
 

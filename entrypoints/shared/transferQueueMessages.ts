@@ -14,8 +14,7 @@ export const MESSAGE_TRANSFER_QUEUE_CLEAR_HISTORY =
   "gdrivego.transfer-queue.clear-history";
 export const PORT_TRANSFER_QUEUE_SIDEPANEL_SESSION =
   "gdrivego.transfer-queue.sidepanel-session";
-export const PORT_TRANSFER_QUEUE_UPDATES =
-  "gdrivego.transfer-queue.updates";
+export const PORT_TRANSFER_QUEUE_UPDATES = "gdrivego.transfer-queue.updates";
 export const MESSAGE_TRANSFER_QUEUE_SNAPSHOT_UPDATED =
   "gdrivego.transfer-queue.snapshot-updated";
 

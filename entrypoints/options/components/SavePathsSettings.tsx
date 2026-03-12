@@ -1,4 +1,11 @@
-import { For, Show, createEffect, createMemo, createSignal, onMount } from "solid-js";
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createSignal,
+  onMount,
+} from "solid-js";
 import { Skeleton } from "@kobalte/core/skeleton";
 import { Alert } from "@kobalte/core/alert";
 import type { DriveApiFile } from "../../sidepanel/components/drive/driveTypes";
@@ -53,7 +60,9 @@ const DEFAULT_SETTINGS: SavePathsSettings = {
 let cachedOwnedFolders: DriveApiFile[] | null = null;
 let cachedOwnedFoldersRequest: Promise<DriveApiFile[]> | null = null;
 
-async function getOwnedFoldersCached(forceRefresh = false): Promise<DriveApiFile[]> {
+async function getOwnedFoldersCached(
+  forceRefresh = false,
+): Promise<DriveApiFile[]> {
   if (!forceRefresh && cachedOwnedFolders) {
     return cachedOwnedFolders;
   }
@@ -73,7 +82,8 @@ async function getOwnedFoldersCached(forceRefresh = false): Promise<DriveApiFile
 }
 
 export function SavePathsSettings() {
-  const [settings, setSettings] = createSignal<SavePathsSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] =
+    createSignal<SavePathsSettings>(DEFAULT_SETTINGS);
   const [folders, setFolders] = createSignal<DriveApiFile[]>([]);
   const [isLoading, setIsLoading] = createSignal(true);
   const [saveError, setSaveError] = createSignal<string | null>(null);
@@ -87,7 +97,10 @@ export function SavePathsSettings() {
     return map;
   });
 
-  const baseOptions = createMemo(() => ["root", ...folders().map((folder) => folder.id)]);
+  const baseOptions = createMemo(() => [
+    "root",
+    ...folders().map((folder) => folder.id),
+  ]);
 
   onMount(async () => {
     try {
@@ -101,7 +114,8 @@ export function SavePathsSettings() {
       setSettings(loadedSettings);
       setFolders(loadedFolders);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Не удалось загрузить папки";
+      const message =
+        error instanceof Error ? error.message : "Не удалось загрузить папки";
       setSaveError(message);
     } finally {
       setIsLoading(false);
@@ -118,7 +132,10 @@ export function SavePathsSettings() {
 
     setSaveError(null);
     void saveSavePathsSettings(nextSettings).catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : "Не удалось сохранить настройки";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Не удалось сохранить настройки";
       setSaveError(message);
     });
   });
@@ -192,8 +209,13 @@ export function SavePathsSettings() {
         </Show>
 
         <Show when={saveError()}>
-          <Alert class="options-alert options-alert-error" style="margin-top: 12px;">
-            <span class="material-symbols-rounded" aria-hidden="true">error</span>
+          <Alert
+            class="options-alert options-alert-error"
+            style="margin-top: 12px;"
+          >
+            <span class="material-symbols-rounded" aria-hidden="true">
+              error
+            </span>
             <span>{saveError()}</span>
           </Alert>
         </Show>

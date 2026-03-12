@@ -8,7 +8,9 @@ type OptionsSelectProps<T extends string | number> = {
   onChange: (value: T) => void;
 };
 
-export function OptionsSelect<T extends string | number>(props: OptionsSelectProps<T>) {
+export function OptionsSelect<T extends string | number>(
+  props: OptionsSelectProps<T>,
+) {
   return (
     <Select<T>
       value={props.value}
@@ -23,14 +25,19 @@ export function OptionsSelect<T extends string | number>(props: OptionsSelectPro
       }}
       itemComponent={(itemProps) => (
         <Select.Item item={itemProps.item} class="options-kb-select-item">
-          <Select.ItemLabel>{props.getLabel(itemProps.item.rawValue as T)}</Select.ItemLabel>
+          <Select.ItemLabel>
+            {props.getLabel(itemProps.item.rawValue as T)}
+          </Select.ItemLabel>
           <Select.ItemIndicator class="options-kb-select-item-indicator">
             <span class="material-symbols-rounded">done</span>
           </Select.ItemIndicator>
         </Select.Item>
       )}
     >
-      <Select.Trigger class="options-select options-kb-select-trigger" aria-label={props.ariaLabel}>
+      <Select.Trigger
+        class="options-select options-kb-select-trigger"
+        aria-label={props.ariaLabel}
+      >
         <Select.Value class="options-kb-select-value">
           {(state) => {
             const selected = state.selectedOption() as T | undefined;

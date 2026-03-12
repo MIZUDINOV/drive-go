@@ -12,11 +12,13 @@ type TransferQueueCommandRequest<T> = {
 };
 
 export class TransferQueueCommandBus {
-  private readonly highPriorityCommands$ =
-    new Subject<TransferQueueCommandRequest<unknown>>();
+  private readonly highPriorityCommands$ = new Subject<
+    TransferQueueCommandRequest<unknown>
+  >();
 
-  private readonly normalPriorityCommands$ =
-    new Subject<TransferQueueCommandRequest<unknown>>();
+  private readonly normalPriorityCommands$ = new Subject<
+    TransferQueueCommandRequest<unknown>
+  >();
 
   private readonly subscriptions = [
     this.createLaneSubscription(this.highPriorityCommands$),

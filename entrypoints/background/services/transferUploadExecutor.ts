@@ -48,14 +48,17 @@ async function uploadMultipart(
   formData.append("file", params.blob, params.name);
 
   const response = await fetchWithRetry(() =>
-    fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
+    fetch(
+      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+        signal,
       },
-      body: formData,
-      signal,
-    }),
+    ),
   );
 
   if (!response.ok) {
@@ -87,27 +90,29 @@ async function createResumableSession(
     ...(params.parentId ? { parents: [params.parentId] } : {}),
   };
 
-  const response = await fetchWithRetry(
-    () =>
-      fetch(
-        "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json; charset=UTF-8",
-            "X-Upload-Content-Type": params.mimeType || "application/octet-stream",
-            "X-Upload-Content-Length": String(params.sizeBytes),
-          },
-          body: JSON.stringify(metadata),
-          signal,
+  const response = await fetchWithRetry(() =>
+    fetch(
+      "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Upload-Content-Type":
+            params.mimeType || "application/octet-stream",
+          "X-Upload-Content-Length": String(params.sizeBytes),
         },
-      ),
+        body: JSON.stringify(metadata),
+        signal,
+      },
+    ),
   );
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Ошибка инициализации resumable: ${response.status} ${text}`);
+    throw new Error(
+      `Ошибка инициализации resumable: ${response.status} ${text}`,
+    );
   }
 
   const uploadUrl = response.headers.get("Location");
@@ -168,7 +173,9 @@ async function probeResumableProgress(
   }
 
   const text = await response.text();
-  throw new Error(`Ошибка проверки resumable сессии: ${response.status} ${text}`);
+  throw new Error(
+    `Ошибка проверки resumable сессии: ${response.status} ${text}`,
+  );
 }
 
 async function uploadResumable(
@@ -202,7 +209,12 @@ async function uploadResumable(
       updatedAt: Date.now(),
     });
   } else {
-    const probe = await probeResumableProgress(uploadUrl, blob.size, token, signal);
+    const probe = await probeResumableProgress(
+      uploadUrl,
+      blob.size,
+      token,
+      signal,
+    );
     if (probe.completedFileId) {
       await onProgress(blob.size);
       return probe.completedFileId;
@@ -279,7 +291,9 @@ async function uploadResumable(
     }
 
     if (response.status === 404) {
-      throw new Error("Сессия resumable upload истекла, попробуйте повторить задачу");
+      throw new Error(
+        "Сессия resumable upload истекла, попробуйте повторить задачу",
+      );
     }
 
     const text = await response.text();

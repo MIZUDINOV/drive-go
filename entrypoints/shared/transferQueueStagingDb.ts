@@ -21,14 +21,17 @@ type TransferQueueStagingDbSchema = DBSchema & {
   };
 };
 
-let dbPromise: Promise<IDBPDatabase<TransferQueueStagingDbSchema>> | null = null;
+let dbPromise: Promise<IDBPDatabase<TransferQueueStagingDbSchema>> | null =
+  null;
 
 function getDb(): Promise<IDBPDatabase<TransferQueueStagingDbSchema>> {
   if (!dbPromise) {
     dbPromise = openDB<TransferQueueStagingDbSchema>(DB_NAME, DB_VERSION, {
       upgrade(db) {
         if (!db.objectStoreNames.contains(STORE_STAGED_BLOBS)) {
-          const store = db.createObjectStore(STORE_STAGED_BLOBS, { keyPath: "id" });
+          const store = db.createObjectStore(STORE_STAGED_BLOBS, {
+            keyPath: "id",
+          });
           store.createIndex("by-createdAt", "createdAt");
         }
       },

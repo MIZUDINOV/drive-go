@@ -15,9 +15,8 @@ export function useDriveWritePermissionGate() {
   const [permissionRequestError, setPermissionRequestError] = createSignal<
     string | null
   >(null);
-  const [pendingAction, setPendingAction] = createSignal<PermissionAction | null>(
-    null,
-  );
+  const [pendingAction, setPendingAction] =
+    createSignal<PermissionAction | null>(null);
 
   const queuePermissionRequest = (
     message: string,

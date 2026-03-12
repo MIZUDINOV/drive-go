@@ -92,7 +92,9 @@ function getDb(): Promise<IDBPDatabase<TransferQueueDbSchema>> {
         }
 
         if (!db.objectStoreNames.contains(STORE_CHUNKS)) {
-          const store = db.createObjectStore(STORE_CHUNKS, { keyPath: "chunkId" });
+          const store = db.createObjectStore(STORE_CHUNKS, {
+            keyPath: "chunkId",
+          });
           store.createIndex("by-jobId", "jobId");
           store.createIndex("by-jobId-index", ["jobId", "index"]);
         }
@@ -118,7 +120,9 @@ export async function putQueueJob(job: TransferQueueItem): Promise<void> {
   await db.put(STORE_QUEUE, job);
 }
 
-export async function getQueueJob(id: string): Promise<TransferQueueItem | undefined> {
+export async function getQueueJob(
+  id: string,
+): Promise<TransferQueueItem | undefined> {
   const db = await getDb();
   return db.get(STORE_QUEUE, id);
 }
@@ -149,12 +153,16 @@ export async function listQueueJobs(): Promise<TransferQueueItem[]> {
   return jobs.sort((a, b) => b.createdAt - a.createdAt);
 }
 
-export async function listPendingQueueJobs(limit: number): Promise<TransferQueueItem[]> {
+export async function listPendingQueueJobs(
+  limit: number,
+): Promise<TransferQueueItem[]> {
   const db = await getDb();
-  const allPending = await db.getAllFromIndex(STORE_QUEUE, "by-status", "pending");
-  return allPending
-    .sort((a, b) => a.createdAt - b.createdAt)
-    .slice(0, limit);
+  const allPending = await db.getAllFromIndex(
+    STORE_QUEUE,
+    "by-status",
+    "pending",
+  );
+  return allPending.sort((a, b) => a.createdAt - b.createdAt).slice(0, limit);
 }
 
 export async function deleteQueueJob(jobId: string): Promise<void> {
@@ -225,7 +233,9 @@ export async function getPayloadBlob(jobId: string): Promise<Blob | null> {
   }
 
   const chunks = await db.getAllFromIndex(STORE_CHUNKS, "by-jobId", jobId);
-  const sorted = chunks.sort((a, b) => a.index - b.index).map((record) => record.data);
+  const sorted = chunks
+    .sort((a, b) => a.index - b.index)
+    .map((record) => record.data);
   return new Blob(sorted, { type: payload.mimeType });
 }
 
@@ -244,12 +254,16 @@ export async function deletePayload(jobId: string): Promise<void> {
   await tx.done;
 }
 
-export async function getSession(jobId: string): Promise<ResumableSessionRecord | undefined> {
+export async function getSession(
+  jobId: string,
+): Promise<ResumableSessionRecord | undefined> {
   const db = await getDb();
   return db.get(STORE_SESSIONS, jobId);
 }
 
-export async function upsertSession(session: ResumableSessionRecord): Promise<void> {
+export async function upsertSession(
+  session: ResumableSessionRecord,
+): Promise<void> {
   const db = await getDb();
   await db.put(STORE_SESSIONS, session);
 }
@@ -270,7 +284,9 @@ export async function listHistoryItems(): Promise<TransferHistoryItem[]> {
   return items.sort((a, b) => b.completedAt - a.completedAt);
 }
 
-export async function clearHistoryByDirection(direction?: "upload" | "download"): Promise<void> {
+export async function clearHistoryByDirection(
+  direction?: "upload" | "download",
+): Promise<void> {
   const db = await getDb();
 
   if (!direction) {

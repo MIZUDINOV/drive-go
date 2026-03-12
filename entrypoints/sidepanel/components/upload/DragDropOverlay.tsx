@@ -72,11 +72,7 @@ export function DragDropOverlay(props: DragDropOverlayProps) {
     <Show when={isDragging()}>
       <div class="drag-drop-overlay">
         <div class="drag-drop-content">
-          <svg
-            class="drag-drop-icon"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
+          <svg class="drag-drop-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 17h16v2H4z" fill="currentColor" />
             <path
               d="M12 4v9m0 0-3.5-3.5M12 13l3.5-3.5"
@@ -88,7 +84,9 @@ export function DragDropOverlay(props: DragDropOverlayProps) {
             />
           </svg>
           <h2 class="drag-drop-title">Перетащите файлы сюда</h2>
-          <p class="drag-drop-subtitle">Файлы будут загружены в текущую папку</p>
+          <p class="drag-drop-subtitle">
+            Файлы будут загружены в текущую папку
+          </p>
         </div>
       </div>
     </Show>

@@ -10,7 +10,9 @@ type DriveWritePermissionDialogProps = {
   onRequestAccess: () => Promise<void>;
 };
 
-export function DriveWritePermissionDialog(props: DriveWritePermissionDialogProps) {
+export function DriveWritePermissionDialog(
+  props: DriveWritePermissionDialogProps,
+) {
   return (
     <AlertDialog open={props.open} onOpenChange={props.onOpenChange}>
       <AlertDialog.Portal>
@@ -23,7 +25,8 @@ export function DriveWritePermissionDialog(props: DriveWritePermissionDialogProp
           <div class="dialog-body permission-dialog-body">
             <AlertDialog.Description class="permission-dialog-description">
               Для этого действия нужно право на изменение файлов в Google Drive.
-              Нажмите "Выдать доступ", чтобы продолжить и автоматически повторить действие.
+              Нажмите "Выдать доступ", чтобы продолжить и автоматически
+              повторить действие.
             </AlertDialog.Description>
 
             <Show when={props.errorMessage}>

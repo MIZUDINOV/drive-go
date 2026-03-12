@@ -64,7 +64,11 @@ export function reduceTransferQueueItem(
   }
 
   if (transition.type === "cancel") {
-    assertAllowed(current.status, ["pending", "uploading", "downloading"], transition.type);
+    assertAllowed(
+      current.status,
+      ["pending", "uploading", "downloading"],
+      transition.type,
+    );
     return {
       status: "cancelled",
       errorMessage: "Отменено пользователем",
@@ -81,7 +85,11 @@ export function reduceTransferQueueItem(
   }
 
   if (transition.type === "pause") {
-    assertAllowed(current.status, ["uploading", "downloading"], transition.type);
+    assertAllowed(
+      current.status,
+      ["uploading", "downloading"],
+      transition.type,
+    );
     return {
       status: "pending",
       errorMessage: undefined,
@@ -89,7 +97,11 @@ export function reduceTransferQueueItem(
   }
 
   if (transition.type === "fail") {
-    assertAllowed(current.status, ["pending", "uploading", "downloading"], transition.type);
+    assertAllowed(
+      current.status,
+      ["pending", "uploading", "downloading"],
+      transition.type,
+    );
     return {
       status: "error",
       errorMessage: transition.message,
@@ -98,6 +110,9 @@ export function reduceTransferQueueItem(
 
   assertAllowed(current.status, ["uploading", "downloading"], transition.type);
   return {
-    progressBytes: Math.min(Math.max(0, transition.progressBytes), current.sizeBytes),
+    progressBytes: Math.min(
+      Math.max(0, transition.progressBytes),
+      current.sizeBytes,
+    ),
   };
 }

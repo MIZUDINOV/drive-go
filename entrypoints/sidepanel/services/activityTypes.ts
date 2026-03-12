@@ -138,14 +138,16 @@ export type DriveActivity = {
     };
   };
   actors?: Array<{
-    user?: Record<string, unknown> | {
-      knownUser?: {
-        personName?: string;
-        isCurrentUser?: boolean;
-      };
-      emailAddress?: string;
-      displayName?: string;
-    };
+    user?:
+      | Record<string, unknown>
+      | {
+          knownUser?: {
+            personName?: string;
+            isCurrentUser?: boolean;
+          };
+          emailAddress?: string;
+          displayName?: string;
+        };
     anonymous?: Record<string, unknown>;
     system?: Record<string, unknown>;
   }>;

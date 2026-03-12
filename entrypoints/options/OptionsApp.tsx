@@ -27,7 +27,11 @@ export function OptionsApp() {
           <Toast.List class="toast-list" />
         </Toast.Region>
       </Portal>
-      <Tabs class="options-layout" defaultValue="activity" orientation="vertical">
+      <Tabs
+        class="options-layout"
+        defaultValue="activity"
+        orientation="vertical"
+      >
         <aside class="options-sidebar">
           <div class="options-header">
             <div class="options-logo">
@@ -52,7 +56,7 @@ export function OptionsApp() {
 
         <main class="options-content">
           <Tabs.Content value="activity">
-          <ActivitySettings />
+            <ActivitySettings />
           </Tabs.Content>
 
           <Tabs.Content value="save-paths">
@@ -67,7 +71,8 @@ export function OptionsApp() {
             <div class="options-section">
               <h2>О расширении</h2>
               <p class="options-section-description">
-                Google Drive Go - компактное расширение для работы с Google Drive
+                Google Drive Go - компактное расширение для работы с Google
+                Drive
               </p>
               <div class="options-about-version">
                 <strong>Версия:</strong> 1.0.0

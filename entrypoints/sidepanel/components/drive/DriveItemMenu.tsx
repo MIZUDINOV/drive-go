@@ -117,7 +117,9 @@ function DropdownMenuItems(props: MenuItemsProps) {
           class="drive-item-menu-item"
           onSelect={props.onAddStarClick}
         >
-          <span class="material-symbols-rounded drive-item-menu-icon">star</span>
+          <span class="material-symbols-rounded drive-item-menu-icon">
+            star
+          </span>
           <DropdownMenu.ItemLabel>Добавить в помеченные</DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
@@ -139,7 +141,9 @@ function DropdownMenuItems(props: MenuItemsProps) {
           class="drive-item-menu-item"
           onSelect={props.onRenameClick}
         >
-          <span class="material-symbols-rounded drive-item-menu-icon">edit</span>
+          <span class="material-symbols-rounded drive-item-menu-icon">
+            edit
+          </span>
           <DropdownMenu.ItemLabel>Переименовать</DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
@@ -161,7 +165,9 @@ function DropdownMenuItems(props: MenuItemsProps) {
           class="drive-item-menu-item"
           onSelect={props.onCopyLink}
         >
-          <span class="material-symbols-rounded drive-item-menu-icon">link</span>
+          <span class="material-symbols-rounded drive-item-menu-icon">
+            link
+          </span>
           <DropdownMenu.ItemLabel>Копировать ссылку</DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
@@ -248,7 +254,9 @@ function ContextMenuItems(props: MenuItemsProps) {
           class="drive-item-menu-item"
           onSelect={props.onAddStarClick}
         >
-          <span class="material-symbols-rounded drive-item-menu-icon">star</span>
+          <span class="material-symbols-rounded drive-item-menu-icon">
+            star
+          </span>
           <ContextMenu.ItemLabel>Добавить в помеченные</ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>
@@ -270,7 +278,9 @@ function ContextMenuItems(props: MenuItemsProps) {
           class="drive-item-menu-item"
           onSelect={props.onRenameClick}
         >
-          <span class="material-symbols-rounded drive-item-menu-icon">edit</span>
+          <span class="material-symbols-rounded drive-item-menu-icon">
+            edit
+          </span>
           <ContextMenu.ItemLabel>Переименовать</ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>
@@ -292,7 +302,9 @@ function ContextMenuItems(props: MenuItemsProps) {
           class="drive-item-menu-item"
           onSelect={props.onCopyLink}
         >
-          <span class="material-symbols-rounded drive-item-menu-icon">link</span>
+          <span class="material-symbols-rounded drive-item-menu-icon">
+            link
+          </span>
           <ContextMenu.ItemLabel>Копировать ссылку</ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>

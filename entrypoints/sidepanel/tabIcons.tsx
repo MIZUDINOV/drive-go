@@ -1,6 +1,14 @@
 import { type JSX } from "solid-js";
 
-export type TabIconName = "drive" | "clock" | "shared" | "star" | "pulse" | "transfers" | "trash" | "settings";
+export type TabIconName =
+  | "drive"
+  | "clock"
+  | "shared"
+  | "star"
+  | "pulse"
+  | "transfers"
+  | "trash"
+  | "settings";
 
 const tabIconbyName = new Map<TabIconName, string>([
   ["drive", "storage"],
@@ -13,12 +21,15 @@ const tabIconbyName = new Map<TabIconName, string>([
   ["settings", "settings"],
 ]);
 
-export function TabIcon(props: { name: TabIconName; isSelected?: boolean }): JSX.Element {
+export function TabIcon(props: {
+  name: TabIconName;
+  isSelected?: boolean;
+}): JSX.Element {
   const iconName = tabIconbyName.get(props.name) ?? "delete";
-  
+
   return (
-    <span 
-      class="material-symbols-rounded" 
+    <span
+      class="material-symbols-rounded"
       {...(props.isSelected && { "data-selected": true })}
       aria-hidden="true"
     >

@@ -43,7 +43,10 @@ type EnqueueUploadParams = {
 const parentNameCache = new Map<string, string>();
 
 function createTransferId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
 
@@ -110,7 +113,6 @@ function splitBlobIntoChunks(blob: Blob): Blob[] {
   return chunks;
 }
 
-
 class TransferQueueEngine {
   private readonly activeJobs = new Set<string>();
 
@@ -130,8 +132,9 @@ class TransferQueueEngine {
 
   private stateChangedListener: (() => void) | null = null;
 
-  private lifecycleListener: ((event: TransferQueueLifecycleEvent) => void) | null =
-    null;
+  private lifecycleListener:
+    | ((event: TransferQueueLifecycleEvent) => void)
+    | null = null;
 
   private readonly lastProgressPercentByJob = new Map<string, number>();
 
@@ -177,9 +180,12 @@ class TransferQueueEngine {
     this.lastProgressPercentByJob.clear();
   }
 
-  public async enqueueUpload(params: EnqueueUploadParams): Promise<TransferQueueItem> {
+  public async enqueueUpload(
+    params: EnqueueUploadParams,
+  ): Promise<TransferQueueItem> {
     const now = Date.now();
-    const strategy = params.blob.size > SMALL_FILE_THRESHOLD_BYTES ? "resumable" : "multipart";
+    const strategy =
+      params.blob.size > SMALL_FILE_THRESHOLD_BYTES ? "resumable" : "multipart";
     const parentName = await resolveParentFolderName(params.parentId);
 
     const job: TransferQueueItem = {
@@ -220,7 +226,10 @@ class TransferQueueEngine {
   }
 
   public async listSnapshot(): Promise<TransferQueueSnapshot> {
-    const [queue, history] = await Promise.all([listQueueJobs(), listHistoryItems()]);
+    const [queue, history] = await Promise.all([
+      listQueueJobs(),
+      listHistoryItems(),
+    ]);
     return { queue, history };
   }
 
@@ -356,7 +365,9 @@ class TransferQueueEngine {
 
     try {
       if (job.direction !== "upload") {
-        throw new Error("Download pipeline будет добавлен в следующей итерации");
+        throw new Error(
+          "Download pipeline будет добавлен в следующей итерации",
+        );
       }
 
       const payload = await getPayloadBlob(job.id);
@@ -373,7 +384,10 @@ class TransferQueueEngine {
 
         const safePercent =
           job.sizeBytes > 0
-            ? Math.min(100, Math.max(0, Math.round((uploadedBytes / job.sizeBytes) * 100)))
+            ? Math.min(
+                100,
+                Math.max(0, Math.round((uploadedBytes / job.sizeBytes) * 100)),
+              )
             : 0;
         const lastPercent = this.lastProgressPercentByJob.get(job.id) ?? -1;
         if (safePercent === 100 || safePercent - lastPercent >= 5) {
@@ -447,7 +461,8 @@ class TransferQueueEngine {
         }
       }
 
-      const message = error instanceof Error ? error.message : "Неизвестная ошибка";
+      const message =
+        error instanceof Error ? error.message : "Неизвестная ошибка";
       await this.applyTransition(job.id, {
         type: "fail",
         message,
@@ -492,8 +507,11 @@ class TransferQueueEngine {
       const patch = reduceTransferQueueItem(current, transition);
       await updateQueueJob(jobId, patch);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "invalid transition";
-      console.warn(`[TransferQueue] Skipping transition for ${jobId}: ${message}`);
+      const message =
+        error instanceof Error ? error.message : "invalid transition";
+      console.warn(
+        `[TransferQueue] Skipping transition for ${jobId}: ${message}`,
+      );
     }
   }
 }

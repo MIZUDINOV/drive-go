@@ -1,4 +1,11 @@
-import { For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import {
+  For,
+  Show,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+} from "solid-js";
 import { Subject, Subscription, timer } from "rxjs";
 import { mergeMap, map, switchMap } from "rxjs/operators";
 import { Popover } from "@kobalte/core/popover";
@@ -82,11 +89,18 @@ function UploadTaskItem(props: UploadTaskItemProps) {
     props.task.status === "downloading";
   const canRetry = () =>
     props.task.status === "error" || props.task.status === "cancelled";
-  const canRemove = () => props.task.status === "error" || props.task.status === "cancelled";
+  const canRemove = () =>
+    props.task.status === "error" || props.task.status === "cancelled";
 
   const uploadPercent = () =>
     props.task.sizeBytes > 0
-      ? Math.min(100, Math.max(0, Math.round((props.task.progressBytes / props.task.sizeBytes) * 100)))
+      ? Math.min(
+          100,
+          Math.max(
+            0,
+            Math.round((props.task.progressBytes / props.task.sizeBytes) * 100),
+          ),
+        )
       : 0;
 
   return (
@@ -99,18 +113,32 @@ function UploadTaskItem(props: UploadTaskItemProps) {
           <span class={getStatusClass(props.task.status)}>
             {getStatusText(props.task.status)}
           </span>
-          <Show when={props.task.status === "uploading" || props.task.status === "downloading"}>
+          <Show
+            when={
+              props.task.status === "uploading" ||
+              props.task.status === "downloading"
+            }
+          >
             <span class="upload-task-progress-text">
-              {formatBytes(props.task.progressBytes)} / {formatBytes(props.task.sizeBytes)}
+              {formatBytes(props.task.progressBytes)} /{" "}
+              {formatBytes(props.task.sizeBytes)}
             </span>
           </Show>
           <Show when={props.task.status === "error" && props.task.errorMessage}>
-            <span class="upload-task-error-text" title={props.task.errorMessage}>
+            <span
+              class="upload-task-error-text"
+              title={props.task.errorMessage}
+            >
               {props.task.errorMessage}
             </span>
           </Show>
         </div>
-        <Show when={props.task.status === "uploading" || props.task.status === "downloading"}>
+        <Show
+          when={
+            props.task.status === "uploading" ||
+            props.task.status === "downloading"
+          }
+        >
           <div class="upload-task-progress-bar">
             <div
               class="upload-task-progress-fill"
@@ -188,8 +216,12 @@ export function UploadPopover() {
   const [isOpen, setIsOpen] = createSignal(false);
   const [isAutoOpened, setIsAutoOpened] = createSignal(false);
   const [tasks, setTasks] = createSignal<TransferQueueItem[]>([]);
-  const [recentCompleted, setRecentCompleted] = createSignal<TransferHistoryItem[]>([]);
-  const [inlineNotices, setInlineNotices] = createSignal<InlineUploadNotice[]>([]);
+  const [recentCompleted, setRecentCompleted] = createSignal<
+    TransferHistoryItem[]
+  >([]);
+  const [inlineNotices, setInlineNotices] = createSignal<InlineUploadNotice[]>(
+    [],
+  );
   const [seenUpTo, setSeenUpTo] = createSignal<number>(Date.now());
   const [lastAutoOpenCompletedCount, setLastAutoOpenCompletedCount] =
     createSignal(0);
@@ -280,11 +312,7 @@ export function UploadPopover() {
       });
 
     const inlineNoticeExpirySubscription = inlineNoticeExpiry$
-      .pipe(
-        mergeMap((id) =>
-          timer(AUTO_CLOSE_DELAY_MS).pipe(map(() => id)),
-        ),
-      )
+      .pipe(mergeMap((id) => timer(AUTO_CLOSE_DELAY_MS).pipe(map(() => id))))
       .subscribe((expiredId) => {
         setInlineNotices((current) =>
           current.filter((notice) => notice.id !== expiredId),
@@ -334,7 +362,9 @@ export function UploadPopover() {
   };
 
   const hasCompletedTasks = createMemo(() =>
-    tasks().some((task) => task.status === "error" || task.status === "cancelled"),
+    tasks().some(
+      (task) => task.status === "error" || task.status === "cancelled",
+    ),
   );
 
   const popoverBadgeCount = createMemo(
@@ -375,7 +405,11 @@ export function UploadPopover() {
       onOpenChange={handlePopoverOpenChange}
     >
       <div class="upload-trigger-wrap">
-        <Popover.Trigger class="upload-icon-btn" type="button" aria-label="Очередь загрузок">
+        <Popover.Trigger
+          class="upload-icon-btn"
+          type="button"
+          aria-label="Очередь загрузок"
+        >
           <span class="material-symbols-rounded">upload_file</span>
           <Show when={popoverBadgeCount() > 0}>
             <span class="upload-count">{popoverBadgeCount()}</span>

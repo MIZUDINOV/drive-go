@@ -1,4 +1,11 @@
-import { For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import {
+  For,
+  Show,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+} from "solid-js";
 import { Button } from "@kobalte/core/button";
 import { DropdownMenu } from "@kobalte/core/dropdown-menu";
 import { Select } from "@kobalte/core/select";
@@ -29,7 +36,12 @@ const SORT_LABEL: Record<TransferSort, string> = {
   "size-desc": "Размер по убыванию",
 };
 
-const SORT_OPTIONS: TransferSort[] = ["newest", "oldest", "name-asc", "size-desc"];
+const SORT_OPTIONS: TransferSort[] = [
+  "newest",
+  "oldest",
+  "name-asc",
+  "size-desc",
+];
 
 const FILTER_OPTIONS: Array<{ value: TransferFilter; label: string }> = [
   { value: "all", label: "Все" },
@@ -113,7 +125,10 @@ function getTransferActionLabel(action: "cancel" | "retry" | "remove"): string {
 function queueStatusText(item: TransferQueueItem): string {
   if (item.status === "pending") return "В очереди";
   if (item.status === "uploading") {
-    const percent = item.sizeBytes > 0 ? Math.round((item.progressBytes / item.sizeBytes) * 100) : 0;
+    const percent =
+      item.sizeBytes > 0
+        ? Math.round((item.progressBytes / item.sizeBytes) * 100)
+        : 0;
     return `Загрузка ${Math.min(100, Math.max(0, percent))}%`;
   }
   if (item.status === "downloading") return "Скачивание";
@@ -137,9 +152,12 @@ function mapQueueItem(item: TransferQueueItem): TransferListItem {
     direction: item.direction,
     name: item.name,
     sizeBytes: item.sizeBytes,
-    parentName: item.parentName || (item.parentId || "Корневая папка"),
+    parentName: item.parentName || item.parentId || "Корневая папка",
     statusText: queueStatusText(item),
-    isActive: item.status === "uploading" || item.status === "pending" || item.status === "downloading",
+    isActive:
+      item.status === "uploading" ||
+      item.status === "pending" ||
+      item.status === "downloading",
     hasError: item.status === "error",
     createdAt: item.createdAt,
     action,
@@ -154,7 +172,7 @@ function mapHistoryItem(item: TransferHistoryItem): TransferListItem {
     direction: item.direction,
     name: item.name,
     sizeBytes: item.sizeBytes,
-    parentName: item.parentName || (item.parentId || "Корневая папка"),
+    parentName: item.parentName || item.parentId || "Корневая папка",
     statusText: "Завершено",
     isActive: false,
     hasError: false,
@@ -180,7 +198,11 @@ export function TransfersBrowser() {
       setHistory(snapshot.history);
       setError(null);
     } catch (reason: unknown) {
-      setError(reason instanceof Error ? reason.message : "Не удалось загрузить передачи");
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Не удалось загрузить передачи",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -290,7 +312,10 @@ export function TransfersBrowser() {
         >
           <For each={FILTER_OPTIONS}>
             {(option) => (
-              <ToggleGroup.Item class="transfers-filter-btn" value={option.value}>
+              <ToggleGroup.Item
+                class="transfers-filter-btn"
+                value={option.value}
+              >
                 {option.label}
               </ToggleGroup.Item>
             )}
@@ -299,7 +324,10 @@ export function TransfersBrowser() {
       </div>
 
       <TextField class="transfers-search" value={search()} onChange={setSearch}>
-        <TextField.Input class="transfers-search-input" placeholder="Поиск по имени файла" />
+        <TextField.Input
+          class="transfers-search-input"
+          placeholder="Поиск по имени файла"
+        />
       </TextField>
 
       <div class="transfers-toolbar">
@@ -325,7 +353,10 @@ export function TransfersBrowser() {
             </Select.Item>
           )}
         >
-          <Select.Trigger class="transfers-sort-trigger" aria-label="Сортировка">
+          <Select.Trigger
+            class="transfers-sort-trigger"
+            aria-label="Сортировка"
+          >
             <Select.Value class="transfers-sort-value">
               {(state) =>
                 state.selectedOption()
@@ -346,7 +377,10 @@ export function TransfersBrowser() {
         </Select>
 
         <DropdownMenu gutter={6}>
-          <DropdownMenu.Trigger class="transfers-clear-trigger" aria-label="Очистка передач">
+          <DropdownMenu.Trigger
+            class="transfers-clear-trigger"
+            aria-label="Очистка передач"
+          >
             <span>Очистить</span>
             <DropdownMenu.Icon class="transfers-clear-trigger-icon">
               <span class="material-symbols-rounded">expand_more</span>
@@ -354,14 +388,27 @@ export function TransfersBrowser() {
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
             <DropdownMenu.Content class="transfers-clear-content">
-              <div class="transfers-clear-listbox" role="group" aria-label="Действия очистки">
-                <DropdownMenu.Item class="transfers-clear-item" onSelect={() => void handleClear("all")}>
+              <div
+                class="transfers-clear-listbox"
+                role="group"
+                aria-label="Действия очистки"
+              >
+                <DropdownMenu.Item
+                  class="transfers-clear-item"
+                  onSelect={() => void handleClear("all")}
+                >
                   Очистить все
                 </DropdownMenu.Item>
-                <DropdownMenu.Item class="transfers-clear-item" onSelect={() => void handleClear("uploaded")}>
+                <DropdownMenu.Item
+                  class="transfers-clear-item"
+                  onSelect={() => void handleClear("uploaded")}
+                >
                   Очистить загруженные
                 </DropdownMenu.Item>
-                <DropdownMenu.Item class="transfers-clear-item" onSelect={() => void handleClear("downloaded")}>
+                <DropdownMenu.Item
+                  class="transfers-clear-item"
+                  onSelect={() => void handleClear("downloaded")}
+                >
                   Очистить скачанные
                 </DropdownMenu.Item>
               </div>
@@ -384,7 +431,9 @@ export function TransfersBrowser() {
               <div class={`transfer-item ${item.isActive ? "is-active" : ""}`}>
                 <div class="transfer-item-icon" data-direction={item.direction}>
                   <span class="material-symbols-rounded">
-                    {item.direction === "upload" ? "arrow_upward" : "arrow_downward"}
+                    {item.direction === "upload"
+                      ? "arrow_upward"
+                      : "arrow_downward"}
                   </span>
                 </div>
 
