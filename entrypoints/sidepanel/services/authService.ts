@@ -80,6 +80,11 @@ async function readStoredGrantedScopes(): Promise<StoredGrantedScopes | null> {
   };
 }
 
+export async function getCachedGrantedScopes(): Promise<string[]> {
+  const stored = await readStoredGrantedScopes();
+  return stored?.scopes ?? [];
+}
+
 async function writeStoredGrantedScopes(scopes: string[]): Promise<void> {
   const payload: StoredGrantedScopes = {
     scopes,

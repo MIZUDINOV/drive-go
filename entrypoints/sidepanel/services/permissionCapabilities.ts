@@ -1,5 +1,6 @@
 import { BehaviorSubject, type Subscription } from "rxjs";
 import {
+  getCachedGrantedScopes,
   getGrantedScopes,
   hasGrantedScope,
   isAuthFlowCancelledError,
@@ -144,6 +145,18 @@ export async function checkActivityReadCapability(): Promise<boolean> {
   }
 
   const scopes = await syncGrantedScopes();
+  return hasGrantedScope(scopes, DRIVE_ACTIVITY_READ_SCOPE);
+}
+
+export async function checkActivityReadCapabilityLocally(): Promise<boolean> {
+  const snapshot = getPermissionCapabilitiesSnapshot();
+
+  if (snapshot.activityRead === "granted") {
+    return true;
+  }
+
+  const scopes = await getCachedGrantedScopes();
+  applyGrantedScopes(scopes);
   return hasGrantedScope(scopes, DRIVE_ACTIVITY_READ_SCOPE);
 }
 

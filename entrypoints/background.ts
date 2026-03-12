@@ -493,6 +493,20 @@ async function getActivitySettingsFromStorage(): Promise<ActivitySettings> {
   });
 }
 
+async function getCurrentUserEmail(): Promise<string | null> {
+  try {
+    if (!browser.identity.getProfileUserInfo) {
+      return null;
+    }
+
+    const profile = await browser.identity.getProfileUserInfo();
+    const email = profile.email?.trim();
+    return email ? email.toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}
+
 function normalizeSyncInterval(minutes: number): 1 | 5 | 10 | 15 | 30 {
   if (
     minutes === 1 ||
@@ -568,6 +582,25 @@ function getActivityTypeLabel(type: ActivityType): string {
   return labels[type];
 }
 
+function isSelfActivity(
+  item: ActivityItem,
+  currentUserEmail: string | null,
+): boolean {
+  if (item.actor.type !== "user") {
+    return false;
+  }
+
+  if (item.actor.isCurrentUser) {
+    return true;
+  }
+
+  if (!currentUserEmail || !item.actor.email) {
+    return false;
+  }
+
+  return item.actor.email.trim().toLowerCase() === currentUserEmail;
+}
+
 async function notifyAboutNewActivities(
   newItems: ActivityItem[],
   settings: ActivitySettings,
@@ -619,7 +652,7 @@ async function setupContextMenus(): Promise<void> {
 
   browser.contextMenus.create({
     id: CONTEXT_MENU_ROOT_ID,
-    title: "Google Drive Go",
+    title: "Drive Go",
     contexts: ["all"],
   });
 
@@ -868,24 +901,45 @@ async function syncActivities(): Promise<void> {
     }
 
     const parsed = parseActivities(response.activities || []);
+    const currentUserEmail = await getCurrentUserEmail();
+    const withoutSelfActivities = parsed.filter(
+      (item) => !isSelfActivity(item, currentUserEmail),
+    );
     const settings = await getActivitySettingsFromStorage();
-    const filteredParsed = filterByEnabledTypes(parsed, settings.enabledTypes);
+    const filteredParsed = filterByEnabledTypes(
+      withoutSelfActivities,
+      settings.enabledTypes,
+    );
 
     console.log(
-      `[Background] Fetched ${parsed.length} activities (${filteredParsed.length} после фильтра)`,
+      `[Background] Fetched ${parsed.length} activities (${withoutSelfActivities.length} после удаления своих, ${filteredParsed.length} после фильтра)`,
     );
 
     // Получить текущие данные из storage
     const storage = await browser.storage.local.get([
       STORAGE_KEY.ACTIVITIES,
+      STORAGE_KEY.LAST_SYNC,
+      STORAGE_KEY.READ_IDS,
       STORAGE_KEY.NOTIFIED_IDS,
     ]);
     const existingActivities = (storage[STORAGE_KEY.ACTIVITIES] ||
       []) as ActivityItem[];
+    const existingReadIds = new Set(
+      (storage[STORAGE_KEY.READ_IDS] as string[]) || [],
+    );
     const notifiedIds = new Set(
       (storage[STORAGE_KEY.NOTIFIED_IDS] as string[]) || [],
     );
+    const lastSyncTime =
+      typeof storage[STORAGE_KEY.LAST_SYNC] === "string"
+        ? (storage[STORAGE_KEY.LAST_SYNC] as string)
+        : null;
     const existingIds = new Set(existingActivities.map((item) => item.id));
+    const isInitialBootstrap =
+      existingActivities.length === 0 &&
+      existingReadIds.size === 0 &&
+      notifiedIds.size === 0 &&
+      lastSyncTime === null;
     const newItems = filteredParsed.filter(
       (item) => !existingIds.has(item.id) && !notifiedIds.has(item.id),
     );
@@ -898,21 +952,39 @@ async function syncActivities(): Promise<void> {
       settings.autoCleanupDays,
     );
     const limited = cleaned.slice(0, MAX_ACTIVITIES);
+    const nextReadIds = isInitialBootstrap
+      ? limited.map((item) => item.id)
+      : Array.from(
+          new Set([
+            ...existingReadIds,
+            ...existingActivities
+              .filter((item) => item.isRead)
+              .map((item) => item.id),
+          ]),
+        ).filter((id) => limited.some((item) => item.id === id));
 
     // Сохранить в storage
     const nextNotifiedIds = [
-      ...new Set([...notifiedIds, ...newItems.map((item) => item.id)]),
+      ...new Set([
+        ...notifiedIds,
+        ...(isInitialBootstrap
+          ? limited.map((item) => item.id)
+          : newItems.map((item) => item.id)),
+      ]),
     ].slice(-MAX_NOTIFIED_IDS);
 
     await browser.storage.local.set({
       [STORAGE_KEY.ACTIVITIES]: limited,
       [STORAGE_KEY.LAST_SYNC]: new Date().toISOString(),
+      [STORAGE_KEY.READ_IDS]: nextReadIds,
       [STORAGE_KEY.NOTIFIED_IDS]: nextNotifiedIds,
     });
 
     console.log(`[Background] Saved ${limited.length} activities to storage`);
 
-    await notifyAboutNewActivities(newItems, settings);
+    if (!isInitialBootstrap) {
+      await notifyAboutNewActivities(newItems, settings);
+    }
 
     // Обновить icon badge с количеством непрочитанных
     await updateBadge(limited);

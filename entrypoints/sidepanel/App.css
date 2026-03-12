@@ -99,10 +99,11 @@
 .sidebar {
   border-right: 1px solid var(--line);
   background: var(--surface-strong);
-  padding: 10px;
+  padding: 10px 5px;
   display: flex;
   flex-direction: column;
   height: 100%;
+  width: 50px;
   overflow: hidden;
 }
 
@@ -110,7 +111,8 @@
   height: 36px;
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  justify-content: center;
+  margin-bottom: 15px;
 }
 
 .menu-btn {
@@ -322,7 +324,7 @@
 }
 
 .collapsed {
-  grid-template-columns: 68px 1fr;
+  grid-template-columns: 50px 1fr;
 }
 
 .collapsed .tab-item {

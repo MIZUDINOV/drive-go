@@ -1,9 +1,10 @@
 import { Button } from "@kobalte/core/button";
+import { openOrFocusOptionsPage } from "@/entrypoints/sidepanel/services/openOptionsPage";
 import "./Settings.css";
 
 export function SettingsBrowser() {
-  const handleOpenSettings = () => {
-    browser.runtime.openOptionsPage();
+  const handleOpenSettings = (): void => {
+    void openOrFocusOptionsPage();
   };
 
   return (

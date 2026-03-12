@@ -664,6 +664,10 @@ export function parseActivities(activities: DriveActivity[]): ActivityItem[] {
       const actorData = actor?.user
         ? {
             type: "user" as const,
+            isCurrentUser:
+              user && typeof user === "object"
+                ? user.knownUser?.isCurrentUser === true
+                : false,
             identityKey: actorIdentityKey || undefined,
             displayName: actorDisplayName,
             email: actorEmail || undefined,

@@ -19,6 +19,7 @@ export type ActivityType =
  */
 export type ActivityActor = {
   type: "user" | "anonymous" | "system";
+  isCurrentUser?: boolean;
   identityKey?: string;
   displayName?: string;
   email?: string;

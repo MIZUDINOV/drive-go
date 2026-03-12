@@ -11,6 +11,7 @@ import { UploadPopover } from "./components/upload/UploadPopover";
 import { DragDropOverlay } from "./components/upload/DragDropOverlay";
 import { TransfersBrowser } from "./components/transfers/TransfersBrowser";
 import { enqueueFilesForUpload } from "./services/transferQueueClient";
+import { openOrFocusOptionsPage } from "@/entrypoints/sidepanel/services/openOptionsPage";
 import { subscribeActivityNotificationSound } from "./services/activitySoundStream";
 import {
   activityUnreadCount$,
@@ -361,7 +362,7 @@ function App() {
       fallback={
         <section class="auth-gate">
           <div class="auth-gate-card">
-            <h1>Войдите в Google Drive Go</h1>
+            <h1>Войдите в Drive Go</h1>
             <p>
               Для доступа к файлам и активности нужно авторизоваться через
               Google.
@@ -464,7 +465,7 @@ function App() {
               <Button
                 class="settings-btn"
                 onClick={() => {
-                  browser.runtime.openOptionsPage();
+                  void openOrFocusOptionsPage();
                 }}
                 aria-label="Настройки"
               >
@@ -483,7 +484,7 @@ function App() {
 
         <section class="content-area">
           <header class="topbar">
-            <h1 class="brand">Google Drive Go</h1>
+            <h1 class="brand">Drive Go</h1>
 
             <div class="search-block">
               <DriveSearchBar

@@ -8,9 +8,11 @@ import {
   requestActivitySyncNow,
 } from "../../services/activityManager";
 import type { ActivityItem } from "../../services/activityTypes";
+import {
+  checkActivityReadCapabilityLocally,
+  ensureActivityReadCapability,
+} from "../../services/permissionCapabilities";
 import { ActivityItem as ActivityItemComponent } from "./ActivityItem";
-import { ActivityReadPermissionDialog } from "../permissions/ActivityReadPermissionDialog";
-import { useActivityReadPermissionGate } from "../permissions/useActivityReadPermissionGate";
 import "./Activity.css";
 
 type ActivityBrowserProps = {
@@ -85,20 +87,21 @@ function formatDate(date: Date): string {
 }
 
 export function ActivityBrowser(props: ActivityBrowserProps) {
-  const permissionGate = useActivityReadPermissionGate();
   const [hasActivityAccess, setHasActivityAccess] = createSignal(false);
+  const [isPermissionRequestInProgress, setIsPermissionRequestInProgress] =
+    createSignal(false);
+  const [permissionRequestError, setPermissionRequestError] = createSignal<
+    string | null
+  >(null);
 
-  const ensureActivityAccessOnOpen = async (): Promise<void> => {
-    const hasAccess = await permissionGate.ensureActivityReadOrRequest(
-      "Для просмотра ленты активности нужно выдать доступ к чтению активности Google Drive.",
-    );
-
+  const syncActivityAccessFromStorage = async (): Promise<void> => {
+    const hasAccess = await checkActivityReadCapabilityLocally();
     setHasActivityAccess(hasAccess);
+
     if (!hasAccess) {
       return;
     }
 
-    // Загрузить активности из background service worker (browser.storage)
     await loadActivitiesFromBackground();
   };
 
@@ -107,13 +110,11 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
       return;
     }
 
-    void ensureActivityAccessOnOpen();
+    void syncActivityAccessFromStorage();
   });
 
   const handleRefresh = async () => {
-    const hasAccess = await permissionGate.ensureActivityReadOrRequest(
-      "Для обновления активности нужно выдать доступ к чтению активности Google Drive.",
-    );
+    const hasAccess = await checkActivityReadCapabilityLocally();
 
     setHasActivityAccess(hasAccess);
     if (!hasAccess) {
@@ -134,7 +135,21 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
   };
 
   const handleRequestActivityReadAccess = async (): Promise<void> => {
-    const granted = await permissionGate.requestActivityReadAccess();
+    setPermissionRequestError(null);
+    setIsPermissionRequestInProgress(true);
+
+    const result = await ensureActivityReadCapability();
+
+    setIsPermissionRequestInProgress(false);
+
+    if (!result.ok) {
+      setPermissionRequestError(result.message);
+      setHasActivityAccess(false);
+      return;
+    }
+
+    setPermissionRequestError(null);
+    const granted = await checkActivityReadCapabilityLocally();
     setHasActivityAccess(granted);
 
     if (!granted) {
@@ -148,14 +163,6 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
 
   return (
     <div class="activity-browser">
-      <ActivityReadPermissionDialog
-        open={permissionGate.isPermissionDialogOpen()}
-        isRequestInProgress={permissionGate.isPermissionRequestInProgress()}
-        errorMessage={permissionGate.permissionRequestError()}
-        onOpenChange={permissionGate.setIsPermissionDialogOpen}
-        onRequestAccess={handleRequestActivityReadAccess}
-      />
-
       <div class="activity-header">
         <div class="activity-header-title">
           <h2>Активность</h2>
@@ -212,13 +219,36 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
       </Show>
 
       <Show when={!hasActivityAccess()}>
-        <div class="activity-empty">
-          <span class="material-symbols-rounded">lock</span>
-          <p>Нет доступа к активности</p>
-          <span class="activity-empty-hint">
-            Откройте вкладку снова или нажмите обновить, чтобы запросить доступ.
-          </span>
-        </div>
+        <section class="activity-access-card">
+          <div class="activity-access-card-icon">
+            <span class="material-symbols-rounded">notifications_off</span>
+          </div>
+          <div class="activity-access-card-body">
+            <h3>Нет доступа к активности Google Drive</h3>
+            <p>
+              Чтобы показывать комментарии, изменения доступа и другие события,
+              нужен отдельный доступ только на чтение активности.
+            </p>
+
+            <Show when={permissionRequestError()}>
+              {(message) => (
+                <div class="activity-access-card-error">{message()}</div>
+              )}
+            </Show>
+
+            <Button
+              class="activity-access-card-btn"
+              onClick={() => {
+                void handleRequestActivityReadAccess();
+              }}
+              disabled={isPermissionRequestInProgress()}
+            >
+              {isPermissionRequestInProgress()
+                ? "Запрос прав..."
+                : "Выдать доступ"}
+            </Button>
+          </div>
+        </section>
       </Show>
 
       <Show when={activityStore.isLoading && activityStore.items.length === 0}>
