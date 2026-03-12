@@ -859,13 +859,14 @@ export function DriveBrowser(props: DriveBrowserProps) {
   };
 
   const openGoogleDoc = (
-    type: "document" | "spreadsheets" | "presentation" | "forms",
+    type: "document" | "spreadsheets" | "presentation" | "forms" | "vids",
   ) => {
     const baseUrls = {
       document: "https://docs.google.com/document/create",
       spreadsheets: "https://docs.google.com/spreadsheets/create",
       presentation: "https://docs.google.com/presentation/create",
       forms: "https://docs.google.com/forms/create",
+      vids: "https://docs.google.com/videos/create",
     };
 
     const url = baseUrls[type];
@@ -927,6 +928,12 @@ export function DriveBrowser(props: DriveBrowserProps) {
       label: "Google Формы",
       icon: () => <FileTypeIcon mimeType="application/vnd.google-apps.form" />,
       action: () => openGoogleDoc("forms"),
+    },
+    {
+      id: "vids",
+      label: "Google Vids",
+      icon: () => <FileTypeIcon mimeType="application/vnd.google-apps.vid" />,
+      action: () => openGoogleDoc("vids"),
     },
   ];
 
