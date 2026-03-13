@@ -1,4 +1,4 @@
-const enBase = {
+export const enBase = {
   "options.nav.aria": "Settings sections",
   "options.nav.activity": "Activity",
   "options.nav.savePaths": "Save paths",
@@ -22,6 +22,16 @@ const enBase = {
   "general.language.aria": "Interface language",
   "general.language.en": "English",
   "general.language.ru": "Русский",
+  "general.language.es": "Español",
+  "general.language.pt_BR": "Português (Brasil)",
+  "general.language.fr": "Français",
+  "general.language.de": "Deutsch",
+  "general.language.hi": "Hindi",
+  "general.language.ar": "العربية",
+  "general.language.id": "Bahasa Indonesia",
+  "general.language.ja": "日本語",
+  "general.language.ko": "한국어",
+  "general.language.zh_CN": "简体中文",
   "general.errors.load": "Failed to load general settings",
   "general.errors.save": "Failed to save general settings",
   "activity.title": "Activity settings",

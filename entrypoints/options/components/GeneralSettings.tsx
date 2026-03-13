@@ -56,6 +56,22 @@ export function GeneralSettings() {
   });
 
   const getLocaleLabel = (value: Locale): string => {
+    if (value === "es") {
+      return t("general.language.es");
+    }
+
+    if (value === "pt_BR") {
+      return t("general.language.pt_BR");
+    }
+
+    if (value === "fr") {
+      return t("general.language.fr");
+    }
+
+    if (value === "de") {
+      return t("general.language.de");
+    }
+
     if (value === "ru") {
       return t("general.language.ru");
     }

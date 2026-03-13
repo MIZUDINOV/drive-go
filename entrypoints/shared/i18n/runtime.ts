@@ -1,8 +1,19 @@
 import { dict as enDict, type Dictionary } from "./locales/en";
+import { dict as deDict } from "./locales/de";
+import { dict as esDict } from "./locales/es";
+import { dict as frDict } from "./locales/fr";
+import { dict as ptBrDict } from "./locales/pt_BR";
 
 const STORAGE_KEY = "uiLocale";
 
-export const RUNTIME_SUPPORTED_LOCALES = ["en", "ru"] as const;
+export const RUNTIME_SUPPORTED_LOCALES = [
+  "en",
+  "ru",
+  "es",
+  "pt_BR",
+  "fr",
+  "de",
+] as const;
 export type RuntimeLocale = (typeof RUNTIME_SUPPORTED_LOCALES)[number];
 export type RuntimeTranslationKey = keyof Dictionary;
 
@@ -35,6 +46,22 @@ async function fetchDictionary(locale: RuntimeLocale): Promise<Dictionary> {
   if (locale === "ru") {
     const module = await import("./locales/ru");
     return module.dict;
+  }
+
+  if (locale === "es") {
+    return esDict;
+  }
+
+  if (locale === "pt_BR") {
+    return ptBrDict;
+  }
+
+  if (locale === "fr") {
+    return frDict;
+  }
+
+  if (locale === "de") {
+    return deDict;
   }
 
   return enDict;
