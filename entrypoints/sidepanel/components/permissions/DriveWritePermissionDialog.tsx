@@ -1,6 +1,7 @@
 import { Show } from "solid-js";
 import { AlertDialog } from "@kobalte/core/alert-dialog";
 import { Button } from "@kobalte/core/button";
+import { useI18n } from "../../../shared/i18n";
 
 type DriveWritePermissionDialogProps = {
   open: boolean;
@@ -13,20 +14,19 @@ type DriveWritePermissionDialogProps = {
 export function DriveWritePermissionDialog(
   props: DriveWritePermissionDialogProps,
 ) {
+  const { t } = useI18n();
   return (
     <AlertDialog open={props.open} onOpenChange={props.onOpenChange}>
       <AlertDialog.Portal>
         <AlertDialog.Overlay class="dialog-overlay" />
         <AlertDialog.Content class="dialog-content permission-dialog-content">
           <AlertDialog.Title class="dialog-title">
-            Нужен доступ на изменение Drive
+            {t("drive.permission.title")}
           </AlertDialog.Title>
 
           <div class="dialog-body permission-dialog-body">
             <AlertDialog.Description class="permission-dialog-description">
-              Для этого действия нужно право на изменение файлов в Google Drive.
-              Нажмите "Выдать доступ", чтобы продолжить и автоматически
-              повторить действие.
+              {t("drive.permission.description")}
             </AlertDialog.Description>
 
             <Show when={props.errorMessage}>
@@ -40,7 +40,7 @@ export function DriveWritePermissionDialog(
               onClick={() => props.onOpenChange(false)}
               disabled={props.isRequestInProgress}
             >
-              Отмена
+              {t("drive.permission.cancel")}
             </Button>
 
             <Button
@@ -50,7 +50,9 @@ export function DriveWritePermissionDialog(
               }}
               disabled={props.isRequestInProgress}
             >
-              {props.isRequestInProgress ? "Запрос прав..." : "Выдать доступ"}
+              {props.isRequestInProgress
+                ? t("drive.permission.requesting")
+                : t("drive.permission.grant")}
             </Button>
           </div>
         </AlertDialog.Content>

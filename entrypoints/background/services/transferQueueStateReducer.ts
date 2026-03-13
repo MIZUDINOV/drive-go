@@ -3,6 +3,7 @@ import type {
   TransferQueueItem,
   TransferQueueStatus,
 } from "../../shared/transferQueueTypes";
+import { translateCurrentLocale } from "../../shared/i18n/runtime";
 
 type ClaimTransition = {
   type: "claim";
@@ -71,7 +72,7 @@ export function reduceTransferQueueItem(
     );
     return {
       status: "cancelled",
-      errorMessage: "Отменено пользователем",
+      errorMessage: translateCurrentLocale("transfer.error.cancelledByUser"),
     };
   }
 

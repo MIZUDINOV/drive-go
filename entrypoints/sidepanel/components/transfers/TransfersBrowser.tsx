@@ -24,29 +24,17 @@ import type {
   TransferHistoryItem,
   TransferQueueItem,
 } from "../../../shared/transferQueueTypes";
+import { useI18n } from "../../../shared/i18n";
 import "./Transfers.css";
 
 type TransferFilter = "all" | "uploaded" | "downloaded";
 type TransferSort = "newest" | "oldest" | "name-asc" | "size-desc";
-
-const SORT_LABEL: Record<TransferSort, string> = {
-  newest: "Сначала новые",
-  oldest: "Сначала старые",
-  "name-asc": "Имя A-Z",
-  "size-desc": "Размер по убыванию",
-};
 
 const SORT_OPTIONS: TransferSort[] = [
   "newest",
   "oldest",
   "name-asc",
   "size-desc",
-];
-
-const FILTER_OPTIONS: Array<{ value: TransferFilter; label: string }> = [
-  { value: "all", label: "Все" },
-  { value: "uploaded", label: "Загруженные" },
-  { value: "downloaded", label: "Скачанные" },
 ];
 
 function isTransferFilter(value: string): value is TransferFilter {
@@ -100,43 +88,43 @@ function formatBytes(bytes: number): string {
   return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 }
 
-function formatDateTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function formatDateTime(timestamp: number, locale: "en" | "ru"): string {
+  return new Date(timestamp).toLocaleString(
+    locale === "ru" ? "ru-RU" : "en-US",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    },
+  );
 }
 
-function getTransferActionLabel(action: "cancel" | "retry" | "remove"): string {
-  if (action === "cancel") {
-    return "Пауза";
-  }
-
-  if (action === "retry") {
-    return "Повторить";
-  }
-
-  return "Удалить";
-}
-
-function queueStatusText(item: TransferQueueItem): string {
-  if (item.status === "pending") return "В очереди";
+function queueStatusText(
+  item: TransferQueueItem,
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  if (item.status === "pending") return t("transfers.status.pending");
   if (item.status === "uploading") {
     const percent =
       item.sizeBytes > 0
         ? Math.round((item.progressBytes / item.sizeBytes) * 100)
         : 0;
-    return `Загрузка ${Math.min(100, Math.max(0, percent))}%`;
+    return t("transfers.status.uploading", {
+      percent: String(Math.min(100, Math.max(0, percent))),
+    });
   }
-  if (item.status === "downloading") return "Скачивание";
-  if (item.status === "cancelled") return "Пауза";
-  return "Ошибка";
+  if (item.status === "downloading") return t("transfers.status.downloading");
+  if (item.status === "cancelled") return t("transfers.status.cancelled");
+  return t("transfers.status.error");
 }
 
-function mapQueueItem(item: TransferQueueItem): TransferListItem {
+function mapQueueItem(
+  item: TransferQueueItem,
+  t: ReturnType<typeof useI18n>["t"],
+  locale: "en" | "ru",
+): TransferListItem {
   const action =
     item.status === "uploading" || item.status === "pending"
       ? "cancel"
@@ -144,7 +132,7 @@ function mapQueueItem(item: TransferQueueItem): TransferListItem {
         ? "retry"
         : null;
 
-  const subtitle = item.errorMessage ?? formatDateTime(item.updatedAt);
+  const subtitle = item.errorMessage ?? formatDateTime(item.updatedAt, locale);
 
   return {
     id: item.id,
@@ -152,8 +140,8 @@ function mapQueueItem(item: TransferQueueItem): TransferListItem {
     direction: item.direction,
     name: item.name,
     sizeBytes: item.sizeBytes,
-    parentName: item.parentName || item.parentId || "Корневая папка",
-    statusText: queueStatusText(item),
+    parentName: item.parentName || item.parentId || t("transfers.parent.root"),
+    statusText: queueStatusText(item, t),
     isActive:
       item.status === "uploading" ||
       item.status === "pending" ||
@@ -165,24 +153,42 @@ function mapQueueItem(item: TransferQueueItem): TransferListItem {
   };
 }
 
-function mapHistoryItem(item: TransferHistoryItem): TransferListItem {
+function mapHistoryItem(
+  item: TransferHistoryItem,
+  t: ReturnType<typeof useI18n>["t"],
+  locale: "en" | "ru",
+): TransferListItem {
   return {
     id: item.id,
     kind: "history",
     direction: item.direction,
     name: item.name,
     sizeBytes: item.sizeBytes,
-    parentName: item.parentName || item.parentId || "Корневая папка",
-    statusText: "Завершено",
+    parentName: item.parentName || item.parentId || t("transfers.parent.root"),
+    statusText: t("transfers.status.completed"),
     isActive: false,
     hasError: false,
     createdAt: item.completedAt,
     action: "remove",
-    subtitle: formatDateTime(item.completedAt),
+    subtitle: formatDateTime(item.completedAt, locale),
   };
 }
 
 export function TransfersBrowser() {
+  const { locale, t } = useI18n();
+  const sortLabels = createMemo<Record<TransferSort, string>>(() => ({
+    newest: t("transfers.sort.newest"),
+    oldest: t("transfers.sort.oldest"),
+    "name-asc": t("transfers.sort.nameAsc"),
+    "size-desc": t("transfers.sort.sizeDesc"),
+  }));
+  const filterOptions = createMemo<
+    Array<{ value: TransferFilter; label: string }>
+  >(() => [
+    { value: "all", label: t("transfers.filter.all") },
+    { value: "uploaded", label: t("transfers.filter.uploaded") },
+    { value: "downloaded", label: t("transfers.filter.downloaded") },
+  ]);
   const [queue, setQueue] = createSignal<TransferQueueItem[]>([]);
   const [history, setHistory] = createSignal<TransferHistoryItem[]>([]);
   const [isLoading, setIsLoading] = createSignal(true);
@@ -199,9 +205,7 @@ export function TransfersBrowser() {
       setError(null);
     } catch (reason: unknown) {
       setError(
-        reason instanceof Error
-          ? reason.message
-          : "Не удалось загрузить передачи",
+        reason instanceof Error ? reason.message : t("transfers.error.load"),
       );
     } finally {
       setIsLoading(false);
@@ -224,8 +228,8 @@ export function TransfersBrowser() {
 
   const items = createMemo<TransferListItem[]>(() => {
     const raw = [
-      ...queue().map(mapQueueItem),
-      ...history().map(mapHistoryItem),
+      ...queue().map((item) => mapQueueItem(item, t, locale())),
+      ...history().map((item) => mapHistoryItem(item, t, locale())),
     ];
 
     const currentFilter = filter();
@@ -256,7 +260,7 @@ export function TransfersBrowser() {
         }
 
         if (currentSort === "name-asc") {
-          return left.name.localeCompare(right.name, "ru");
+          return left.name.localeCompare(right.name, locale());
         }
 
         if (currentSort === "size-desc") {
@@ -296,10 +300,24 @@ export function TransfersBrowser() {
     await loadSnapshot();
   };
 
+  const getTransferActionLabel = (
+    action: "cancel" | "retry" | "remove",
+  ): string => {
+    if (action === "cancel") {
+      return t("transfers.action.cancel");
+    }
+
+    if (action === "retry") {
+      return t("transfers.action.retry");
+    }
+
+    return t("transfers.action.remove");
+  };
+
   return (
     <div class="transfers-browser">
       <div class="transfers-header">
-        <h2>Передачи</h2>
+        <h2>{t("transfers.title")}</h2>
         <ToggleGroup
           class="transfers-filters"
           value={filter()}
@@ -308,9 +326,9 @@ export function TransfersBrowser() {
               setFilter(value);
             }
           }}
-          aria-label="Фильтр передач"
+          aria-label={t("transfers.filter.aria")}
         >
-          <For each={FILTER_OPTIONS}>
+          <For each={filterOptions()}>
             {(option) => (
               <ToggleGroup.Item
                 class="transfers-filter-btn"
@@ -326,7 +344,7 @@ export function TransfersBrowser() {
       <TextField class="transfers-search" value={search()} onChange={setSearch}>
         <TextField.Input
           class="transfers-search-input"
-          placeholder="Поиск по имени файла"
+          placeholder={t("transfers.search.placeholder")}
         />
       </TextField>
 
@@ -336,7 +354,7 @@ export function TransfersBrowser() {
           value={sort()}
           gutter={6}
           optionValue={(option) => option}
-          optionTextValue={(option) => SORT_LABEL[option]}
+          optionTextValue={(option) => sortLabels()[option]}
           onChange={(next) => {
             if (next) {
               setSort(next);
@@ -345,7 +363,7 @@ export function TransfersBrowser() {
           itemComponent={(itemProps) => (
             <Select.Item item={itemProps.item} class="transfers-sort-item">
               <Select.ItemLabel>
-                {SORT_LABEL[itemProps.item.rawValue as TransferSort]}
+                {sortLabels()[itemProps.item.rawValue as TransferSort]}
               </Select.ItemLabel>
               <Select.ItemIndicator class="transfers-sort-item-indicator">
                 <span class="material-symbols-rounded">done</span>
@@ -355,13 +373,13 @@ export function TransfersBrowser() {
         >
           <Select.Trigger
             class="transfers-sort-trigger"
-            aria-label="Сортировка"
+            aria-label={t("transfers.sort.aria")}
           >
             <Select.Value class="transfers-sort-value">
               {(state) =>
                 state.selectedOption()
-                  ? SORT_LABEL[state.selectedOption() as TransferSort]
-                  : SORT_LABEL.newest
+                  ? sortLabels()[state.selectedOption() as TransferSort]
+                  : sortLabels().newest
               }
             </Select.Value>
             <Select.Icon class="transfers-sort-icon">
@@ -379,9 +397,9 @@ export function TransfersBrowser() {
         <DropdownMenu gutter={6}>
           <DropdownMenu.Trigger
             class="transfers-clear-trigger"
-            aria-label="Очистка передач"
+            aria-label={t("transfers.clear.aria")}
           >
-            <span>Очистить</span>
+            <span>{t("transfers.clear.label")}</span>
             <DropdownMenu.Icon class="transfers-clear-trigger-icon">
               <span class="material-symbols-rounded">expand_more</span>
             </DropdownMenu.Icon>
@@ -391,25 +409,25 @@ export function TransfersBrowser() {
               <div
                 class="transfers-clear-listbox"
                 role="group"
-                aria-label="Действия очистки"
+                aria-label={t("transfers.clear.actionsAria")}
               >
                 <DropdownMenu.Item
                   class="transfers-clear-item"
                   onSelect={() => void handleClear("all")}
                 >
-                  Очистить все
+                  {t("transfers.clear.all")}
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
                   class="transfers-clear-item"
                   onSelect={() => void handleClear("uploaded")}
                 >
-                  Очистить загруженные
+                  {t("transfers.clear.uploaded")}
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
                   class="transfers-clear-item"
                   onSelect={() => void handleClear("downloaded")}
                 >
-                  Очистить скачанные
+                  {t("transfers.clear.downloaded")}
                 </DropdownMenu.Item>
               </div>
             </DropdownMenu.Content>
@@ -423,7 +441,7 @@ export function TransfersBrowser() {
 
       <Show
         when={!isLoading() && items().length > 0}
-        fallback={<div class="transfers-empty">Передач пока нет</div>}
+        fallback={<div class="transfers-empty">{t("transfers.empty")}</div>}
       >
         <div class="transfers-list">
           <For each={items()}>
@@ -442,7 +460,9 @@ export function TransfersBrowser() {
                   <div class="transfer-item-meta">
                     <span>{item.statusText}</span>
                     <span>{formatBytes(item.sizeBytes)}</span>
-                    <span>Папка: {item.parentName}</span>
+                    <span>
+                      {t("transfers.meta.folder", { name: item.parentName })}
+                    </span>
                     <span>{item.subtitle}</span>
                   </div>
                 </div>

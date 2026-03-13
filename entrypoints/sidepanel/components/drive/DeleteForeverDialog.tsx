@@ -2,6 +2,7 @@ import { Show, createSignal } from "solid-js";
 import { Dialog } from "@kobalte/core/dialog";
 import { Button } from "@kobalte/core/button";
 import type { DriveItem } from "./driveTypes";
+import { useI18n } from "../../../shared/i18n";
 
 type DeleteForeverDialogProps = {
   item: DriveItem | null;
@@ -11,6 +12,7 @@ type DeleteForeverDialogProps = {
 };
 
 export function DeleteForeverDialog(props: DeleteForeverDialogProps) {
+  const { t } = useI18n();
   const [isDeleting, setIsDeleting] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
@@ -31,7 +33,7 @@ export function DeleteForeverDialog(props: DeleteForeverDialogProps) {
       return;
     }
 
-    setError("Не удалось удалить объект. Попробуйте еще раз.");
+    setError(t("drive.deleteDialog.error"));
   };
 
   return (
@@ -41,13 +43,14 @@ export function DeleteForeverDialog(props: DeleteForeverDialogProps) {
 
         <Dialog.Content class="danger-delete-dialog-content">
           <Dialog.Title class="danger-delete-dialog-title">
-            Удалить навсегда?
+            {t("drive.deleteDialog.title")}
           </Dialog.Title>
 
           <div class="danger-delete-dialog-body">
             <Dialog.Description class="danger-delete-dialog-description">
-              Объект "{props.item?.name}" будет удален навсегда. Это действие
-              нельзя отменить.
+              {t("drive.deleteDialog.description", {
+                name: props.item?.name ?? "",
+              })}
             </Dialog.Description>
 
             <Show when={error()}>
@@ -61,7 +64,7 @@ export function DeleteForeverDialog(props: DeleteForeverDialogProps) {
               onClick={() => props.onOpenChange(false)}
               disabled={isDeleting()}
             >
-              Отмена
+              {t("drive.deleteDialog.cancel")}
             </Button>
 
             <Button
@@ -69,7 +72,9 @@ export function DeleteForeverDialog(props: DeleteForeverDialogProps) {
               onClick={() => void handleDelete()}
               disabled={isDeleting()}
             >
-              {isDeleting() ? "Удаление..." : "Удалить"}
+              {isDeleting()
+                ? t("drive.deleteDialog.deleting")
+                : t("drive.deleteDialog.confirm")}
             </Button>
           </div>
         </Dialog.Content>

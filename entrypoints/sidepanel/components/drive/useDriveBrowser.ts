@@ -14,6 +14,7 @@ import { listSharedWithMe } from "../../services/sharedApi";
 import { listRecentFiles } from "../../services/recentApi";
 import { listStarredItems } from "../../services/starredApi";
 import { listTrashItems } from "../../services/trashApi";
+import { useI18n } from "../../../shared/i18n";
 
 export type DriveBrowserScope =
   | "my-drive"
@@ -60,6 +61,7 @@ function compareDriveItems(a: DriveItem, b: DriveItem): number {
 }
 
 export function useDriveBrowser(options?: UseDriveBrowserOptions) {
+  const { t } = useI18n();
   const scope = options?.scope ?? "my-drive";
   const isSharedScope = scope === "shared";
   const isRecentScope = scope === "recent";
@@ -87,14 +89,14 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
               ? TRASH_ROOT_ID
               : ROOT_FOLDER_ID,
       name: isSharedScope
-        ? "Доступные мне"
+        ? t("drive.breadcrumbs.root.shared")
         : isRecentScope
-          ? "Недавние"
+          ? t("drive.breadcrumbs.root.recent")
           : isStarredScope
-            ? "Помеченные"
+            ? t("drive.breadcrumbs.root.starred")
             : isTrashScope
-              ? "Корзина"
-              : "Мой диск",
+              ? t("drive.breadcrumbs.root.trash")
+              : t("drive.breadcrumbs.root.myDrive"),
     },
   ]);
 
@@ -154,7 +156,7 @@ export function useDriveBrowser(options?: UseDriveBrowserOptions) {
       }
 
       if (!response.ok) {
-        throw new Error(response.error || "Не удалось загрузить папку");
+        throw new Error(response.error || t("drive.content.loadFolderError"));
       }
 
       const mapped = (response.data?.files ?? [])

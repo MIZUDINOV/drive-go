@@ -11,6 +11,15 @@ import { mergeMap, map, switchMap } from "rxjs/operators";
 import { Popover } from "@kobalte/core/popover";
 import { Button } from "@kobalte/core/button";
 import { Tooltip } from "@kobalte/core/tooltip";
+import { useI18n } from "../../../shared/i18n";
+import type {
+  TransferHistoryItem,
+  TransferQueueItem,
+} from "../../../shared/transferQueueTypes";
+import {
+  getTransferPopoverSeenUpTo,
+  setTransferPopoverSeenUpTo,
+} from "../../../shared/transferQueueUiState";
 import {
   cancelTransferQueueItem,
   listTransferQueueSnapshot,
@@ -18,23 +27,22 @@ import {
   retryTransferQueueItem,
   subscribeTransferQueueSnapshots,
 } from "../../services/transferQueueClient";
-import {
-  getTransferPopoverSeenUpTo,
-  setTransferPopoverSeenUpTo,
-} from "../../../shared/transferQueueUiState";
-import type {
-  TransferHistoryItem,
-  TransferQueueItem,
-} from "../../../shared/transferQueueTypes";
 
-const MAX_RECENT_COMPLETED = 20;
-const AUTO_CLOSE_DELAY_MS = 3000;
-const MAX_INLINE_NOTICES = 4;
+const AUTO_CLOSE_DELAY_MS = 5000;
+const MAX_INLINE_NOTICES = 3;
+const MAX_RECENT_COMPLETED = 8;
 
 type InlineUploadNotice = {
   id: string;
   name: string;
   direction: TransferQueueItem["direction"];
+};
+
+type UploadTaskItemProps = {
+  task: TransferQueueItem;
+  onCancel: (id: string) => Promise<void>;
+  onRetry: (id: string) => Promise<void>;
+  onRemove: (id: string) => Promise<void>;
 };
 
 function formatBytes(bytes: number): string {
@@ -45,27 +53,11 @@ function formatBytes(bytes: number): string {
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 }
 
-function getStatusText(status: TransferQueueItem["status"]): string {
-  switch (status) {
-    case "pending":
-      return "В очереди";
-    case "uploading":
-      return "Загрузка...";
-    case "downloading":
-      return "Скачивание...";
-    case "error":
-      return "Ошибка";
-    case "cancelled":
-      return "Отменено";
-  }
-}
-
 function getStatusClass(status: TransferQueueItem["status"]): string {
   switch (status) {
     case "pending":
       return "upload-task-pending";
     case "uploading":
-      return "upload-task-uploading";
     case "downloading":
       return "upload-task-uploading";
     case "error":
@@ -75,20 +67,17 @@ function getStatusClass(status: TransferQueueItem["status"]): string {
   }
 }
 
-type UploadTaskItemProps = {
-  task: TransferQueueItem;
-  onCancel: (id: string) => Promise<void>;
-  onRetry: (id: string) => Promise<void>;
-  onRemove: (id: string) => Promise<void>;
-};
-
 function UploadTaskItem(props: UploadTaskItemProps) {
+  const { t } = useI18n();
+
   const canCancel = () =>
     props.task.status === "pending" ||
     props.task.status === "uploading" ||
     props.task.status === "downloading";
+
   const canRetry = () =>
     props.task.status === "error" || props.task.status === "cancelled";
+
   const canRemove = () =>
     props.task.status === "error" || props.task.status === "cancelled";
 
@@ -103,6 +92,21 @@ function UploadTaskItem(props: UploadTaskItemProps) {
         )
       : 0;
 
+  const statusText = () => {
+    switch (props.task.status) {
+      case "pending":
+        return t("upload.status.pending");
+      case "uploading":
+        return t("upload.status.uploading");
+      case "downloading":
+        return t("upload.status.downloading");
+      case "error":
+        return t("upload.status.error");
+      case "cancelled":
+        return t("upload.status.cancelled");
+    }
+  };
+
   return (
     <div class="upload-task-item">
       <div class="upload-task-info">
@@ -110,9 +114,7 @@ function UploadTaskItem(props: UploadTaskItemProps) {
           {props.task.name}
         </div>
         <div class="upload-task-details">
-          <span class={getStatusClass(props.task.status)}>
-            {getStatusText(props.task.status)}
-          </span>
+          <span class={getStatusClass(props.task.status)}>{statusText()}</span>
           <Show
             when={
               props.task.status === "uploading" ||
@@ -155,6 +157,8 @@ function UploadTaskItem(props: UploadTaskItemProps) {
               as={Button}
               class="upload-task-action-btn"
               type="button"
+              aria-label={t("upload.action.cancel")}
+              title={t("upload.action.cancel")}
               onClick={() => {
                 void props.onCancel(props.task.id);
               }}
@@ -164,7 +168,7 @@ function UploadTaskItem(props: UploadTaskItemProps) {
             <Tooltip.Portal>
               <Tooltip.Content class="tab-tooltip">
                 <Tooltip.Arrow class="tab-tooltip-arrow" />
-                <span>Отменить</span>
+                <span>{t("upload.action.cancel")}</span>
               </Tooltip.Content>
             </Tooltip.Portal>
           </Tooltip>
@@ -175,6 +179,8 @@ function UploadTaskItem(props: UploadTaskItemProps) {
               as={Button}
               class="upload-task-action-btn"
               type="button"
+              aria-label={t("upload.action.retry")}
+              title={t("upload.action.retry")}
               onClick={() => {
                 void props.onRetry(props.task.id);
               }}
@@ -184,8 +190,7 @@ function UploadTaskItem(props: UploadTaskItemProps) {
             <Tooltip.Portal>
               <Tooltip.Content class="tab-tooltip">
                 <Tooltip.Arrow class="tab-tooltip-arrow" />
-
-                <span>Повторить</span>
+                <span>{t("upload.action.retry")}</span>
               </Tooltip.Content>
             </Tooltip.Portal>
           </Tooltip>
@@ -196,6 +201,8 @@ function UploadTaskItem(props: UploadTaskItemProps) {
               as={Button}
               class="upload-task-action-btn"
               type="button"
+              aria-label={t("upload.action.remove")}
+              title={t("upload.action.remove")}
               onClick={() => {
                 void props.onRemove(props.task.id);
               }}
@@ -205,7 +212,7 @@ function UploadTaskItem(props: UploadTaskItemProps) {
             <Tooltip.Portal>
               <Tooltip.Content class="tab-tooltip">
                 <Tooltip.Arrow class="tab-tooltip-arrow" />
-                <span>Удалить</span>
+                <span>{t("upload.action.remove")}</span>
               </Tooltip.Content>
             </Tooltip.Portal>
           </Tooltip>
@@ -216,6 +223,7 @@ function UploadTaskItem(props: UploadTaskItemProps) {
 }
 
 export function UploadPopover() {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = createSignal(false);
   const [isAutoOpened, setIsAutoOpened] = createSignal(false);
   const [tasks, setTasks] = createSignal<TransferQueueItem[]>([]);
@@ -411,7 +419,7 @@ export function UploadPopover() {
         <Popover.Trigger
           class="upload-icon-btn"
           type="button"
-          aria-label="Очередь загрузок"
+          aria-label={t("upload.queue.aria")}
         >
           <span class="material-symbols-rounded">upload_file</span>
           <Show when={popoverBadgeCount() > 0}>
@@ -430,8 +438,8 @@ export function UploadPopover() {
                   <div class="upload-inline-notice-copy">
                     <p class="upload-inline-notice-title">
                       {notice.direction === "download"
-                        ? "Скачивание добавлено"
-                        : "Загрузка добавлена"}
+                        ? t("upload.inline.downloadAdded")
+                        : t("upload.inline.uploadAdded")}
                     </p>
                     <p class="upload-inline-notice-name" title={notice.name}>
                       {notice.name}
@@ -447,23 +455,25 @@ export function UploadPopover() {
       <Popover.Portal>
         <Popover.Content class="upload-popover-content">
           <div class="upload-popover-header">
-            <h3 class="upload-popover-title">Загрузки</h3>
+            <h3 class="upload-popover-title">{t("upload.title")}</h3>
             <Show when={hasCompletedTasks()}>
               <Tooltip placement="bottom" gutter={4}>
                 <Tooltip.Trigger
                   as={Button}
                   class="upload-popover-clear-btn"
                   type="button"
+                  aria-label={t("upload.clearCompleted")}
+                  title={t("upload.clearCompleted")}
                   onClick={() => {
                     void clearCompletedTasks();
                   }}
                 >
-                  Очистить
+                  {t("upload.clear")}
                 </Tooltip.Trigger>
                 <Tooltip.Portal>
                   <Tooltip.Content class="tab-tooltip">
                     <Tooltip.Arrow class="tab-tooltip-arrow" />
-                    <span>Очистить завершённые</span>
+                    <span>{t("upload.clearCompleted")}</span>
                   </Tooltip.Content>
                 </Tooltip.Portal>
               </Tooltip>
@@ -474,7 +484,7 @@ export function UploadPopover() {
             when={tasks().length > 0}
             fallback={
               <div class="upload-popover-empty">
-                <p>Нет загрузок</p>
+                <p>{t("upload.empty")}</p>
               </div>
             }
           >
@@ -494,7 +504,9 @@ export function UploadPopover() {
 
           <Show when={recentCompleted().length > 0}>
             <div class="upload-popover-header" style="margin-top: 8px;">
-              <h3 class="upload-popover-title">Завершено в этой сессии</h3>
+              <h3 class="upload-popover-title">
+                {t("upload.completedSession")}
+              </h3>
             </div>
             <div class="upload-popover-list">
               <For each={recentCompleted()}>
@@ -505,7 +517,9 @@ export function UploadPopover() {
                         {item.name}
                       </div>
                       <div class="upload-task-details">
-                        <span class="upload-task-completed">Завершено</span>
+                        <span class="upload-task-completed">
+                          {t("upload.completed")}
+                        </span>
                         <span class="upload-task-progress-text">
                           {formatBytes(item.sizeBytes)}
                         </span>

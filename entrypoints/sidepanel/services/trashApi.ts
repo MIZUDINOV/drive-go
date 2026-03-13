@@ -8,6 +8,7 @@ import {
   getAccessToken,
   getWriteAccessToken,
 } from "./driveApi";
+import { translateCurrentLocale } from "../../shared/i18n/runtime";
 
 type DriveListResult = {
   files?: DriveApiFile[];
@@ -156,7 +157,10 @@ export async function emptyTrash(): Promise<TrashMutationResult> {
       const errorText = await response.text();
       return {
         ok: false,
-        error: `Ошибка очистки корзины ${response.status}: ${errorText}`,
+        error: translateCurrentLocale("trash.error.emptyStatus", {
+          status: String(response.status),
+          details: errorText,
+        }),
       };
     }
 
@@ -167,7 +171,7 @@ export async function emptyTrash(): Promise<TrashMutationResult> {
       error:
         unknownError instanceof Error
           ? unknownError.message
-          : "Неизвестная ошибка",
+          : translateCurrentLocale("service.error.unknown"),
     };
   }
 }
@@ -194,7 +198,10 @@ export async function restoreTrashItem(
       const errorText = await response.text();
       return {
         ok: false,
-        error: `Ошибка восстановления ${response.status}: ${errorText}`,
+        error: translateCurrentLocale("trash.error.restoreStatus", {
+          status: String(response.status),
+          details: errorText,
+        }),
       };
     }
 
@@ -205,7 +212,7 @@ export async function restoreTrashItem(
       error:
         unknownError instanceof Error
           ? unknownError.message
-          : "Неизвестная ошибка",
+          : translateCurrentLocale("service.error.unknown"),
     };
   }
 }
@@ -228,7 +235,10 @@ export async function deleteTrashItemForever(
       const errorText = await response.text();
       return {
         ok: false,
-        error: `Ошибка удаления ${response.status}: ${errorText}`,
+        error: translateCurrentLocale("trash.error.deleteForeverStatus", {
+          status: String(response.status),
+          details: errorText,
+        }),
       };
     }
 
@@ -239,7 +249,7 @@ export async function deleteTrashItemForever(
       error:
         unknownError instanceof Error
           ? unknownError.message
-          : "Неизвестная ошибка",
+          : translateCurrentLocale("service.error.unknown"),
     };
   }
 }

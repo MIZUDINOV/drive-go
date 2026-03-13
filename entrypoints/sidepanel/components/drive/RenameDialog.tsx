@@ -8,6 +8,7 @@ import { renameFile } from "../../services/driveApi";
 import { markSavePathsFoldersDirty } from "../../../shared/savePathsSettings";
 import { DriveWritePermissionDialog } from "../permissions/DriveWritePermissionDialog";
 import { useDriveWritePermissionGate } from "../permissions/useDriveWritePermissionGate";
+import { useI18n } from "../../../shared/i18n";
 
 type RenameDialogProps = {
   item: DriveItem | null;
@@ -31,6 +32,7 @@ function splitExtension(fileName: string): {
 }
 
 export function RenameDialog(props: RenameDialogProps) {
+  const { t } = useI18n();
   const [baseName, setBaseName] = createSignal("");
   const [extension, setExtension] = createSignal("");
   const [isRenaming, setIsRenaming] = createSignal(false);
@@ -59,7 +61,7 @@ export function RenameDialog(props: RenameDialogProps) {
     setError(null);
 
     const canProceed = await permissionGate.ensureDriveWriteOrRequest(
-      "Для переименования требуется доступ на изменение Google Drive.",
+      t("drive.rename.permRequired"),
       handleRename,
     );
     if (!canProceed) {
@@ -82,7 +84,7 @@ export function RenameDialog(props: RenameDialogProps) {
     } else {
       const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
         result.error,
-        "Для переименования требуется доступ на изменение Google Drive.",
+        t("drive.rename.permRequired"),
         handleRename,
       );
 
@@ -106,7 +108,9 @@ export function RenameDialog(props: RenameDialogProps) {
       <Dialog.Portal>
         <Dialog.Overlay class="dialog-overlay" />
         <Dialog.Content class="dialog-content">
-          <Dialog.Title class="dialog-title">Переименовать</Dialog.Title>
+          <Dialog.Title class="dialog-title">
+            {t("drive.rename.title")}
+          </Dialog.Title>
 
           <div class="dialog-body">
             <TextField
@@ -137,14 +141,14 @@ export function RenameDialog(props: RenameDialogProps) {
               onClick={() => props.onOpenChange(false)}
               disabled={isRenaming()}
             >
-              Отмена
+              {t("drive.rename.cancel")}
             </Button>
             <Button
               class="dialog-btn dialog-btn-create"
               onClick={() => void handleRename()}
               disabled={!canSubmit()}
             >
-              {isRenaming() ? "Переименование..." : "ОК"}
+              {isRenaming() ? t("drive.rename.renaming") : t("drive.rename.ok")}
             </Button>
           </div>
         </Dialog.Content>

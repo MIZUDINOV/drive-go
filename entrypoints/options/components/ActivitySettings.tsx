@@ -1,10 +1,18 @@
-import { createSignal, For, onMount, Show, createEffect } from "solid-js";
+import {
+  createSignal,
+  For,
+  onMount,
+  Show,
+  createEffect,
+  createMemo,
+} from "solid-js";
 import { Toast, toaster } from "@kobalte/core/toast";
 import { Switch } from "@kobalte/core/switch";
 import { Button } from "@kobalte/core/button";
 import { Skeleton } from "@kobalte/core/skeleton";
 import { Alert } from "@kobalte/core/alert";
 import { OptionsSelect } from "./OptionsSelect";
+import { useI18n } from "../../shared/i18n";
 import {
   getSettings,
   saveSettings,
@@ -21,64 +29,11 @@ type ActivityTypeConfig = {
   description: string;
 };
 
-const activityTypes: ActivityTypeConfig[] = [
-  {
-    type: "comment",
-    label: "Комментарии",
-    description: "Новые комментарии к вашим файлам",
-  },
-  {
-    type: "reply",
-    label: "Ответы",
-    description: "Ответы на ваши комментарии",
-  },
-  {
-    type: "mention",
-    label: "Упоминания",
-    description: "Когда вас упоминают в комментариях",
-  },
-  {
-    type: "share",
-    label: "Общий доступ",
-    description: "Когда с вами делятся файлами",
-  },
-  {
-    type: "edit",
-    label: "Редактирование",
-    description: "Изменения в общих файлах",
-  },
-  {
-    type: "create",
-    label: "Создание",
-    description: "Новые файлы в общих папках",
-  },
-  {
-    type: "permission_change",
-    label: "Изменение прав",
-    description: "Изменения прав доступа к файлам",
-  },
-];
-
 const SYNC_INTERVAL_OPTIONS = [1, 5, 10, 15, 30] as const;
 type SyncIntervalOption = (typeof SYNC_INTERVAL_OPTIONS)[number];
 
-const SYNC_INTERVAL_LABEL: Record<SyncIntervalOption, string> = {
-  1: "Каждую минуту",
-  5: "Каждые 5 минут",
-  10: "Каждые 10 минут",
-  15: "Каждые 15 минут",
-  30: "Каждые 30 минут",
-};
-
 const AUTO_CLEANUP_OPTIONS = [7, 14, 30, 90] as const;
 type AutoCleanupOption = (typeof AUTO_CLEANUP_OPTIONS)[number];
-
-const AUTO_CLEANUP_LABEL: Record<AutoCleanupOption, string> = {
-  7: "7 дней",
-  14: "14 дней",
-  30: "30 дней",
-  90: "90 дней",
-};
 
 const NOTIFICATION_SOUND_OPTIONS = [
   ActivityNotificationSound.Chime,
@@ -86,12 +41,6 @@ const NOTIFICATION_SOUND_OPTIONS = [
   ActivityNotificationSound.Digital,
 ] as const;
 type NotificationSoundOption = ActivityNotificationSound;
-
-const NOTIFICATION_SOUND_LABEL: Record<NotificationSoundOption, string> = {
-  [ActivityNotificationSound.Chime]: "Chime",
-  [ActivityNotificationSound.Bell]: "Bell",
-  [ActivityNotificationSound.Digital]: "Digital",
-};
 
 function playPreviewSound(sound: NotificationSoundOption): void {
   const AudioContextCtor =
@@ -147,6 +96,8 @@ let lastToastId: number | undefined = undefined;
 let lastToastResetTimer: ReturnType<typeof setTimeout> | undefined;
 
 export function ActivitySettings() {
+  const { t } = useI18n();
+
   const [settings, setSettings] = createSignal<ActivitySettingsType | null>(
     null,
   );
@@ -156,6 +107,64 @@ export function ActivitySettings() {
   // Флаг, чтобы не запускать автосохранение при первой загрузке
   let isFirstLoad = true;
   // id последнего тоста для обновления (используем ref вне компонента, как в примере Kobalte)
+
+  const activityTypes = createMemo<ActivityTypeConfig[]>(() => [
+    {
+      type: "comment",
+      label: t("activity.type.comment.label"),
+      description: t("activity.type.comment.description"),
+    },
+    {
+      type: "reply",
+      label: t("activity.type.reply.label"),
+      description: t("activity.type.reply.description"),
+    },
+    {
+      type: "mention",
+      label: t("activity.type.mention.label"),
+      description: t("activity.type.mention.description"),
+    },
+    {
+      type: "share",
+      label: t("activity.type.share.label"),
+      description: t("activity.type.share.description"),
+    },
+    {
+      type: "edit",
+      label: t("activity.type.edit.label"),
+      description: t("activity.type.edit.description"),
+    },
+    {
+      type: "create",
+      label: t("activity.type.create.label"),
+      description: t("activity.type.create.description"),
+    },
+    {
+      type: "permission_change",
+      label: t("activity.type.permission_change.label"),
+      description: t("activity.type.permission_change.description"),
+    },
+  ]);
+
+  const getSyncIntervalLabel = (value: SyncIntervalOption): string => {
+    return t(`activity.sync.interval.${value}` as const);
+  };
+
+  const getAutoCleanupLabel = (value: AutoCleanupOption): string => {
+    return t(`activity.advanced.cleanup.${value}` as const);
+  };
+
+  const getNotificationSoundLabel = (
+    value: NotificationSoundOption,
+  ): string => {
+    if (value === ActivityNotificationSound.Bell) {
+      return t("activity.advanced.sound.option.bell");
+    }
+    if (value === ActivityNotificationSound.Digital) {
+      return t("activity.advanced.sound.option.digital");
+    }
+    return t("activity.advanced.sound.option.chime");
+  };
 
   onMount(async () => {
     const loaded = await getSettings();
@@ -185,7 +194,7 @@ export function ActivitySettings() {
               <span class="material-symbols-rounded" style="font-size:20px;">
                 check_circle
               </span>
-              <span>Настройки сохранены</span>
+              <span>{t("activity.toast.saved")}</span>
             </div>
             <Toast.ProgressTrack>
               <Toast.ProgressFill />
@@ -212,7 +221,7 @@ export function ActivitySettings() {
         setTimeout(() => setSaveSuccess(false), 1500);
       })
       .catch((error) => {
-        setSaveError("Ошибка сохранения настроек");
+        setSaveError(t("activity.errors.save"));
         console.error("Failed to save settings:", error);
       })
       .finally(() => {
@@ -231,17 +240,15 @@ export function ActivitySettings() {
 
   return (
     <div class="options-section">
-      <h2>Настройки активности</h2>
-      <p class="options-section-description">
-        Выберите типы уведомлений, которые вы хотите отслеживать
-      </p>
+      <h2>{t("activity.title")}</h2>
+      <p class="options-section-description">{t("activity.description")}</p>
 
       <Show
         when={settings()}
         fallback={
           <div
             class="options-loading-skeletons"
-            aria-label="Загрузка настроек активности"
+            aria-label={t("activity.loadingAria")}
           >
             <Skeleton class="options-skeleton" height={120} radius={12} />
             <Skeleton class="options-skeleton" height={96} radius={12} />
@@ -250,9 +257,9 @@ export function ActivitySettings() {
         }
       >
         <div class="options-settings-block">
-          <h3>Типы активности</h3>
+          <h3>{t("activity.types.title")}</h3>
           <div class="options-activity-types">
-            <For each={activityTypes}>
+            <For each={activityTypes()}>
               {(typeConfig) => (
                 <div class="options-activity-type-item">
                   <div class="options-activity-type-info">
@@ -282,19 +289,19 @@ export function ActivitySettings() {
         </div>
 
         <div class="options-settings-block">
-          <h3>Синхронизация</h3>
+          <h3>{t("activity.sync.title")}</h3>
           <div class="options-setting-row">
             <div class="options-setting-label">
-              <div>Интервал обновления</div>
+              <div>{t("activity.sync.interval.title")}</div>
               <div class="options-setting-hint">
-                Как часто проверять новые уведомления
+                {t("activity.sync.interval.hint")}
               </div>
             </div>
             <OptionsSelect<SyncIntervalOption>
-              ariaLabel="Интервал обновления"
+              ariaLabel={t("activity.sync.interval.aria")}
               value={settings()!.syncIntervalMinutes}
               options={[...SYNC_INTERVAL_OPTIONS]}
-              getLabel={(value) => SYNC_INTERVAL_LABEL[value]}
+              getLabel={getSyncIntervalLabel}
               onChange={(value) =>
                 setSettings({
                   ...settings()!,
@@ -306,13 +313,13 @@ export function ActivitySettings() {
         </div>
 
         <div class="options-settings-block">
-          <h3>Дополнительно</h3>
+          <h3>{t("activity.advanced.title")}</h3>
 
           <div class="options-setting-row">
             <div class="options-setting-label">
-              <div>Браузерные уведомления</div>
+              <div>{t("activity.advanced.browserNotifications.title")}</div>
               <div class="options-setting-hint">
-                Показывать всплывающие уведомления
+                {t("activity.advanced.browserNotifications.hint")}
               </div>
             </div>
             <Switch
@@ -331,9 +338,9 @@ export function ActivitySettings() {
 
           <div class="options-setting-row">
             <div class="options-setting-label">
-              <div>Звуковые уведомления</div>
+              <div>{t("activity.advanced.sound.title")}</div>
               <div class="options-setting-hint">
-                Воспроизводить звук при новых событиях
+                {t("activity.advanced.sound.hint")}
               </div>
             </div>
             <Switch
@@ -353,17 +360,17 @@ export function ActivitySettings() {
           <Show when={settings()!.playSound}>
             <div class="options-setting-row">
               <div class="options-setting-label">
-                <div>Тип звука</div>
+                <div>{t("activity.advanced.soundType.title")}</div>
                 <div class="options-setting-hint">
-                  Выберите звук уведомления об изменениях
+                  {t("activity.advanced.soundType.hint")}
                 </div>
               </div>
               <div class="options-sound-picker">
                 <OptionsSelect<NotificationSoundOption>
-                  ariaLabel="Тип звука"
+                  ariaLabel={t("activity.advanced.soundType.aria")}
                   value={settings()!.notificationSound}
                   options={[...NOTIFICATION_SOUND_OPTIONS]}
-                  getLabel={(value) => NOTIFICATION_SOUND_LABEL[value]}
+                  getLabel={getNotificationSoundLabel}
                   onChange={(value) => {
                     setSettings({
                       ...settings()!,
@@ -374,7 +381,7 @@ export function ActivitySettings() {
                 />
                 <Button
                   class="options-sound-preview-btn"
-                  aria-label="Прослушать звук"
+                  aria-label={t("activity.advanced.sound.previewAria")}
                   onClick={() =>
                     playPreviewSound(settings()!.notificationSound)
                   }
@@ -387,16 +394,16 @@ export function ActivitySettings() {
 
           <div class="options-setting-row">
             <div class="options-setting-label">
-              <div>Автоочистка</div>
+              <div>{t("activity.advanced.cleanup.title")}</div>
               <div class="options-setting-hint">
-                Удалять уведомления старше указанного срока
+                {t("activity.advanced.cleanup.hint")}
               </div>
             </div>
             <OptionsSelect<AutoCleanupOption>
-              ariaLabel="Автоочистка"
+              ariaLabel={t("activity.advanced.cleanup.aria")}
               value={settings()!.autoCleanupDays}
               options={[...AUTO_CLEANUP_OPTIONS]}
-              getLabel={(value) => AUTO_CLEANUP_LABEL[value]}
+              getLabel={getAutoCleanupLabel}
               onChange={(value) =>
                 setSettings({
                   ...settings()!,

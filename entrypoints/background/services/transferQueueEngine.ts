@@ -27,10 +27,10 @@ import { reduceTransferQueueItem } from "./transferQueueStateReducer";
 import {
   CHUNK_SIZE,
   MAX_CONCURRENT_UPLOADS,
-  ROOT_FOLDER_LABEL,
   SMALL_FILE_THRESHOLD_BYTES,
 } from "./transferQueueConstants";
 import { transferUploadExecutor } from "./transferUploadExecutor";
+import { translateCurrentLocale } from "../../shared/i18n/runtime";
 
 const OAUTH_SCOPE_DRIVE_WRITE = "https://www.googleapis.com/auth/drive";
 
@@ -61,7 +61,7 @@ async function getAccessToken(): Promise<string> {
     scopes: [OAUTH_SCOPE_DRIVE_WRITE],
   });
   if (!result?.token) {
-    throw new Error("Не удалось получить токен доступа");
+    throw new Error(translateCurrentLocale("service.error.accessToken"));
   }
 
   return result.token;
@@ -71,7 +71,7 @@ async function resolveParentFolderName(
   parentId: string | null,
 ): Promise<string> {
   if (!parentId || parentId === "root") {
-    return ROOT_FOLDER_LABEL;
+    return translateCurrentLocale("transfers.parent.root");
   }
 
   const cached = parentNameCache.get(parentId);
@@ -371,13 +371,15 @@ class TransferQueueEngine {
     try {
       if (job.direction !== "upload") {
         throw new Error(
-          "Download pipeline будет добавлен в следующей итерации",
+          "Download pipeline will be added in a future iteration",
         );
       }
 
       const payload = await getPayloadBlob(job.id);
       if (!payload) {
-        throw new Error("Не найден payload задачи в IndexedDB");
+        throw new Error(
+          translateCurrentLocale("transfer.error.payloadNotFound"),
+        );
       }
 
       const onProgress = async (uploadedBytes: number): Promise<void> => {
@@ -467,7 +469,9 @@ class TransferQueueEngine {
       }
 
       const message =
-        error instanceof Error ? error.message : "Неизвестная ошибка";
+        error instanceof Error
+          ? error.message
+          : translateCurrentLocale("service.error.unknown");
       await this.applyTransition(job.id, {
         type: "fail",
         message,

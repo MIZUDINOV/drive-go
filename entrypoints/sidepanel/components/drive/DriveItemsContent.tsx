@@ -1,4 +1,4 @@
-import { For, Show, createSignal } from "solid-js";
+import { For, Show, createSignal, createMemo } from "solid-js";
 import { FileTypeIcon } from "../../fileTypes";
 import { DriveItemsSkeleton } from "./DriveItemsSkeleton";
 import {
@@ -8,6 +8,7 @@ import {
 } from "./DriveItemMenu";
 import { DriveViewMode, isFolder, type DriveItem } from "./driveTypes";
 import { ScrollToTopButton } from "./ScrollToTopButton";
+import { useI18n } from "../../../shared/i18n";
 
 type DriveItemsContentProps = {
   items: DriveItem[];
@@ -28,23 +29,21 @@ type DriveItemsContentProps = {
   emptyText: string;
 };
 
-function buildMetaLine(
-  item: DriveItem,
-  formatDate: (dateIso: string) => string,
-  formatSize: (size?: string) => string,
-): string {
-  const owner = item.ownerName || "Вы";
-  return `${formatDate(item.modifiedTime)} • ${formatSize(item.size)} • ${owner}`;
-}
-
 export function DriveItemsContent(props: DriveItemsContentProps) {
-  const hasPreview = (item: DriveItem) =>
-    !isFolder(item) && Boolean(item.thumbnailLink);
+  const { t } = useI18n();
 
-  const folders = () => props.items.filter((item) => isFolder(item));
-  const files = () => props.items.filter((item) => !isFolder(item));
-
+  const buildMetaLine = (
+    item: DriveItem,
+    formatDate: (dateIso: string) => string,
+    formatSize: (size?: string) => string,
+  ): string => {
+    const owner = item.ownerName || t("drive.content.ownerMe");
+    return `${formatDate(item.modifiedTime)} \u2022 ${formatSize(item.size)} \u2022 ${owner}`;
+  };
   const [showScrollTop, setShowScrollTop] = createSignal(false);
+  const folders = createMemo(() => props.items.filter(isFolder));
+  const files = createMemo(() => props.items.filter((i) => !isFolder(i)));
+  const hasPreview = (item: DriveItem) => !!item.thumbnailLink;
   let scrollRef: HTMLDivElement | undefined;
 
   const handleScroll = (el: HTMLDivElement) => {
@@ -59,13 +58,17 @@ export function DriveItemsContent(props: DriveItemsContentProps) {
   return (
     <Show
       when={!props.error}
-      fallback={<p class="drive-error">Ошибка: {props.error}</p>}
+      fallback={
+        <p class="drive-error">
+          {t("drive.content.error", { error: props.error })}
+        </p>
+      }
     >
       <Show
         when={props.items.length > 0 || props.loading}
         fallback={
           <p class="drive-empty">
-            {props.loading ? "Загрузка..." : props.emptyText}
+            {props.loading ? t("drive.content.loading") : props.emptyText}
           </p>
         }
       >
@@ -217,13 +220,13 @@ export function DriveItemsContent(props: DriveItemsContentProps) {
                     >
                       <Show
                         when={props.loadingMore}
-                        fallback={<>Показать ещё</>}
+                        fallback={<>{t("drive.content.loadMore")}</>}
                       >
                         <span
                           class="drive-load-more-spinner"
                           aria-hidden="true"
                         />
-                        Загрузка...
+                        {t("drive.content.loading")}
                       </Show>
                     </button>
                   </Show>
@@ -304,12 +307,15 @@ export function DriveItemsContent(props: DriveItemsContentProps) {
                     disabled={props.loadingMore}
                     onClick={props.onLoadMore}
                   >
-                    <Show when={props.loadingMore} fallback={<>Показать ещё</>}>
+                    <Show
+                      when={props.loadingMore}
+                      fallback={<>{t("drive.content.loadMore")}</>}
+                    >
                       <span
                         class="drive-load-more-spinner"
                         aria-hidden="true"
                       />
-                      Загрузка...
+                      {t("drive.content.loading")}
                     </Show>
                   </button>
                 </Show>

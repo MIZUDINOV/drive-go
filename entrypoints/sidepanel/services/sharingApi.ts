@@ -1,4 +1,5 @@
 import { getAccessToken, getWriteAccessToken } from "./driveApi";
+import { translateCurrentLocale } from "../../shared/i18n/runtime";
 
 export type PermissionRole = "reader" | "commenter" | "writer";
 
@@ -38,7 +39,10 @@ export async function listPermissions(
       const errorText = await response.text();
       return {
         ok: false,
-        error: `Ошибка загрузки прав ${response.status}: ${errorText}`,
+        error: translateCurrentLocale("sharing.error.listPermissionsStatus", {
+          status: String(response.status),
+          details: errorText,
+        }),
       };
     }
 
@@ -50,7 +54,7 @@ export async function listPermissions(
       error:
         unknownError instanceof Error
           ? unknownError.message
-          : "Неизвестная ошибка",
+          : translateCurrentLocale("service.error.unknown"),
     };
   }
 }
@@ -85,7 +89,10 @@ export async function addPermission(
       const errorText = await response.text();
       return {
         ok: false,
-        error: `Ошибка добавления ${response.status}: ${errorText}`,
+        error: translateCurrentLocale("sharing.error.addPermissionStatus", {
+          status: String(response.status),
+          details: errorText,
+        }),
       };
     }
 
@@ -96,7 +103,7 @@ export async function addPermission(
       error:
         unknownError instanceof Error
           ? unknownError.message
-          : "Неизвестная ошибка",
+          : translateCurrentLocale("service.error.unknown"),
     };
   }
 }
@@ -122,7 +129,10 @@ export async function deletePermission(
       const errorText = await response.text();
       return {
         ok: false,
-        error: `Ошибка удаления доступа ${response.status}: ${errorText}`,
+        error: translateCurrentLocale("sharing.error.deletePermissionStatus", {
+          status: String(response.status),
+          details: errorText,
+        }),
       };
     }
 
@@ -133,7 +143,7 @@ export async function deletePermission(
       error:
         unknownError instanceof Error
           ? unknownError.message
-          : "Неизвестная ошибка",
+          : translateCurrentLocale("service.error.unknown"),
     };
   }
 }

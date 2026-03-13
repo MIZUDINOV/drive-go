@@ -42,6 +42,10 @@ import {
   getStagedTransferBlob,
 } from "./shared/transferQueueStagingDb";
 import { setTransferPopoverSeenUpTo } from "./shared/transferQueueUiState";
+import {
+  translateCurrentLocale,
+  translateStoredLocale,
+} from "./shared/i18n/runtime";
 import { BackgroundLifecycle } from "./background/services/backgroundLifecycle";
 import { TransferQueueCommandBus } from "./background/services/transferQueueCommandBus";
 import { TransferQueueEventBus } from "./background/services/transferQueueEventBus";
@@ -164,7 +168,7 @@ export default defineBackground(() => {
         const message =
           error instanceof Error
             ? error.message
-            : "Ошибка обработки сообщения очереди";
+            : translateCurrentLocale("background.error.queueMessage");
         sendResponse({ ok: false, error: message });
       });
 
@@ -398,7 +402,9 @@ async function handleTransferQueueRuntimeMessage(
         transferMessage.payload.stagingId,
       );
       if (!stagedBlob) {
-        throw new Error("Не удалось получить staged payload для загрузки");
+        throw new Error(
+          translateCurrentLocale("background.error.stagedPayloadMissing"),
+        );
       }
 
       blob = stagedBlob;
@@ -409,7 +415,7 @@ async function handleTransferQueueRuntimeMessage(
       );
     } else {
       throw new Error(
-        "Некорректный payload enqueue-upload: отсутствуют данные файла",
+        translateCurrentLocale("background.error.invalidEnqueuePayload"),
       );
     }
 
@@ -566,17 +572,19 @@ function applyAutoCleanupByDays(
 
 function getActivityTypeLabel(type: ActivityType): string {
   const labels: Record<ActivityType, string> = {
-    comment: "Комментарий",
-    reply: "Ответ",
-    mention: "Упоминание",
-    share: "Общий доступ",
-    edit: "Изменение",
-    create: "Создание",
-    move: "Перемещение",
-    rename: "Переименование",
-    delete: "Удаление",
-    restore: "Восстановление",
-    permission_change: "Изменение прав",
+    comment: translateCurrentLocale("background.activityType.comment"),
+    reply: translateCurrentLocale("background.activityType.reply"),
+    mention: translateCurrentLocale("background.activityType.mention"),
+    share: translateCurrentLocale("background.activityType.share"),
+    edit: translateCurrentLocale("background.activityType.edit"),
+    create: translateCurrentLocale("background.activityType.create"),
+    move: translateCurrentLocale("background.activityType.move"),
+    rename: translateCurrentLocale("background.activityType.rename"),
+    delete: translateCurrentLocale("background.activityType.delete"),
+    restore: translateCurrentLocale("background.activityType.restore"),
+    permission_change: translateCurrentLocale(
+      "background.activityType.permissionChange",
+    ),
   };
 
   return labels[type];
@@ -615,13 +623,17 @@ async function notifyAboutNewActivities(
 
   const title =
     newItems.length === 1
-      ? `Google Drive: ${getActivityTypeLabel(newItems[0].type)}`
-      : `Google Drive: ${newItems.length} новых событий`;
+      ? await translateStoredLocale("background.notification.singleTitle", {
+          type: getActivityTypeLabel(newItems[0].type),
+        })
+      : await translateStoredLocale("background.notification.multiTitle", {
+          count: String(newItems.length),
+        });
 
   const message =
     newItems.length === 1
       ? `${newItems[0].target.fileName}`
-      : "Откройте вкладку Активность, чтобы посмотреть детали.";
+      : await translateStoredLocale("background.notification.multiMessage");
 
   await browser.notifications.create(`activity-${Date.now()}`, {
     type: "basic",
@@ -659,28 +671,28 @@ async function setupContextMenus(): Promise<void> {
   browser.contextMenus.create({
     id: CONTEXT_MENU_SCREENSHOT_ID,
     parentId: CONTEXT_MENU_ROOT_ID,
-    title: "Сохранить скрин текущей вкладки",
+    title: await translateStoredLocale("background.contextMenu.screenshot"),
     contexts: ["page", "frame", "selection", "image", "link"],
   });
 
   browser.contextMenus.create({
     id: CONTEXT_MENU_SELECTION_TEXT_ID,
     parentId: CONTEXT_MENU_ROOT_ID,
-    title: "Сохранить выделенный текст",
+    title: await translateStoredLocale("background.contextMenu.selectionText"),
     contexts: ["selection"],
   });
 
   browser.contextMenus.create({
     id: CONTEXT_MENU_PDF_ID,
     parentId: CONTEXT_MENU_ROOT_ID,
-    title: "Сохранить страницу как PDF (скоро)",
+    title: await translateStoredLocale("background.contextMenu.pdf"),
     contexts: ["page", "frame", "selection", "image", "link"],
   });
 
   browser.contextMenus.create({
     id: CONTEXT_MENU_IMAGE_ID,
     parentId: CONTEXT_MENU_ROOT_ID,
-    title: "Сохранить картинку в Drive",
+    title: await translateStoredLocale("background.contextMenu.image"),
     contexts: ["image"],
   });
 }
@@ -701,7 +713,6 @@ async function handleContextMenuClick(
     }
 
     if (info.menuItemId === CONTEXT_MENU_PDF_ID) {
-      console.info("[ContextMenu] PDF сохранение пока в заглушке.");
       return;
     }
 
@@ -709,7 +720,7 @@ async function handleContextMenuClick(
       await saveImageToDrive(info, tab);
     }
   } catch (error) {
-    console.error("[ContextMenu] Ошибка обработки действия:", error);
+    console.error("[ContextMenu] Action handling failed:", error);
   }
 }
 
@@ -773,7 +784,9 @@ async function enqueueFileForUpload(
 
 async function saveScreenshotToDrive(tab?: Browser.tabs.Tab): Promise<void> {
   if (!tab || tab.windowId === undefined) {
-    throw new Error("Не удалось определить активную вкладку для скриншота");
+    throw new Error(
+      translateCurrentLocale("background.error.activeTabNotFound"),
+    );
   }
 
   const domain = getDomainFromUrl(tab.url);
@@ -795,7 +808,9 @@ async function saveSelectionTextToDrive(
   const selectedText =
     typeof info.selectionText === "string" ? info.selectionText.trim() : "";
   if (!selectedText) {
-    throw new Error("Выделенный текст не найден");
+    throw new Error(
+      translateCurrentLocale("background.error.selectionTextNotFound"),
+    );
   }
 
   const domain = getDomainFromUrl(tab?.url);
@@ -837,7 +852,9 @@ async function saveImageToDrive(
 ): Promise<void> {
   const srcUrl = typeof info.srcUrl === "string" ? info.srcUrl : "";
   if (!srcUrl) {
-    throw new Error("URL картинки не найден");
+    throw new Error(
+      translateCurrentLocale("background.error.imageUrlNotFound"),
+    );
   }
 
   const response = await fetch(srcUrl);

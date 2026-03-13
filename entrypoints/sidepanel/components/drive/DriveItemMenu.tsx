@@ -8,6 +8,7 @@ import { RenameDialog } from "./RenameDialog";
 import { TrashConfirmDialog } from "./TrashConfirmDialog";
 import { ShareDialog } from "./ShareDialog";
 import { DeleteForeverDialog } from "./DeleteForeverDialog";
+import { useI18n } from "../../../shared/i18n";
 
 export type DriveItemMenuAction =
   | "open"
@@ -65,6 +66,7 @@ function hasAction(
 }
 
 function DropdownMenuItems(props: MenuItemsProps) {
+  const { t } = useI18n();
   return (
     <>
       <Show when={hasAction(props.actions, "open")}>
@@ -72,7 +74,9 @@ function DropdownMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             open_in_new
           </span>
-          <DropdownMenu.ItemLabel>Открыть</DropdownMenu.ItemLabel>
+          <DropdownMenu.ItemLabel>
+            {t("drive.menu.open")}
+          </DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
 
@@ -84,7 +88,9 @@ function DropdownMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             history
           </span>
-          <DropdownMenu.ItemLabel>Восстановить</DropdownMenu.ItemLabel>
+          <DropdownMenu.ItemLabel>
+            {t("drive.menu.restore")}
+          </DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
 
@@ -96,7 +102,9 @@ function DropdownMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             delete_forever
           </span>
-          <DropdownMenu.ItemLabel>Удалить навсегда</DropdownMenu.ItemLabel>
+          <DropdownMenu.ItemLabel>
+            {t("drive.menu.deleteForever")}
+          </DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
 
@@ -108,7 +116,9 @@ function DropdownMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             person_add
           </span>
-          <DropdownMenu.ItemLabel>Поделиться</DropdownMenu.ItemLabel>
+          <DropdownMenu.ItemLabel>
+            {t("drive.menu.share")}
+          </DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
 
@@ -120,7 +130,9 @@ function DropdownMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             star
           </span>
-          <DropdownMenu.ItemLabel>Добавить в помеченные</DropdownMenu.ItemLabel>
+          <DropdownMenu.ItemLabel>
+            {t("drive.menu.addStar")}
+          </DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
 
@@ -132,7 +144,9 @@ function DropdownMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             star_outline
           </span>
-          <DropdownMenu.ItemLabel>Убрать из помеченных</DropdownMenu.ItemLabel>
+          <DropdownMenu.ItemLabel>
+            {t("drive.menu.removeStar")}
+          </DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
 
@@ -144,7 +158,9 @@ function DropdownMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             edit
           </span>
-          <DropdownMenu.ItemLabel>Переименовать</DropdownMenu.ItemLabel>
+          <DropdownMenu.ItemLabel>
+            {t("drive.menu.rename")}
+          </DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
 
@@ -156,7 +172,9 @@ function DropdownMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             drive_file_move
           </span>
-          <DropdownMenu.ItemLabel>Переместить</DropdownMenu.ItemLabel>
+          <DropdownMenu.ItemLabel>
+            {t("drive.menu.move")}
+          </DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
 
@@ -168,7 +186,9 @@ function DropdownMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             link
           </span>
-          <DropdownMenu.ItemLabel>Копировать ссылку</DropdownMenu.ItemLabel>
+          <DropdownMenu.ItemLabel>
+            {t("drive.menu.copyLink")}
+          </DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
 
@@ -181,7 +201,7 @@ function DropdownMenuItems(props: MenuItemsProps) {
             delete
           </span>
           <DropdownMenu.ItemLabel>
-            {props.trashLabel ?? "Отправить в корзину"}
+            {props.trashLabel ?? t("drive.menu.trash")}
           </DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
@@ -194,7 +214,9 @@ function DropdownMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             delete
           </span>
-          <DropdownMenu.ItemLabel>Удалить</DropdownMenu.ItemLabel>
+          <DropdownMenu.ItemLabel>
+            {t("drive.menu.removeShared")}
+          </DropdownMenu.ItemLabel>
         </DropdownMenu.Item>
       </Show>
     </>
@@ -202,6 +224,7 @@ function DropdownMenuItems(props: MenuItemsProps) {
 }
 
 function ContextMenuItems(props: MenuItemsProps) {
+  const { t } = useI18n();
   return (
     <>
       <Show when={hasAction(props.actions, "open")}>
@@ -209,7 +232,7 @@ function ContextMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             open_in_new
           </span>
-          <ContextMenu.ItemLabel>Открыть</ContextMenu.ItemLabel>
+          <ContextMenu.ItemLabel>{t("drive.menu.open")}</ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>
 
@@ -221,7 +244,9 @@ function ContextMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             history
           </span>
-          <ContextMenu.ItemLabel>Восстановить</ContextMenu.ItemLabel>
+          <ContextMenu.ItemLabel>
+            {t("drive.menu.restore")}
+          </ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>
 
@@ -233,7 +258,9 @@ function ContextMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             delete_forever
           </span>
-          <ContextMenu.ItemLabel>Удалить навсегда</ContextMenu.ItemLabel>
+          <ContextMenu.ItemLabel>
+            {t("drive.menu.deleteForever")}
+          </ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>
 
@@ -245,7 +272,7 @@ function ContextMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             person_add
           </span>
-          <ContextMenu.ItemLabel>Поделиться</ContextMenu.ItemLabel>
+          <ContextMenu.ItemLabel>{t("drive.menu.share")}</ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>
 
@@ -257,7 +284,9 @@ function ContextMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             star
           </span>
-          <ContextMenu.ItemLabel>Добавить в помеченные</ContextMenu.ItemLabel>
+          <ContextMenu.ItemLabel>
+            {t("drive.menu.addStar")}
+          </ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>
 
@@ -269,7 +298,9 @@ function ContextMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             star_outline
           </span>
-          <ContextMenu.ItemLabel>Убрать из помеченных</ContextMenu.ItemLabel>
+          <ContextMenu.ItemLabel>
+            {t("drive.menu.removeStar")}
+          </ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>
 
@@ -281,7 +312,9 @@ function ContextMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             edit
           </span>
-          <ContextMenu.ItemLabel>Переименовать</ContextMenu.ItemLabel>
+          <ContextMenu.ItemLabel>
+            {t("drive.menu.rename")}
+          </ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>
 
@@ -293,7 +326,7 @@ function ContextMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             drive_file_move
           </span>
-          <ContextMenu.ItemLabel>Переместить</ContextMenu.ItemLabel>
+          <ContextMenu.ItemLabel>{t("drive.menu.move")}</ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>
 
@@ -305,7 +338,9 @@ function ContextMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             link
           </span>
-          <ContextMenu.ItemLabel>Копировать ссылку</ContextMenu.ItemLabel>
+          <ContextMenu.ItemLabel>
+            {t("drive.menu.copyLink")}
+          </ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>
 
@@ -318,7 +353,7 @@ function ContextMenuItems(props: MenuItemsProps) {
             delete
           </span>
           <ContextMenu.ItemLabel>
-            {props.trashLabel ?? "Отправить в корзину"}
+            {props.trashLabel ?? t("drive.menu.trash")}
           </ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>
@@ -331,7 +366,9 @@ function ContextMenuItems(props: MenuItemsProps) {
           <span class="material-symbols-rounded drive-item-menu-icon">
             delete
           </span>
-          <ContextMenu.ItemLabel>Удалить</ContextMenu.ItemLabel>
+          <ContextMenu.ItemLabel>
+            {t("drive.menu.removeShared")}
+          </ContextMenu.ItemLabel>
         </ContextMenu.Item>
       </Show>
     </>
@@ -527,6 +564,7 @@ type DriveItemMenuButtonProps = {
 };
 
 export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
+  const { t } = useI18n();
   const actions = () => props.menuConfig?.actions ?? DEFAULT_ACTIONS;
   const [isMoveDialogOpen, setIsMoveDialogOpen] = createSignal(false);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = createSignal(false);
@@ -622,7 +660,7 @@ export function DriveItemMenuButton(props: DriveItemMenuButtonProps) {
           as={Button}
           class="drive-item-menu-btn"
           type="button"
-          aria-label={`Действия для ${props.item.name}`}
+          aria-label={t("drive.menu.actionsAria", { name: props.item.name })}
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="6" r="1.8" fill="currentColor" />

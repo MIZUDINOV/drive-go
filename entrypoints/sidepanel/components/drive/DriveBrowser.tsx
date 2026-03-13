@@ -56,6 +56,7 @@ import {
   subscribePermissionCapabilities,
   syncGrantedScopes,
 } from "../../services/permissionCapabilities";
+import { useI18n } from "../../../shared/i18n";
 
 type DriveBrowserProps = {
   formatDate: (dateIso: string) => string;
@@ -79,21 +80,6 @@ const TYPE_OPTIONS: DriveSearchFilters["type"][] = [
   "vids",
 ];
 
-const TYPE_LABEL: Record<DriveSearchFilters["type"], string> = {
-  all: "Все",
-  folders: "Папки",
-  documents: "Документы",
-  spreadsheets: "Таблицы",
-  presentations: "Презентации",
-  pdf: "PDF",
-  images: "Изображения",
-  forms: "Формы",
-  archives: "Архивы",
-  audio: "Аудио",
-  videos: "Видео",
-  vids: "Vids",
-};
-
 const TYPE_MIME: Partial<Record<DriveSearchFilters["type"], string>> = {
   folders: "application/vnd.google-apps.folder",
   documents: "application/vnd.google-apps.document",
@@ -110,24 +96,12 @@ const TYPE_MIME: Partial<Record<DriveSearchFilters["type"], string>> = {
 
 const OWNER_OPTIONS: DriveSearchFilters["owner"][] = ["all", "me"];
 
-const OWNER_LABEL: Record<DriveSearchFilters["owner"], string> = {
-  all: "Все",
-  me: "Я",
-};
-
 const MODIFIED_OPTIONS: DriveSearchFilters["modified"][] = [
   "any",
   "7d",
   "30d",
   "365d",
 ];
-
-const MODIFIED_LABEL: Record<DriveSearchFilters["modified"], string> = {
-  any: "Любое время",
-  "7d": "7 дней",
-  "30d": "30 дней",
-  "365d": "1 год",
-};
 
 type FilterSelectProps<T extends string> = {
   label: string;
@@ -208,6 +182,7 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
 }
 
 export function DriveBrowser(props: DriveBrowserProps) {
+  const { t } = useI18n();
   const MY_DRIVE_TOAST_REGION_ID = "my-drive-actions";
   const SHARED_TOAST_REGION_ID = "shared-drive-actions";
   const RECENT_TOAST_REGION_ID = "recent-drive-actions";
@@ -219,13 +194,49 @@ export function DriveBrowser(props: DriveBrowserProps) {
   const isStarredScope = scope === "starred";
   const isTrashScope = scope === "trash";
   const browserState = useDriveBrowser({ scope });
+
+  const typeLabels = createMemo(
+    (): Record<DriveSearchFilters["type"], string> => ({
+      all: t("drive.filter.type.all"),
+      folders: t("drive.filter.type.folders"),
+      documents: t("drive.filter.type.documents"),
+      spreadsheets: t("drive.filter.type.spreadsheets"),
+      presentations: t("drive.filter.type.presentations"),
+      pdf: t("drive.filter.type.pdf"),
+      images: t("drive.filter.type.images"),
+      forms: t("drive.filter.type.forms"),
+      archives: t("drive.filter.type.archives"),
+      audio: t("drive.filter.type.audio"),
+      videos: t("drive.filter.type.videos"),
+      vids: t("drive.filter.type.vids"),
+    }),
+  );
+
+  const ownerLabels = createMemo(
+    (): Record<DriveSearchFilters["owner"], string> => ({
+      all: t("drive.filter.owner.all"),
+      me: t("drive.filter.owner.me"),
+    }),
+  );
+
+  const modifiedLabels = createMemo(
+    (): Record<DriveSearchFilters["modified"], string> => ({
+      any: t("drive.filter.modified.any"),
+      "7d": t("drive.filter.modified.7d"),
+      "30d": t("drive.filter.modified.30d"),
+      "365d": t("drive.filter.modified.365d"),
+    }),
+  );
+
   const [viewMode, setViewMode] = createSignal<DriveViewMode>(
     getDefaultDriveViewMode(),
   );
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
   const [isEmptyTrashDialogOpen, setIsEmptyTrashDialogOpen] =
     createSignal(false);
-  const [folderName, setFolderName] = createSignal("Без названия");
+  const [folderName, setFolderName] = createSignal(
+    t("drive.newFolder.defaultName"),
+  );
   const [isCreating, setIsCreating] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const permissionGate = useDriveWritePermissionGate();
@@ -255,7 +266,10 @@ export function DriveBrowser(props: DriveBrowserProps) {
             </Toast.Description>
           </div>
 
-          <Toast.CloseButton class="drive-toast-close" aria-label="Закрыть">
+          <Toast.CloseButton
+            class="drive-toast-close"
+            aria-label={t("drive.toast.close")}
+          >
             <span class="material-symbols-rounded">close</span>
           </Toast.CloseButton>
 
@@ -308,7 +322,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
     if (!result.ok) {
       const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
         result.error,
-        "Для восстановления требуется доступ на изменение Google Drive.",
+        t("drive.trashDialog.permRequired"),
         async () => {
           await executeRestoreTrashItem(item);
         },
@@ -319,7 +333,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
       }
 
       showActionToast(
-        "Не удалось восстановить",
+        t("drive.toast.restore.error"),
         result.error,
         "error",
         TRASH_TOAST_REGION_ID,
@@ -330,8 +344,8 @@ export function DriveBrowser(props: DriveBrowserProps) {
     await applyLocalRemoval(item, { markFoldersDirty: true });
 
     showActionToast(
-      "Восстановлено",
-      `Файл \"${item.name}\" восстановлен из корзины.`,
+      t("drive.toast.restore.success"),
+      t("drive.toast.restore.successDesc", { name: item.name }),
       "success",
       TRASH_TOAST_REGION_ID,
     );
@@ -345,7 +359,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
     if (!result.ok) {
       const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
         result.error,
-        "Для окончательного удаления требуется доступ на изменение Google Drive.",
+        t("drive.trashDialog.permRequired"),
         async () => {
           await executeDeleteForeverTrashItem(item);
         },
@@ -356,7 +370,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
       }
 
       showActionToast(
-        "Не удалось удалить навсегда",
+        t("drive.toast.deleteForever.error"),
         result.error,
         "error",
         TRASH_TOAST_REGION_ID,
@@ -367,8 +381,8 @@ export function DriveBrowser(props: DriveBrowserProps) {
     await applyLocalRemoval(item, { markFoldersDirty: true });
 
     showActionToast(
-      "Удалено навсегда",
-      `Файл \"${item.name}\" удален безвозвратно.`,
+      t("drive.toast.deleteForever.success"),
+      t("drive.toast.deleteForever.successDesc", { name: item.name }),
       "success",
       TRASH_TOAST_REGION_ID,
     );
@@ -389,7 +403,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
         ],
         onAddStar: async (item) => {
           const canProceed = await permissionGate.ensureDriveWriteOrRequest(
-            "Для добавления в помеченные требуется доступ на изменение Google Drive.",
+            t("drive.toast.addStar.error"),
             async () => {
               await addSharedItemToStarred(item.id);
             },
@@ -404,7 +418,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
             const isPermissionDenied =
               permissionGate.handleDriveWriteDeniedFallback(
                 result.error,
-                "Для добавления в помеченные требуется доступ на изменение Google Drive.",
+                t("drive.toast.addStar.error"),
                 async () => {
                   await addSharedItemToStarred(item.id);
                 },
@@ -415,7 +429,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
             }
 
             showActionToast(
-              "Не удалось добавить в помеченные",
+              t("drive.toast.addStar.error"),
               result.error,
               "error",
               MY_DRIVE_TOAST_REGION_ID,
@@ -424,8 +438,8 @@ export function DriveBrowser(props: DriveBrowserProps) {
           }
 
           showActionToast(
-            "Добавлено в помеченные",
-            `Файл \"${item.name}\" добавлен в Избранное Google Drive.`,
+            t("drive.toast.addStar.success"),
+            t("drive.toast.addStar.successDesc", { name: item.name }),
             "success",
             MY_DRIVE_TOAST_REGION_ID,
           );
@@ -444,7 +458,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
         actions: ["restore", "delete-forever"],
         onRestore: async (item) => {
           const canProceed = await permissionGate.ensureDriveWriteOrRequest(
-            "Для восстановления требуется доступ на изменение Google Drive.",
+            t("drive.trashDialog.permRequired"),
             async () => {
               await executeRestoreTrashItem(item);
             },
@@ -458,7 +472,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
         },
         onDeleteForever: async (item) => {
           const canProceed = await permissionGate.ensureDriveWriteOrRequest(
-            "Для окончательного удаления требуется доступ на изменение Google Drive.",
+            t("drive.trashDialog.permRequired"),
             async () => {
               await executeDeleteForeverTrashItem(item);
             },
@@ -478,7 +492,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
         actions: ["open", "share", "copy-link", "remove-star"],
         onRemoveStar: async (item) => {
           const canProceed = await permissionGate.ensureDriveWriteOrRequest(
-            "Для изменения помеченных требуется доступ на изменение Google Drive.",
+            t("drive.toast.removeStar.error"),
             async () => {
               await removeFromStarred(item.id);
             },
@@ -493,7 +507,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
             const isPermissionDenied =
               permissionGate.handleDriveWriteDeniedFallback(
                 result.error,
-                "Для изменения помеченных требуется доступ на изменение Google Drive.",
+                t("drive.toast.removeStar.error"),
                 async () => {
                   await removeFromStarred(item.id);
                 },
@@ -504,7 +518,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
             }
 
             showActionToast(
-              "Не удалось убрать пометку",
+              t("drive.toast.removeStar.error"),
               result.error,
               "error",
               STARRED_TOAST_REGION_ID,
@@ -513,8 +527,8 @@ export function DriveBrowser(props: DriveBrowserProps) {
           }
 
           showActionToast(
-            "Убрано из помеченных",
-            `Файл \"${item.name}\" удален из Избранного Google Drive.`,
+            t("drive.toast.removeStar.success"),
+            t("drive.toast.removeStar.successDesc", { name: item.name }),
             "success",
             STARRED_TOAST_REGION_ID,
           );
@@ -530,7 +544,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
         actions: ["open", "share", "add-star", "copy-link"],
         onAddStar: async (item) => {
           const canProceed = await permissionGate.ensureDriveWriteOrRequest(
-            "Для добавления в помеченные требуется доступ на изменение Google Drive.",
+            t("drive.toast.addStar.error"),
             async () => {
               await addSharedItemToStarred(item.id);
             },
@@ -545,7 +559,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
             const isPermissionDenied =
               permissionGate.handleDriveWriteDeniedFallback(
                 result.error,
-                "Для добавления в помеченные требуется доступ на изменение Google Drive.",
+                t("drive.toast.addStar.error"),
                 async () => {
                   await addSharedItemToStarred(item.id);
                 },
@@ -556,7 +570,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
             }
 
             showActionToast(
-              "Не удалось добавить в помеченные",
+              t("drive.toast.addStar.error"),
               result.error,
               "error",
               RECENT_TOAST_REGION_ID,
@@ -565,8 +579,8 @@ export function DriveBrowser(props: DriveBrowserProps) {
           }
 
           showActionToast(
-            "Добавлено в помеченные",
-            `Файл \"${item.name}\" добавлен в Избранное Google Drive.`,
+            t("drive.toast.addStar.success"),
+            t("drive.toast.addStar.successDesc", { name: item.name }),
             "success",
             RECENT_TOAST_REGION_ID,
           );
@@ -580,7 +594,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
       actions: ["open", "share", "add-star", "remove-shared"],
       onAddStar: async (item) => {
         const canProceed = await permissionGate.ensureDriveWriteOrRequest(
-          "Для добавления в помеченные требуется доступ на изменение Google Drive.",
+          t("drive.toast.addStar.error"),
           async () => {
             await addSharedItemToStarred(item.id);
           },
@@ -595,7 +609,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
           const isPermissionDenied =
             permissionGate.handleDriveWriteDeniedFallback(
               result.error,
-              "Для добавления в помеченные требуется доступ на изменение Google Drive.",
+              t("drive.toast.addStar.error"),
               async () => {
                 await addSharedItemToStarred(item.id);
               },
@@ -606,7 +620,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
           }
 
           showActionToast(
-            "Не удалось добавить в помеченные",
+            t("drive.toast.addStar.error"),
             result.error,
             "error",
             SHARED_TOAST_REGION_ID,
@@ -615,18 +629,17 @@ export function DriveBrowser(props: DriveBrowserProps) {
         }
 
         showActionToast(
-          "Добавлено в помеченные",
-          `Файл \"${item.name}\" добавлен в Избранное Google Drive.`,
+          t("drive.toast.addStar.success"),
+          t("drive.toast.addStar.successDesc", { name: item.name }),
           "success",
           SHARED_TOAST_REGION_ID,
         );
 
-        // Для shared не перезагружаем список после добавления в избранное.
         return false;
       },
       onRemoveShared: async (item) => {
         const canProceed = await permissionGate.ensureDriveWriteOrRequest(
-          "Для удаления из раздела требуется доступ на изменение Google Drive.",
+          t("drive.toast.removeShared.error"),
           async () => {
             await removeSharedItem(item.id);
           },
@@ -641,7 +654,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
           const isPermissionDenied =
             permissionGate.handleDriveWriteDeniedFallback(
               result.error,
-              "Для удаления из раздела требуется доступ на изменение Google Drive.",
+              t("drive.toast.removeShared.error"),
               async () => {
                 await removeSharedItem(item.id);
               },
@@ -652,7 +665,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
           }
 
           showActionToast(
-            "Не удалось удалить из доступа",
+            t("drive.toast.removeShared.error"),
             result.error,
             "error",
             SHARED_TOAST_REGION_ID,
@@ -661,8 +674,8 @@ export function DriveBrowser(props: DriveBrowserProps) {
         }
 
         showActionToast(
-          "Удалено из Доступные мне",
-          `Файл \"${item.name}\" больше не отображается в этом разделе.`,
+          t("drive.toast.removeShared.success"),
+          t("drive.toast.removeShared.successDesc", { name: item.name }),
           "success",
           SHARED_TOAST_REGION_ID,
         );
@@ -741,7 +754,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
     setError(null);
 
     const canProceed = await permissionGate.ensureDriveWriteOrRequest(
-      "Для создания папки требуется доступ на изменение Google Drive.",
+      t("drive.create.folder"),
       handleCreateFolder,
     );
     if (!canProceed) {
@@ -760,7 +773,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
     if (result.ok) {
       await markFolderPathsDirty();
       setIsDialogOpen(false);
-      setFolderName("Без названия");
+      setFolderName(t("drive.newFolder.defaultName"));
 
       const currentFilters = browserState.filters();
       const isFolderAllowedByType =
@@ -782,7 +795,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
     } else {
       const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
         result.error,
-        "Для создания папки требуется доступ на изменение Google Drive.",
+        t("drive.create.folder"),
         handleCreateFolder,
       );
 
@@ -801,7 +814,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
       input.value = "";
 
       const canProceed = await permissionGate.ensureDriveWriteOrRequest(
-        "Для загрузки файлов требуется доступ на изменение Google Drive.",
+        t("drive.create.upload"),
         async () => {
           await enqueueFilesForUpload(files, browserState.currentFolderId());
         },
@@ -814,12 +827,12 @@ export function DriveBrowser(props: DriveBrowserProps) {
         await enqueueFilesForUpload(files, browserState.currentFolderId());
       } catch (error: unknown) {
         const message =
-          error instanceof Error ? error.message : "Не удалось загрузить файлы";
+          error instanceof Error ? error.message : t("drive.create.upload");
 
         const isPermissionDenied =
           permissionGate.handleDriveWriteDeniedFallback(
             message,
-            "Для загрузки файлов требуется доступ на изменение Google Drive.",
+            t("drive.create.upload"),
             async () => {
               await enqueueFilesForUpload(
                 files,
@@ -886,10 +899,10 @@ export function DriveBrowser(props: DriveBrowserProps) {
     action: () => void;
   };
 
-  const createOptions: CreateOption[] = [
+  const createOptions = createMemo<CreateOption[]>(() => [
     {
       id: "folder",
-      label: "Создать папку",
+      label: t("drive.create.folder"),
       icon: () => (
         <FileTypeIcon mimeType="application/vnd.google-apps.folder" />
       ),
@@ -897,13 +910,13 @@ export function DriveBrowser(props: DriveBrowserProps) {
     },
     {
       id: "upload",
-      label: "Загрузить файлы",
+      label: t("drive.create.upload"),
       icon: () => <span class="material-symbols-rounded">upload_file</span>,
       action: openFileDialog,
     },
     {
       id: "document",
-      label: "Google Документы",
+      label: t("drive.create.document"),
       icon: () => (
         <FileTypeIcon mimeType="application/vnd.google-apps.document" />
       ),
@@ -911,7 +924,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
     },
     {
       id: "spreadsheets",
-      label: "Google Таблицы",
+      label: t("drive.create.spreadsheets"),
       icon: () => (
         <FileTypeIcon mimeType="application/vnd.google-apps.spreadsheet" />
       ),
@@ -919,7 +932,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
     },
     {
       id: "presentation",
-      label: "Google Презентации",
+      label: t("drive.create.presentation"),
       icon: () => (
         <FileTypeIcon mimeType="application/vnd.google-apps.presentation" />
       ),
@@ -927,17 +940,17 @@ export function DriveBrowser(props: DriveBrowserProps) {
     },
     {
       id: "forms",
-      label: "Google Формы",
+      label: t("drive.create.forms"),
       icon: () => <FileTypeIcon mimeType="application/vnd.google-apps.form" />,
       action: () => openGoogleDoc("forms"),
     },
     {
       id: "vids",
-      label: "Google Vids",
+      label: t("drive.create.vids"),
       icon: () => <FileTypeIcon mimeType="application/vnd.google-apps.vid" />,
       action: () => openGoogleDoc("vids"),
     },
-  ];
+  ]);
 
   const typeOptions = () =>
     isRecentScope
@@ -955,7 +968,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
     const result = await emptyTrash();
     if (!result.ok) {
       showActionToast(
-        "Не удалось очистить корзину",
+        t("drive.toast.emptyTrash.error"),
         result.error,
         "error",
         TRASH_TOAST_REGION_ID,
@@ -967,8 +980,8 @@ export function DriveBrowser(props: DriveBrowserProps) {
     await markFolderPathsDirty();
 
     showActionToast(
-      "Корзина очищена",
-      "Все объекты в корзине удалены безвозвратно.",
+      t("drive.toast.emptyTrash.success"),
+      t("drive.toast.emptyTrash.successDesc"),
       "success",
       TRASH_TOAST_REGION_ID,
     );
@@ -980,7 +993,10 @@ export function DriveBrowser(props: DriveBrowserProps) {
     <section class="drive-browser">
       <div class="folder-header">
         <div class="folder-header-left">
-          <Breadcrumbs class="drive-breadcrumbs" aria-label="Путь">
+          <Breadcrumbs
+            class="drive-breadcrumbs"
+            aria-label={t("drive.breadcrumbs.aria")}
+          >
             <For each={browserState.breadcrumbs()}>
               {(crumb, index) => {
                 const isLast = () =>
@@ -1015,7 +1031,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
 
                             <DropdownMenu.Portal>
                               <DropdownMenu.Content class="create-menu-content">
-                                <For each={createOptions}>
+                                <For each={createOptions()}>
                                   {(option) => (
                                     <DropdownMenu.Item
                                       class="create-menu-item"
@@ -1068,8 +1084,8 @@ export function DriveBrowser(props: DriveBrowserProps) {
               disabled={browserState.loading()}
               aria-label={
                 browserState.loading()
-                  ? "Обновляем содержимое диска"
-                  : "Обновить диск"
+                  ? t("drive.refresh.loading.aria")
+                  : t("drive.refresh.aria")
               }
             >
               <span class="material-symbols-rounded" aria-hidden="true">
@@ -1081,8 +1097,8 @@ export function DriveBrowser(props: DriveBrowserProps) {
                 <Tooltip.Arrow class="tab-tooltip-arrow" />
                 <span>
                   {browserState.loading()
-                    ? "Обновляем содержимое диска..."
-                    : "Обновить диск"}
+                    ? t("drive.refresh.loading.tooltip")
+                    : t("drive.refresh.tooltip")}
                 </span>
               </Tooltip.Content>
             </Tooltip.Portal>
@@ -1100,14 +1116,14 @@ export function DriveBrowser(props: DriveBrowserProps) {
                 void setDriveViewModeForScope(scope, value);
               }
             }}
-            aria-label="Режим отображения"
+            aria-label={t("drive.view.aria")}
           >
             <Tooltip placement="bottom" gutter={4}>
               <Tooltip.Trigger
                 as={SegmentedControl.Item}
                 class="drive-view-toggle-item"
                 value={DriveViewMode.List}
-                aria-label="Режим списка"
+                aria-label={t("drive.view.list.aria")}
               >
                 <SegmentedControl.ItemInput class="drive-view-toggle-input" />
                 <SegmentedControl.ItemLabel class="drive-view-toggle-item-label">
@@ -1117,7 +1133,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
               <Tooltip.Portal>
                 <Tooltip.Content class="tab-tooltip">
                   <Tooltip.Arrow class="tab-tooltip-arrow" />
-                  <span>Список</span>
+                  <span>{t("drive.view.list.tooltip")}</span>
                 </Tooltip.Content>
               </Tooltip.Portal>
             </Tooltip>
@@ -1126,7 +1142,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
                 as={SegmentedControl.Item}
                 class="drive-view-toggle-item"
                 value={DriveViewMode.Grid}
-                aria-label="Режим плиток"
+                aria-label={t("drive.view.grid.aria")}
               >
                 <SegmentedControl.ItemInput class="drive-view-toggle-input" />
                 <SegmentedControl.ItemLabel class="drive-view-toggle-item-label">
@@ -1136,7 +1152,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
               <Tooltip.Portal>
                 <Tooltip.Content class="tab-tooltip">
                   <Tooltip.Arrow class="tab-tooltip-arrow" />
-                  <span>Плитка</span>
+                  <span>{t("drive.view.grid.tooltip")}</span>
                 </Tooltip.Content>
               </Tooltip.Portal>
             </Tooltip>
@@ -1147,11 +1163,11 @@ export function DriveBrowser(props: DriveBrowserProps) {
       <header class="drive-browser-header">
         <div class="drive-browser-filters">
           <FilterSelect
-            label="Тип"
-            ariaLabel="Фильтр по типу"
+            label={t("drive.filter.type.label")}
+            ariaLabel={t("drive.filter.type.aria")}
             value={browserState.filters().type}
             options={typeOptions()}
-            labels={TYPE_LABEL}
+            labels={typeLabels()}
             iconMimeTypes={TYPE_MIME}
             onChange={(type) =>
               browserState.setFilters({ ...browserState.filters(), type })
@@ -1159,22 +1175,22 @@ export function DriveBrowser(props: DriveBrowserProps) {
           />
 
           <FilterSelect
-            label="Люди"
-            ariaLabel="Фильтр по владельцу"
+            label={t("drive.filter.owner.label")}
+            ariaLabel={t("drive.filter.owner.aria")}
             value={browserState.filters().owner}
             options={OWNER_OPTIONS}
-            labels={OWNER_LABEL}
+            labels={ownerLabels()}
             onChange={(owner) =>
               browserState.setFilters({ ...browserState.filters(), owner })
             }
           />
 
           <FilterSelect
-            label="Изменено"
-            ariaLabel="Фильтр по дате изменения"
+            label={t("drive.filter.modified.label")}
+            ariaLabel={t("drive.filter.modified.aria")}
             value={browserState.filters().modified}
             options={MODIFIED_OPTIONS}
-            labels={MODIFIED_LABEL}
+            labels={modifiedLabels()}
             onChange={(modified) =>
               browserState.setFilters({ ...browserState.filters(), modified })
             }
@@ -1189,7 +1205,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
             }}
             disabled={browserState.loading()}
           >
-            Очистить фильтры
+            {t("drive.filter.clear")}
           </Button>
         </div>
 
@@ -1205,15 +1221,12 @@ export function DriveBrowser(props: DriveBrowserProps) {
                 <span class="material-symbols-rounded" aria-hidden="true">
                   lock
                 </span>
-                <span>Только просмотр</span>
+                <span>{t("drive.access.readOnly")}</span>
               </Tooltip.Trigger>
               <Tooltip.Portal>
                 <Tooltip.Content class="tab-tooltip">
                   <Tooltip.Arrow class="tab-tooltip-arrow" />
-                  <span>
-                    Право на изменение не выдано. При действиях записи покажем
-                    запрос доступа.
-                  </span>
+                  <span>{t("drive.access.readOnly.tooltip")}</span>
                 </Tooltip.Content>
               </Tooltip.Portal>
             </Tooltip>
@@ -1222,11 +1235,8 @@ export function DriveBrowser(props: DriveBrowserProps) {
       </header>
 
       <Show when={isTrashScope}>
-        <section class="trash-info-banner" aria-label="Информация о корзине">
-          <p class="trash-info-text">
-            Объекты в корзине удаляются навсегда через 30 дней после попадания в
-            нее.
-          </p>
+        <section class="trash-info-banner" aria-label={t("drive.trash.info")}>
+          <p class="trash-info-text">{t("drive.trash.info")}</p>
           <Button
             type="button"
             class="trash-empty-btn"
@@ -1235,7 +1245,7 @@ export function DriveBrowser(props: DriveBrowserProps) {
               browserState.loading() || browserState.items().length === 0
             }
           >
-            Очистить корзину
+            {t("drive.trash.empty")}
           </Button>
         </section>
       </Show>
@@ -1266,14 +1276,14 @@ export function DriveBrowser(props: DriveBrowserProps) {
         menuConfig={menuConfig()}
         emptyText={
           isSharedScope
-            ? "Нет файлов, открытых для вас."
+            ? t("drive.empty.shared")
             : isRecentScope
-              ? "Недавних файлов пока нет."
+              ? t("drive.empty.recent")
               : isStarredScope
-                ? "Помеченных файлов пока нет."
+                ? t("drive.empty.starred")
                 : isTrashScope
-                  ? "Корзина пуста."
-                  : "В этой папке пока нет файлов и папок."
+                  ? t("drive.empty.trash")
+                  : t("drive.empty.myDrive")
         }
       />
 
@@ -1291,7 +1301,9 @@ export function DriveBrowser(props: DriveBrowserProps) {
             <Dialog.Portal>
               <Dialog.Overlay class="dialog-overlay" />
               <Dialog.Content class="dialog-content">
-                <Dialog.Title class="dialog-title">Новая папка</Dialog.Title>
+                <Dialog.Title class="dialog-title">
+                  {t("drive.newFolder.title")}
+                </Dialog.Title>
 
                 <div class="dialog-body">
                   <TextField
@@ -1317,14 +1329,16 @@ export function DriveBrowser(props: DriveBrowserProps) {
                     onClick={() => setIsDialogOpen(false)}
                     disabled={isCreating()}
                   >
-                    Отмена
+                    {t("drive.newFolder.cancel")}
                   </Button>
                   <Button
                     class="dialog-btn dialog-btn-create"
                     onClick={handleCreateFolder}
                     disabled={isCreating() || !folderName().trim()}
                   >
-                    {isCreating() ? "Создание..." : "Создать"}
+                    {isCreating()
+                      ? t("drive.newFolder.creating")
+                      : t("drive.newFolder.create")}
                   </Button>
                 </div>
               </Dialog.Content>

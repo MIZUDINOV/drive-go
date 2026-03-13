@@ -8,6 +8,7 @@ import {
   OAUTH_SCOPE_DRIVE_WRITE,
   startInteractiveSignIn,
 } from "./authService";
+import { translateCurrentLocale } from "../../shared/i18n/runtime";
 
 const DRIVE_WRITE_SCOPE = OAUTH_SCOPE_DRIVE_WRITE;
 const DRIVE_ACTIVITY_READ_SCOPE = OAUTH_SCOPE_DRIVE_ACTIVITY_READONLY;
@@ -25,7 +26,12 @@ export type PermissionCapabilitiesState = {
 
 export type EnsureCapabilityResult =
   | { ok: true }
-  | { ok: false; reason: "cancelled" | "error"; message: string };
+  | {
+      ok: false;
+      reason: "cancelled" | "error";
+      message: string;
+      code?: "not-granted";
+    };
 
 const INITIAL_CAPABILITIES_STATE: PermissionCapabilitiesState = {
   driveWrite: "unknown",
@@ -83,7 +89,7 @@ function normalizeCapabilityError(error: unknown): string {
     return error;
   }
 
-  return "Не удалось запросить права доступа";
+  return translateCurrentLocale("permission.error.requestFailed");
 }
 
 export function getPermissionCapabilitiesSnapshot(): PermissionCapabilitiesState {
@@ -194,13 +200,15 @@ export async function ensureDriveWriteCapability(): Promise<EnsureCapabilityResu
     });
 
     if (!hasDriveWriteScope) {
-      const message =
-        "Доступ на изменение Google Drive не был выдан. Проверьте разрешения и попробуйте снова.";
+      const message = translateCurrentLocale(
+        "permission.driveWrite.notGranted",
+      );
       markDriveWriteAsDenied(message);
       return {
         ok: false,
         reason: "error",
         message,
+        code: "not-granted",
       };
     }
 
@@ -246,8 +254,9 @@ export async function ensureActivityReadCapability(): Promise<EnsureCapabilityRe
     });
 
     if (!hasActivityReadScope) {
-      const message =
-        "Доступ к активности Google Drive не был выдан. Проверьте разрешения и попробуйте снова.";
+      const message = translateCurrentLocale(
+        "permission.activityRead.notGranted",
+      );
 
       updateState({
         activityRead: "denied",
@@ -258,6 +267,7 @@ export async function ensureActivityReadCapability(): Promise<EnsureCapabilityRe
         ok: false,
         reason: "error",
         message,
+        code: "not-granted",
       };
     }
 

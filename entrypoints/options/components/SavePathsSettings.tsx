@@ -10,6 +10,7 @@ import { Skeleton } from "@kobalte/core/skeleton";
 import { Alert } from "@kobalte/core/alert";
 import type { DriveApiFile } from "../../sidepanel/components/drive/driveTypes";
 import { listMyOwnedFolders } from "../../sidepanel/services/driveApi";
+import { useI18n } from "../../shared/i18n";
 import {
   consumeSavePathsFoldersDirtyFlag,
   getSavePathsSettings,
@@ -22,30 +23,30 @@ type SavePathField = keyof SavePathsSettings;
 
 type SavePathRow = {
   key: SavePathField;
-  title: string;
-  hint: string;
+  titleKey: Parameters<ReturnType<typeof useI18n>["t"]>[0];
+  hintKey: Parameters<ReturnType<typeof useI18n>["t"]>[0];
 };
 
 const savePathRows: SavePathRow[] = [
   {
     key: "screenshotFolderId",
-    title: "Папка для скриншотов",
-    hint: "Если не выбрано, файлы сохраняются в корень Drive.",
+    titleKey: "savePaths.row.screenshot.title",
+    hintKey: "savePaths.row.screenshot.hint",
   },
   {
     key: "selectionTextFolderId",
-    title: "Папка для выделенного текста",
-    hint: "Если не выбрано, txt-файлы сохраняются в корень Drive.",
+    titleKey: "savePaths.row.selectionText.title",
+    hintKey: "savePaths.row.selectionText.hint",
   },
   {
     key: "imageFolderId",
-    title: "Папка для картинок",
-    hint: "Если не выбрано, изображения сохраняются в корень Drive.",
+    titleKey: "savePaths.row.image.title",
+    hintKey: "savePaths.row.image.hint",
   },
   {
     key: "pdfFolderId",
-    title: "Папка для PDF",
-    hint: "Подготовлено заранее: сохранение PDF будет добавлено позже.",
+    titleKey: "savePaths.row.pdf.title",
+    hintKey: "savePaths.row.pdf.hint",
   },
 ];
 
@@ -82,6 +83,7 @@ async function getOwnedFoldersCached(
 }
 
 export function SavePathsSettings() {
+  const { t } = useI18n();
   const [settings, setSettings] =
     createSignal<SavePathsSettings>(DEFAULT_SETTINGS);
   const [folders, setFolders] = createSignal<DriveApiFile[]>([]);
@@ -115,7 +117,9 @@ export function SavePathsSettings() {
       setFolders(loadedFolders);
     } catch (error: unknown) {
       const message =
-        error instanceof Error ? error.message : "Не удалось загрузить папки";
+        error instanceof Error
+          ? error.message
+          : t("savePaths.errors.loadFolders");
       setSaveError(message);
     } finally {
       setIsLoading(false);
@@ -133,9 +137,7 @@ export function SavePathsSettings() {
     setSaveError(null);
     void saveSavePathsSettings(nextSettings).catch((error: unknown) => {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Не удалось сохранить настройки";
+        error instanceof Error ? error.message : t("savePaths.errors.save");
       setSaveError(message);
     });
   });
@@ -161,26 +163,27 @@ export function SavePathsSettings() {
 
   const getFolderLabel = (value: string): string => {
     if (value === "root") {
-      return "Корневая папка";
+      return t("savePaths.rootFolder");
     }
 
-    return folderNameById().get(value) ?? "Папка недоступна";
+    return folderNameById().get(value) ?? t("savePaths.folderUnavailable");
   };
 
   return (
     <div class="options-section">
-      <h2>Пути сохранения</h2>
-      <p class="options-section-description">
-        Выберите папки Google Drive для автосохранения из контекстного меню.
-      </p>
+      <h2>{t("savePaths.title")}</h2>
+      <p class="options-section-description">{t("savePaths.description")}</p>
 
       <div class="options-settings-block">
-        <h3>Маршруты сохранения</h3>
+        <h3>{t("savePaths.routes.title")}</h3>
 
         <Show
           when={!isLoading()}
           fallback={
-            <div class="options-loading-skeletons" aria-label="Загрузка папок">
+            <div
+              class="options-loading-skeletons"
+              aria-label={t("savePaths.loadingAria")}
+            >
               <Skeleton class="options-skeleton" height={52} radius={8} />
               <Skeleton class="options-skeleton" height={52} radius={8} />
               <Skeleton class="options-skeleton" height={52} radius={8} />
@@ -192,12 +195,12 @@ export function SavePathsSettings() {
             {(row) => (
               <div class="options-setting-row">
                 <div class="options-setting-label">
-                  <div>{row.title}</div>
-                  <div class="options-setting-hint">{row.hint}</div>
+                  <div>{t(row.titleKey)}</div>
+                  <div class="options-setting-hint">{t(row.hintKey)}</div>
                 </div>
 
                 <OptionsSelect<string>
-                  ariaLabel={row.title}
+                  ariaLabel={t(row.titleKey)}
                   value={settings()[row.key] ?? "root"}
                   options={getOptionsForField(row.key)}
                   getLabel={getFolderLabel}

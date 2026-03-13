@@ -1,4 +1,11 @@
-import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
+import {
+  For,
+  Show,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+} from "solid-js";
 import { Badge } from "@kobalte/core/badge";
 import { Tabs } from "@kobalte/core/tabs";
 import { Button } from "@kobalte/core/button";
@@ -33,6 +40,7 @@ import {
   type ActivitySettings,
 } from "./services/activityTypes";
 import { PORT_TRANSFER_QUEUE_SIDEPANEL_SESSION } from "../shared/transferQueueMessages";
+import { useI18n } from "../shared/i18n";
 import "material-symbols/rounded.css";
 import "./App.css";
 
@@ -42,17 +50,8 @@ type TabItem = {
   icon: TabIconName;
 };
 
-const tabs: TabItem[] = [
-  { id: "my-drive", title: "Мой диск", icon: "drive" },
-  { id: "recent", title: "Недавние", icon: "clock" },
-  { id: "shared", title: "Доступные мне", icon: "shared" },
-  { id: "starred", title: "Избранные", icon: "star" },
-  { id: "activity", title: "Активность", icon: "pulse" },
-  { id: "transfers", title: "Передачи", icon: "transfers" },
-  { id: "trash", title: "Корзина", icon: "trash" },
-];
-
 const REQUIRED_SIGN_IN_SCOPES = [OAUTH_SCOPE_DRIVE_METADATA_READONLY];
+const DEFAULT_TAB_ID = "my-drive";
 
 function playNotificationSound(
   sound: ActivitySettings["notificationSound"],
@@ -106,46 +105,6 @@ function playNotificationSound(
   }, 900);
 }
 
-function formatDate(dateIso: string) {
-  if (!dateIso) {
-    return "-";
-  }
-
-  const date = new Date(dateIso);
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-
-  return date.toLocaleDateString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-function formatSize(size?: string) {
-  if (!size) {
-    return "-";
-  }
-
-  const bytes = Number(size);
-  if (!Number.isFinite(bytes) || bytes <= 0) {
-    return "-";
-  }
-
-  const units = ["Б", "КБ", "МБ", "ГБ", "ТБ"];
-  let value = bytes;
-  let unitIndex = 0;
-
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-
-  const fixed = unitIndex === 0 ? value.toFixed(0) : value.toFixed(1);
-  return `${fixed} ${units[unitIndex]}`;
-}
-
 type SidepanelAuthState =
   | "checking"
   | "unauthenticated"
@@ -154,54 +113,19 @@ type SidepanelAuthState =
   | "cancelled"
   | "error";
 
-function getAuthErrorMessage(state: SidepanelAuthState): string {
-  if (state === "cancelled") {
-    return "Процесс авторизации был прерван. Нажмите Повторить вход, чтобы продолжить.";
-  }
-
-  return "Не удалось выполнить вход. Проверьте доступ к интернету и повторите попытку.";
-}
-
-function getDetailedAuthErrorMessage(error: unknown): string {
-  const rawMessage =
-    error instanceof Error
-      ? error.message
-      : typeof error === "string"
-        ? error
-        : "unknown auth error";
-  const message = rawMessage.toLowerCase();
-
-  if (
-    message.includes("network") ||
-    message.includes("internet") ||
-    message.includes("failed to fetch")
-  ) {
-    return "Не удалось выполнить вход из-за проблем с сетью. Проверьте интернет и повторите попытку.";
-  }
-
-  if (
-    message.includes("invalid_client") ||
-    message.includes("unauthorized_client") ||
-    message.includes("not allowed for this client") ||
-    message.includes("oauth2 request failed")
-  ) {
-    return "Не удалось выполнить вход: OAuth-клиент отклонил запрос. Если это запуск на другом устройстве, проверьте, что extension ID совпадает с ID, привязанным к OAuth client в Google Cloud.";
-  }
-
-  if (
-    message.includes("not granted") ||
-    message.includes("consent") ||
-    message.includes("permission")
-  ) {
-    return "Не удалось выполнить вход: доступ не был выдан. Разрешите доступ к аккаунту Google и повторите попытку.";
-  }
-
-  return "Не удалось выполнить вход. Повторите попытку. Если ошибка повторяется, проверьте OAuth-настройки расширения.";
-}
-
 function App() {
+  const { locale, t } = useI18n();
+  const tabs = createMemo<TabItem[]>(() => [
+    { id: "my-drive", title: t("app.tab.myDrive"), icon: "drive" },
+    { id: "recent", title: t("app.tab.recent"), icon: "clock" },
+    { id: "shared", title: t("app.tab.shared"), icon: "shared" },
+    { id: "starred", title: t("app.tab.starred"), icon: "star" },
+    { id: "activity", title: t("app.tab.activity"), icon: "pulse" },
+    { id: "transfers", title: t("app.tab.transfers"), icon: "transfers" },
+    { id: "trash", title: t("app.tab.trash"), icon: "trash" },
+  ]);
   const [isMenuCollapsed, setIsMenuCollapsed] = createSignal(true);
-  const [activeTabId, setActiveTabId] = createSignal(tabs[0].id);
+  const [activeTabId, setActiveTabId] = createSignal(DEFAULT_TAB_ID);
   const [searchQuery, setSearchQuery] = createSignal("");
   const [searchFilters, setSearchFilters] = createSignal<DriveSearchFilters>(
     DEFAULT_DRIVE_SEARCH_FILTERS,
@@ -221,6 +145,98 @@ function App() {
   let soundSubscription: { unsubscribe: () => void } | null = null;
   let unreadSubscription: { unsubscribe: () => void } | null = null;
   let authAttemptId = 0;
+
+  const formatDate = (dateIso: string): string => {
+    if (!dateIso) {
+      return "-";
+    }
+
+    const date = new Date(dateIso);
+    if (Number.isNaN(date.getTime())) {
+      return "-";
+    }
+
+    return date.toLocaleDateString(locale() === "ru" ? "ru-RU" : "en-US", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  const formatSize = (size?: string): string => {
+    if (!size) {
+      return "-";
+    }
+
+    const bytes = Number(size);
+    if (!Number.isFinite(bytes) || bytes <= 0) {
+      return "-";
+    }
+
+    const units = [
+      t("app.size.byte"),
+      t("app.size.kb"),
+      t("app.size.mb"),
+      t("app.size.gb"),
+      t("app.size.tb"),
+    ];
+    let value = bytes;
+    let unitIndex = 0;
+
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex += 1;
+    }
+
+    const fixed = unitIndex === 0 ? value.toFixed(0) : value.toFixed(1);
+    return `${fixed} ${units[unitIndex]}`;
+  };
+
+  const getAuthErrorMessage = (state: SidepanelAuthState): string => {
+    if (state === "cancelled") {
+      return t("app.auth.error.cancelled");
+    }
+
+    return t("app.auth.error.default");
+  };
+
+  const getDetailedAuthErrorMessage = (error: unknown): string => {
+    const rawMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === "string"
+          ? error
+          : "unknown auth error";
+    const message = rawMessage.toLowerCase();
+
+    if (
+      message.includes("network") ||
+      message.includes("internet") ||
+      message.includes("failed to fetch")
+    ) {
+      return t("app.auth.error.network");
+    }
+
+    if (
+      message.includes("invalid_client") ||
+      message.includes("unauthorized_client") ||
+      message.includes("not allowed for this client") ||
+      message.includes("oauth2 request failed")
+    ) {
+      return t("app.auth.error.oauthClient");
+    }
+
+    if (
+      message.includes("not granted") ||
+      message.includes("consent") ||
+      message.includes("permission")
+    ) {
+      return t("app.auth.error.permission");
+    }
+
+    return t("app.auth.error.generic");
+  };
+
   const handleFilesDrop = (files: File[]) => {
     void enqueueFilesForUpload(files, currentFolderId());
   };
@@ -362,11 +378,8 @@ function App() {
       fallback={
         <section class="auth-gate">
           <div class="auth-gate-card">
-            <h1>Войдите в Drive GO</h1>
-            <p>
-              Для доступа к файлам и активности нужно авторизоваться через
-              Google.
-            </p>
+            <h1>{t("app.auth.title")}</h1>
+            <p>{t("app.auth.description")}</p>
 
             <Button
               class="auth-signin-btn"
@@ -380,18 +393,18 @@ function App() {
               </Show>
               <span>
                 {authState() === "checking"
-                  ? "Проверяем сессию..."
+                  ? t("app.auth.checking")
                   : authState() === "authenticating"
-                    ? "Идет вход..."
+                    ? t("app.auth.signingIn")
                     : authState() === "cancelled" || authState() === "error"
-                      ? "Повторить вход"
-                      : "Войти через Google"}
+                      ? t("app.auth.retry")
+                      : t("app.auth.signIn")}
               </span>
             </Button>
 
             <Show when={authState() === "authenticating"}>
               <Button class="auth-cancel-btn" onClick={handleCancelSignIn}>
-                Отменить вход
+                {t("app.auth.cancel")}
               </Button>
             </Show>
 
@@ -413,7 +426,11 @@ function App() {
             <Button
               class="menu-btn"
               type="button"
-              aria-label={isMenuCollapsed() ? "Раскрыть меню" : "Свернуть меню"}
+              aria-label={
+                isMenuCollapsed()
+                  ? t("app.menu.expand")
+                  : t("app.menu.collapse")
+              }
               data-expanded={!isMenuCollapsed() || undefined}
               onClick={() => setIsMenuCollapsed((prev) => !prev)}
             >
@@ -438,8 +455,8 @@ function App() {
             </Show>
           </div>
 
-          <Tabs.List class="tab-list" aria-label="Разделы Google Drive">
-            <For each={tabs}>
+          <Tabs.List class="tab-list" aria-label={t("app.sidebar.aria")}>
+            <For each={tabs()}>
               {(tab) => (
                 <Tooltip
                   placement="right"
@@ -463,7 +480,9 @@ function App() {
                     >
                       <Badge
                         class="tab-activity-badge"
-                        textValue={`${activityUnreadCount()} непрочитанных уведомлений`}
+                        textValue={t("app.activityUnread", {
+                          count: String(activityUnreadCount()),
+                        })}
                       >
                         {activityUnreadCount() > 99
                           ? "99+"
@@ -490,15 +509,15 @@ function App() {
                 onClick={() => {
                   void openOrFocusOptionsPage();
                 }}
-                aria-label="Настройки"
+                aria-label={t("app.settings")}
               >
                 <span class="material-symbols-rounded">settings</span>
-                <span class="tab-label">Настройки</span>
+                <span class="tab-label">{t("app.settings")}</span>
               </Tooltip.Trigger>
               <Tooltip.Portal>
                 <Tooltip.Content class="tab-tooltip">
                   <Tooltip.Arrow class="tab-tooltip-arrow" />
-                  <span>Настройки</span>
+                  <span>{t("app.settings")}</span>
                 </Tooltip.Content>
               </Tooltip.Portal>
             </Tooltip>
@@ -534,7 +553,7 @@ function App() {
           </header>
 
           <div class="content-panels">
-            <For each={tabs}>
+            <For each={tabs()}>
               {(tab) => (
                 <Tabs.Content class="content-card" value={tab.id}>
                   <Show when={tab.id === "my-drive"}>
@@ -596,7 +615,7 @@ function App() {
                       tab.id !== "shared"
                     }
                   >
-                    <p>Содержимое раздела появится на следующем шаге.</p>
+                    <p>{t("app.placeholder")}</p>
                   </Show>
                 </Tabs.Content>
               )}

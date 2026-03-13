@@ -14,6 +14,7 @@ import {
 } from "../../services/permissionCapabilities";
 import { ActivityItem as ActivityItemComponent } from "./ActivityItem";
 import { ScrollToTopButton } from "../drive/ScrollToTopButton";
+import { useI18n, type Locale } from "../../../shared/i18n";
 import "./Activity.css";
 
 type ActivityBrowserProps = {
@@ -28,7 +29,11 @@ type ActivityGroup = {
 /**
  * Сгруппировать активности по датам (Сегодня, Вчера, день недели, дата)
  */
-function groupActivities(items: ActivityItem[]): ActivityGroup[] {
+function groupActivities(
+  items: ActivityItem[],
+  locale: Locale,
+  labels: { today: string; yesterday: string },
+): ActivityGroup[] {
   const groups: ActivityGroup[] = [];
   let currentGroup: ActivityGroup | null = null;
 
@@ -41,13 +46,13 @@ function groupActivities(items: ActivityItem[]): ActivityGroup[] {
     let dateLabel: string;
 
     if (isSameDay(date, today)) {
-      dateLabel = "Сегодня";
+      dateLabel = labels.today;
     } else if (isSameDay(date, yesterday)) {
-      dateLabel = "Вчера";
+      dateLabel = labels.yesterday;
     } else if (isThisWeek(date)) {
-      dateLabel = formatWeekDay(date);
+      dateLabel = formatWeekDay(date, locale);
     } else {
-      dateLabel = formatDate(date);
+      dateLabel = formatDate(date, locale);
     }
 
     if (!currentGroup || currentGroup.date !== dateLabel) {
@@ -76,18 +81,21 @@ function isThisWeek(date: Date): boolean {
   return date > weekAgo && date < today;
 }
 
-function formatWeekDay(date: Date): string {
-  return date.toLocaleDateString("ru-RU", { weekday: "long" });
+function formatWeekDay(date: Date, locale: Locale): string {
+  return date.toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US", {
+    weekday: "long",
+  });
 }
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString("ru-RU", {
+function formatDate(date: Date, locale: Locale): string {
+  return date.toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US", {
     day: "numeric",
     month: "long",
   });
 }
 
 export function ActivityBrowser(props: ActivityBrowserProps) {
+  const { locale, t } = useI18n();
   const [hasActivityAccess, setHasActivityAccess] = createSignal(false);
   const [isPermissionRequestInProgress, setIsPermissionRequestInProgress] =
     createSignal(false);
@@ -146,7 +154,11 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
     setIsPermissionRequestInProgress(false);
 
     if (!result.ok) {
-      setPermissionRequestError(result.message);
+      setPermissionRequestError(
+        result.code === "not-granted"
+          ? t("activity.browser.access.notGranted")
+          : result.message,
+      );
       setHasActivityAccess(false);
       return;
     }
@@ -162,13 +174,17 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
     await loadActivitiesFromBackground();
   };
 
-  const groupedActivities = () => groupActivities(activityStore.items);
+  const groupedActivities = () =>
+    groupActivities(activityStore.items, locale(), {
+      today: t("activity.browser.group.today"),
+      yesterday: t("activity.browser.group.yesterday"),
+    });
 
   return (
     <div class="activity-browser">
       <div class="activity-header">
         <div class="activity-header-title">
-          <h2>Активность</h2>
+          <h2>{t("activity.browser.title")}</h2>
           <Show when={activityStore.unreadCount > 0}>
             <span class="activity-unread-badge">
               {activityStore.unreadCount}
@@ -183,14 +199,14 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
               class="activity-action-btn"
               onClick={handleRefresh}
               disabled={activityStore.isLoading || !hasActivityAccess()}
-              aria-label="Обновить"
+              aria-label={t("activity.browser.refresh")}
             >
               <span class="material-symbols-rounded">refresh</span>
             </Tooltip.Trigger>
             <Tooltip.Portal>
               <Tooltip.Content class="tab-tooltip">
                 <Tooltip.Arrow class="tab-tooltip-arrow" />
-                <span>Обновить</span>
+                <span>{t("activity.browser.refresh")}</span>
               </Tooltip.Content>
             </Tooltip.Portal>
           </Tooltip>
@@ -201,14 +217,14 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
                 as={Button}
                 class="activity-action-btn"
                 onClick={handleMarkAllRead}
-                aria-label="Отметить все как прочитанные"
+                aria-label={t("activity.browser.markAllRead")}
               >
                 <span class="material-symbols-rounded">done_all</span>
               </Tooltip.Trigger>
               <Tooltip.Portal>
                 <Tooltip.Content class="tab-tooltip">
                   <Tooltip.Arrow class="tab-tooltip-arrow" />
-                  <span>Отметить все как прочитанные</span>
+                  <span>{t("activity.browser.markAllRead")}</span>
                 </Tooltip.Content>
               </Tooltip.Portal>
             </Tooltip>
@@ -229,11 +245,8 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
             <span class="material-symbols-rounded">notifications_off</span>
           </div>
           <div class="activity-access-card-body">
-            <h3>Нет доступа к активности Google Drive</h3>
-            <p>
-              Чтобы показывать комментарии, изменения доступа и другие события,
-              нужен отдельный доступ только на чтение активности.
-            </p>
+            <h3>{t("activity.browser.access.title")}</h3>
+            <p>{t("activity.browser.access.description")}</p>
 
             <Show when={permissionRequestError()}>
               {(message) => (
@@ -249,8 +262,8 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
               disabled={isPermissionRequestInProgress()}
             >
               {isPermissionRequestInProgress()
-                ? "Запрос прав..."
-                : "Выдать доступ"}
+                ? t("activity.browser.access.requesting")
+                : t("activity.browser.access.grant")}
             </Button>
           </div>
         </section>
@@ -259,7 +272,7 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
       <Show when={activityStore.isLoading && activityStore.items.length === 0}>
         <div class="activity-loading">
           <div class="activity-spinner"></div>
-          <p>Загрузка активности...</p>
+          <p>{t("activity.browser.loading")}</p>
         </div>
       </Show>
 
@@ -306,9 +319,9 @@ export function ActivityBrowser(props: ActivityBrowserProps) {
       >
         <div class="activity-empty">
           <span class="material-symbols-rounded">notifications_none</span>
-          <p>Нет новых уведомлений</p>
+          <p>{t("activity.browser.empty.title")}</p>
           <span class="activity-empty-hint">
-            Здесь будут появляться комментарии, общий доступ и другие события
+            {t("activity.browser.empty.hint")}
           </span>
         </div>
       </Show>

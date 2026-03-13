@@ -9,6 +9,7 @@ import {
   getWriteAccessToken,
 } from "./driveApi";
 import { deletePermission, listPermissions } from "./sharingApi";
+import { translateCurrentLocale } from "../../shared/i18n/runtime";
 
 type DriveListResult = {
   files?: DriveApiFile[];
@@ -176,7 +177,10 @@ export async function addSharedItemToStarred(
       const errorText = await response.text();
       return {
         ok: false,
-        error: `Ошибка добавления в помеченные ${response.status}: ${errorText}`,
+        error: translateCurrentLocale("shared.error.addStarStatus", {
+          status: String(response.status),
+          details: errorText,
+        }),
       };
     }
 
@@ -187,7 +191,7 @@ export async function addSharedItemToStarred(
       error:
         unknownError instanceof Error
           ? unknownError.message
-          : "Неизвестная ошибка",
+          : translateCurrentLocale("service.error.unknown"),
     };
   }
 }
@@ -214,8 +218,7 @@ export async function removeSharedItem(
   if (!email) {
     return {
       ok: false,
-      error:
-        "Не удалось определить текущего пользователя. Проверьте разрешение identity.email.",
+      error: translateCurrentLocale("shared.error.currentUserNotFound"),
     };
   }
 
@@ -231,8 +234,7 @@ export async function removeSharedItem(
   if (!ownPermission) {
     return {
       ok: false,
-      error:
-        "Не найдена персональная запись доступа. Возможно, доступ унаследован от группы или домена.",
+      error: translateCurrentLocale("shared.error.personalPermissionNotFound"),
     };
   }
 

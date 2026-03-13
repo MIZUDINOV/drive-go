@@ -1,10 +1,12 @@
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
+import { useI18n } from "../../../shared/i18n";
 
 type DragDropOverlayProps = {
   onDrop: (files: File[]) => void;
 };
 
 export function DragDropOverlay(props: DragDropOverlayProps) {
+  const { t } = useI18n();
   const [isDragging, setIsDragging] = createSignal(false);
   let dragCounter = 0;
 
@@ -83,10 +85,8 @@ export function DragDropOverlay(props: DragDropOverlayProps) {
               stroke-width="2"
             />
           </svg>
-          <h2 class="drag-drop-title">Перетащите файлы сюда</h2>
-          <p class="drag-drop-subtitle">
-            Файлы будут загружены в текущую папку
-          </p>
+          <h2 class="drag-drop-title">{t("dragDrop.title")}</h2>
+          <p class="drag-drop-subtitle">{t("dragDrop.subtitle")}</p>
         </div>
       </div>
     </Show>

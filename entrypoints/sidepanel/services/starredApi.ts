@@ -8,6 +8,7 @@ import {
   getAccessToken,
   getWriteAccessToken,
 } from "./driveApi";
+import { translateCurrentLocale } from "../../shared/i18n/runtime";
 
 type DriveListResult = {
   files?: DriveApiFile[];
@@ -176,7 +177,10 @@ export async function removeFromStarred(
       const errorText = await response.text();
       return {
         ok: false,
-        error: `Ошибка снятия пометки ${response.status}: ${errorText}`,
+        error: translateCurrentLocale("starred.error.removeStarStatus", {
+          status: String(response.status),
+          details: errorText,
+        }),
       };
     }
 
@@ -187,7 +191,7 @@ export async function removeFromStarred(
       error:
         unknownError instanceof Error
           ? unknownError.message
-          : "Неизвестная ошибка",
+          : translateCurrentLocale("service.error.unknown"),
     };
   }
 }

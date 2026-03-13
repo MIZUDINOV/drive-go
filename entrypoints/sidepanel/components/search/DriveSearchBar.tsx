@@ -19,6 +19,7 @@ import {
   openDriveItemInNewTab,
 } from "../../services/driveApi";
 import { createDriveSearchStream } from "../../services/driveSearchStream";
+import { useI18n } from "../../../shared/i18n";
 
 type DriveSearchBarProps = {
   value: string;
@@ -43,21 +44,6 @@ const TYPE_OPTIONS: DriveSearchFilters["type"][] = [
   "vids",
 ];
 
-const TYPE_LABEL: Record<DriveSearchFilters["type"], string> = {
-  all: "Все",
-  folders: "Папки",
-  documents: "Документы",
-  spreadsheets: "Таблицы",
-  presentations: "Презентации",
-  pdf: "PDF",
-  images: "Изображения",
-  forms: "Формы",
-  archives: "Архивы",
-  audio: "Аудио",
-  videos: "Видео",
-  vids: "Vids",
-};
-
 const TYPE_MIME: Partial<Record<DriveSearchFilters["type"], string>> = {
   folders: "application/vnd.google-apps.folder",
   documents: "application/vnd.google-apps.document",
@@ -74,24 +60,12 @@ const TYPE_MIME: Partial<Record<DriveSearchFilters["type"], string>> = {
 
 const OWNER_OPTIONS: DriveSearchFilters["owner"][] = ["all", "me"];
 
-const OWNER_LABEL: Record<DriveSearchFilters["owner"], string> = {
-  all: "Все",
-  me: "Я",
-};
-
 const MODIFIED_OPTIONS: DriveSearchFilters["modified"][] = [
   "any",
   "7d",
   "30d",
   "365d",
 ];
-
-const MODIFIED_LABEL: Record<DriveSearchFilters["modified"], string> = {
-  any: "Любое время",
-  "7d": "7 дней",
-  "30d": "30 дней",
-  "365d": "1 год",
-};
 
 const FILTER_MENU_CONTENT_CLASS = "drive-search-filter-menu-content";
 const FILTER_MENU_CONTENT_SELECTOR = `.${FILTER_MENU_CONTENT_CLASS}`;
@@ -102,23 +76,6 @@ function isDefaultSearchFilters(filters: DriveSearchFilters): boolean {
     filters.owner === DEFAULT_DRIVE_SEARCH_FILTERS.owner &&
     filters.modified === DEFAULT_DRIVE_SEARCH_FILTERS.modified
   );
-}
-
-function formatDate(dateIso?: string): string {
-  if (!dateIso) {
-    return "";
-  }
-
-  const date = new Date(dateIso);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  return date.toLocaleDateString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
 }
 
 type FilterSelectProps<T extends string> = {
@@ -218,6 +175,7 @@ function FilterSelect<T extends string>(props: FilterSelectProps<T>) {
 }
 
 export function DriveSearchBar(props: DriveSearchBarProps) {
+  const { locale, t } = useI18n();
   const searchStream = createDriveSearchStream();
   const subscriptions: Subscription[] = [];
   const [results, setResults] = createSignal<DriveApiFile[]>([]);
@@ -230,6 +188,56 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
   let filtersRef: HTMLDivElement | undefined;
   let suppressAutoClose = false;
   let shouldResetFiltersOnClose = false;
+
+  const typeLabels = createMemo<Record<DriveSearchFilters["type"], string>>(
+    () => ({
+      all: t("drive.filter.type.all"),
+      folders: t("drive.filter.type.folders"),
+      documents: t("drive.filter.type.documents"),
+      spreadsheets: t("drive.filter.type.spreadsheets"),
+      presentations: t("drive.filter.type.presentations"),
+      pdf: t("drive.filter.type.pdf"),
+      images: t("drive.filter.type.images"),
+      forms: t("drive.filter.type.forms"),
+      archives: t("drive.filter.type.archives"),
+      audio: t("drive.filter.type.audio"),
+      videos: t("drive.filter.type.videos"),
+      vids: t("drive.filter.type.vids"),
+    }),
+  );
+
+  const ownerLabels = createMemo<Record<DriveSearchFilters["owner"], string>>(
+    () => ({
+      all: t("drive.filter.owner.all"),
+      me: t("drive.filter.owner.me"),
+    }),
+  );
+
+  const modifiedLabels = createMemo<
+    Record<DriveSearchFilters["modified"], string>
+  >(() => ({
+    any: t("drive.filter.modified.any"),
+    "7d": t("drive.filter.modified.7d"),
+    "30d": t("drive.filter.modified.30d"),
+    "365d": t("drive.filter.modified.365d"),
+  }));
+
+  const formatDate = (dateIso?: string): string => {
+    if (!dateIso) {
+      return "";
+    }
+
+    const date = new Date(dateIso);
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+
+    return date.toLocaleDateString(locale() === "ru" ? "ru-RU" : "en-US", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
 
   const keepPanelOpenDuringMenuTransition = () => {
     suppressAutoClose = true;
@@ -422,7 +430,7 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
     >
       <Search.Control
         class="drive-search-input-wrap"
-        aria-label="Поиск на Диске"
+        aria-label={t("search.input.aria")}
         ref={searchControlRef}
       >
         <Search.Indicator
@@ -470,7 +478,7 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
 
         <Search.Input
           class="drive-search-input"
-          placeholder="Поиск на Диске"
+          placeholder={t("search.input.placeholder")}
           value={props.value}
           disabled={!props.active}
           onBlur={(event) => {
@@ -489,7 +497,7 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
           <Button
             type="button"
             class="drive-search-clear-btn"
-            aria-label="Очистить поиск"
+            aria-label={t("search.clear.aria")}
             onClick={() => {
               requestFiltersResetOnClose();
               props.onChange("");
@@ -542,11 +550,11 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
           }}
         >
           <FilterSelect
-            label="Тип"
-            ariaLabel="Фильтр по типу"
+            label={t("drive.filter.type.label")}
+            ariaLabel={t("drive.filter.type.aria")}
             value={props.filters.type}
             options={TYPE_OPTIONS}
-            labels={TYPE_LABEL}
+            labels={typeLabels()}
             iconMimeTypes={TYPE_MIME}
             onOpenChange={(open) =>
               handleSelectOpenChange(setIsTypeMenuOpen, open)
@@ -556,11 +564,11 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
           />
 
           <FilterSelect
-            label="Люди"
-            ariaLabel="Фильтр по владельцу"
+            label={t("drive.filter.owner.label")}
+            ariaLabel={t("drive.filter.owner.aria")}
             value={props.filters.owner}
             options={OWNER_OPTIONS}
-            labels={OWNER_LABEL}
+            labels={ownerLabels()}
             onOpenChange={(open) =>
               handleSelectOpenChange(setIsOwnerMenuOpen, open)
             }
@@ -569,11 +577,11 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
           />
 
           <FilterSelect
-            label="Изменено"
-            ariaLabel="Фильтр по дате изменения"
+            label={t("drive.filter.modified.label")}
+            ariaLabel={t("drive.filter.modified.aria")}
             value={props.filters.modified}
             options={MODIFIED_OPTIONS}
-            labels={MODIFIED_LABEL}
+            labels={modifiedLabels()}
             onOpenChange={(open) =>
               handleSelectOpenChange(setIsModifiedMenuOpen, open)
             }
@@ -588,18 +596,18 @@ export function DriveSearchBar(props: DriveSearchBarProps) {
           <Show
             when={hasQuery()}
             fallback={
-              <p class="drive-search-empty">
-                Введите запрос или выберите фильтры.
-              </p>
+              <p class="drive-search-empty">{t("search.empty.idle")}</p>
             }
           >
             <Show
               when={!loading()}
-              fallback={<p class="drive-search-empty">Поиск...</p>}
+              fallback={
+                <p class="drive-search-empty">{t("search.empty.loading")}</p>
+              }
             >
               <Search.Listbox class="drive-search-listbox" />
               <Search.NoResult class="drive-search-empty">
-                Ничего не найдено.
+                {t("search.empty.noResults")}
               </Search.NoResult>
             </Show>
           </Show>

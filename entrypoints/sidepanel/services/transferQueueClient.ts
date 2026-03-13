@@ -17,6 +17,7 @@ import {
   type TransferQueueRetryMessage,
 } from "../../shared/transferQueueMessages";
 import { putStagedTransferBlob } from "../../shared/transferQueueStagingDb";
+import { translateCurrentLocale } from "../../shared/i18n/runtime";
 
 function isTransferQueueListResponse(
   value: unknown,
@@ -95,7 +96,9 @@ export async function enqueueFilesForUpload(
 
     const response = await browser.runtime.sendMessage(message);
     if (!isTransferQueueEnqueueUploadResponse(response) || !response.ok) {
-      throw new Error("Некорректный ответ enqueue-upload");
+      throw new Error(
+        translateCurrentLocale("service.error.invalidEnqueueResponse"),
+      );
     }
 
     if (response.deduped && !response.existingJobId) {

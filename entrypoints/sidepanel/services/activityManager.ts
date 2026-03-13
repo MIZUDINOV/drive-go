@@ -33,6 +33,7 @@ import {
   type ActivitySyncNowMessage,
   type ActivitySyncNowResponse,
 } from "../../shared/activityNotifications";
+import { translateCurrentLocale } from "../../shared/i18n/runtime";
 
 type CachedUserProfile = {
   displayName: string;
@@ -413,7 +414,9 @@ export async function requestActivitySyncNow(): Promise<void> {
     | undefined;
 
   if (!response?.ok) {
-    throw new Error("Фоновая синхронизация активности не выполнена");
+    throw new Error(
+      translateCurrentLocale("service.error.backgroundSyncIncomplete"),
+    );
   }
 }
 
@@ -477,7 +480,9 @@ async function loadUserProfiles(items: ActivityItem[]): Promise<void> {
     }
 
     const displayName =
-      resolvedUser.displayName || resolvedUser.emailAddress || "Пользователь";
+      resolvedUser.displayName ||
+      resolvedUser.emailAddress ||
+      translateCurrentLocale("activity.runtime.user");
 
     const cachedProfile: CachedUserProfile = {
       displayName,
@@ -615,7 +620,7 @@ export function parseActivities(activities: DriveActivity[]): ActivityItem[] {
       );
 
       // Извлечь актора
-      let actorDisplayName = "Загрузка...";
+      let actorDisplayName = translateCurrentLocale("activity.runtime.loading");
       let actorEmail = "";
 
       const user = actor?.user as any;
@@ -684,7 +689,7 @@ export function parseActivities(activities: DriveActivity[]): ActivityItem[] {
           (typeof target.driveItem.name === "string" &&
           !target.driveItem.name.startsWith("items/")
             ? target.driveItem.name
-            : "Безымянный"),
+            : translateCurrentLocale("activity.runtime.untitled")),
         mimeType: target.driveItem.mimeType || "application/octet-stream",
       };
 

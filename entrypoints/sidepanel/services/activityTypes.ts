@@ -74,7 +74,7 @@ export type ActivityItem = {
  * Группа активностей (по дате)
  */
 export type ActivityGroup = {
-  date: string; // "Сегодня", "Вчера", "7 марта", etc.
+  date: string; // e.g. "Today", "Yesterday", "March 7"
   items: ActivityItem[];
 };
 

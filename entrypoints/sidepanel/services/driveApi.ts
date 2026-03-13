@@ -9,6 +9,7 @@ import {
   OAUTH_SCOPE_DRIVE_WRITE,
   type AuthToken,
 } from "./authService";
+import { translateCurrentLocale } from "../../shared/i18n/runtime";
 
 type DriveListResult = {
   files?: DriveApiFile[];
@@ -275,7 +276,10 @@ export async function createFolder(
   parentId?: string,
 ): Promise<CreateFolderResult> {
   if (!folderName.trim()) {
-    return { ok: false, error: "Имя папки не может быть пустым" };
+    return {
+      ok: false,
+      error: translateCurrentLocale("drive.error.emptyFolderName"),
+    };
   }
 
   try {
@@ -302,7 +306,10 @@ export async function createFolder(
       const errorText = await response.text();
       return {
         ok: false,
-        error: `Ошибка создания папки ${response.status}: ${errorText}`,
+        error: translateCurrentLocale("drive.error.createFolderStatus", {
+          status: String(response.status),
+          details: errorText,
+        }),
       };
     }
 
@@ -314,7 +321,7 @@ export async function createFolder(
       error:
         unknownError instanceof Error
           ? unknownError.message
-          : "Неизвестная ошибка",
+          : translateCurrentLocale("service.error.unknown"),
     };
   }
 }
@@ -351,7 +358,10 @@ export async function moveFile(
       const errorText = await response.text();
       return {
         ok: false,
-        error: `Ошибка перемещения ${response.status}: ${errorText}`,
+        error: translateCurrentLocale("drive.error.moveStatus", {
+          status: String(response.status),
+          details: errorText,
+        }),
       };
     }
 
@@ -362,7 +372,7 @@ export async function moveFile(
       error:
         unknownError instanceof Error
           ? unknownError.message
-          : "Неизвестная ошибка",
+          : translateCurrentLocale("service.error.unknown"),
     };
   }
 }
@@ -391,7 +401,10 @@ export async function trashFile(fileId: string): Promise<TrashFileResult> {
       const errorText = await response.text();
       return {
         ok: false,
-        error: `Ошибка удаления ${response.status}: ${errorText}`,
+        error: translateCurrentLocale("drive.error.trashStatus", {
+          status: String(response.status),
+          details: errorText,
+        }),
       };
     }
 
@@ -402,7 +415,7 @@ export async function trashFile(fileId: string): Promise<TrashFileResult> {
       error:
         unknownError instanceof Error
           ? unknownError.message
-          : "Неизвестная ошибка",
+          : translateCurrentLocale("service.error.unknown"),
     };
   }
 }
@@ -412,7 +425,10 @@ export async function renameFile(
   newName: string,
 ): Promise<RenameFileResult> {
   if (!newName.trim()) {
-    return { ok: false, error: "Имя не может быть пустым" };
+    return {
+      ok: false,
+      error: translateCurrentLocale("drive.error.emptyName"),
+    };
   }
 
   try {
@@ -434,7 +450,10 @@ export async function renameFile(
       const errorText = await response.text();
       return {
         ok: false,
-        error: `Ошибка переименования ${response.status}: ${errorText}`,
+        error: translateCurrentLocale("drive.error.renameStatus", {
+          status: String(response.status),
+          details: errorText,
+        }),
       };
     }
 
@@ -445,7 +464,7 @@ export async function renameFile(
       error:
         unknownError instanceof Error
           ? unknownError.message
-          : "Неизвестная ошибка",
+          : translateCurrentLocale("service.error.unknown"),
     };
   }
 }

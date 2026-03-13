@@ -1,10 +1,11 @@
-import { For } from "solid-js";
+import { For, createMemo } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Toast } from "@kobalte/core/toast";
 import { Tabs } from "@kobalte/core/tabs";
 import { ActivitySettings } from "./components/ActivitySettings";
 import { SavePathsSettings } from "./components/SavePathsSettings";
 import { GeneralSettings } from "./components/GeneralSettings";
+import { useI18n } from "../shared/i18n";
 
 type SettingsSection = {
   id: string;
@@ -12,14 +13,19 @@ type SettingsSection = {
   icon: string;
 };
 
-const sections: SettingsSection[] = [
-  { id: "activity", title: "Активность", icon: "notifications" },
-  { id: "save-paths", title: "Пути сохранения", icon: "folder_managed" },
-  { id: "general", title: "Общие", icon: "settings" },
-  { id: "about", title: "О расширении", icon: "info" },
-];
-
 export function OptionsApp() {
+  const { t } = useI18n();
+  const sections = createMemo<SettingsSection[]>(() => [
+    { id: "activity", title: t("options.nav.activity"), icon: "notifications" },
+    {
+      id: "save-paths",
+      title: t("options.nav.savePaths"),
+      icon: "folder_managed",
+    },
+    { id: "general", title: t("options.nav.general"), icon: "settings" },
+    { id: "about", title: t("options.nav.about"), icon: "info" },
+  ]);
+
   return (
     <>
       <Portal>
@@ -41,8 +47,8 @@ export function OptionsApp() {
           </div>
 
           <nav>
-            <Tabs.List class="options-nav" aria-label="Разделы настроек">
-              <For each={sections}>
+            <Tabs.List class="options-nav" aria-label={t("options.nav.aria")}>
+              <For each={sections()}>
                 {(section) => (
                   <Tabs.Trigger class="options-nav-item" value={section.id}>
                     <span class="material-symbols-rounded">{section.icon}</span>
@@ -69,12 +75,12 @@ export function OptionsApp() {
 
           <Tabs.Content value="about">
             <div class="options-section">
-              <h2>О расширении</h2>
+              <h2>{t("options.about.title")}</h2>
               <p class="options-section-description">
-                Drive GO - компактное расширение для работы с Google Drive
+                {t("options.about.description")}
               </p>
               <div class="options-about-version">
-                <strong>Версия:</strong> 1.0.0
+                <strong>{t("options.about.versionLabel")}:</strong> 1.0.0
               </div>
             </div>
           </Tabs.Content>

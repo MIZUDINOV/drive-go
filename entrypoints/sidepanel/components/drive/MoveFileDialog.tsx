@@ -8,6 +8,7 @@ import { listAllFolders, moveFile } from "../../services/driveApi";
 import { FileTypeIcon } from "../../fileTypes";
 import { DriveWritePermissionDialog } from "../permissions/DriveWritePermissionDialog";
 import { useDriveWritePermissionGate } from "../permissions/useDriveWritePermissionGate";
+import { useI18n } from "../../../shared/i18n";
 
 type MoveFileDialogProps = {
   item: DriveItem | null;
@@ -18,6 +19,7 @@ type MoveFileDialogProps = {
 };
 
 export function MoveFileDialog(props: MoveFileDialogProps) {
+  const { t } = useI18n();
   const [folders, setFolders] = createSignal<DriveApiFile[]>([]);
   const [selectedFolderId, setSelectedFolderId] = createSignal<string | null>(
     null,
@@ -51,7 +53,7 @@ export function MoveFileDialog(props: MoveFileDialogProps) {
     setError(null);
 
     const canProceed = await permissionGate.ensureDriveWriteOrRequest(
-      "Для перемещения требуется доступ на изменение Google Drive.",
+      t("drive.move.permRequired"),
       handleMove,
     );
     if (!canProceed) {
@@ -70,7 +72,7 @@ export function MoveFileDialog(props: MoveFileDialogProps) {
     } else {
       const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
         result.error,
-        "Для перемещения требуется доступ на изменение Google Drive.",
+        t("drive.move.permRequired"),
         handleMove,
       );
 
@@ -88,17 +90,23 @@ export function MoveFileDialog(props: MoveFileDialogProps) {
         <Dialog.Overlay class="dialog-overlay" />
         <Dialog.Content class="dialog-content move-file-dialog-content">
           <Dialog.Title class="dialog-title">
-            Перемещение объекта "{props.item?.name}"
+            {t("drive.move.title", { name: props.item?.name ?? "" })}
           </Dialog.Title>
 
           <div class="dialog-body move-file-dialog-body">
             <Show
               when={!isLoading()}
-              fallback={<div class="move-file-loading">Загрузка папок...</div>}
+              fallback={
+                <div class="move-file-loading">
+                  {t("drive.move.loadingFolders")}
+                </div>
+              }
             >
               <Show
                 when={folders().length > 0}
-                fallback={<div class="move-file-empty">Папки не найдены</div>}
+                fallback={
+                  <div class="move-file-empty">{t("drive.move.noFolders")}</div>
+                }
               >
                 <RadioGroup
                   value={selectedFolderId() ?? ""}
@@ -141,14 +149,14 @@ export function MoveFileDialog(props: MoveFileDialogProps) {
               onClick={() => props.onOpenChange(false)}
               disabled={isMoving()}
             >
-              Отмена
+              {t("drive.move.cancel")}
             </Button>
             <Button
               class="dialog-btn dialog-btn-create"
               onClick={handleMove}
               disabled={isMoving() || !selectedFolderId()}
             >
-              {isMoving() ? "Перемещение..." : "Переместить"}
+              {isMoving() ? t("drive.move.moving") : t("drive.move.move")}
             </Button>
           </div>
         </Dialog.Content>

@@ -1,3 +1,5 @@
+import { translateCurrentLocale } from "../../shared/i18n/runtime";
+
 export type AuthToken = {
   token: string;
 };
@@ -240,7 +242,9 @@ export async function startInteractiveSignIn(
   const token = normalizeAuthToken(result);
 
   if (!token) {
-    throw new Error("Интерактивная авторизация не вернула токен");
+    throw new Error(
+      translateCurrentLocale("service.error.interactiveAuthNoToken"),
+    );
   }
 
   try {

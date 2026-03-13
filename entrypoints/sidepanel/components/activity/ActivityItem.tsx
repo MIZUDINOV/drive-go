@@ -4,6 +4,7 @@ import { Tooltip } from "@kobalte/core/tooltip";
 import type { ActivityItem as ActivityItemType } from "../../services/activityTypes";
 import { markAsRead } from "../../services/activityManager";
 import { FileTypeIcon } from "../../fileTypes";
+import { useI18n, type Locale } from "../../../shared/i18n";
 
 type Props = {
   item: ActivityItemType;
@@ -12,32 +13,35 @@ type Props = {
 /**
  * Получить текст действия для типа активности
  */
-function getActivityActionText(type: ActivityItemType["type"]): string {
+function getActivityActionText(
+  type: ActivityItemType["type"],
+  t: ReturnType<typeof useI18n>["t"],
+): string {
   switch (type) {
     case "comment":
-      return "оставил комментарий";
+      return t("activity.item.action.comment");
     case "reply":
-      return "ответил на комментарий";
+      return t("activity.item.action.reply");
     case "mention":
-      return "упомянул вас в комментарии";
+      return t("activity.item.action.mention");
     case "share":
-      return "предоставил доступ к файлу";
+      return t("activity.item.action.share");
     case "edit":
-      return "отредактировал файл";
+      return t("activity.item.action.edit");
     case "create":
-      return "создал файл";
+      return t("activity.item.action.create");
     case "move":
-      return "переместил файл";
+      return t("activity.item.action.move");
     case "rename":
-      return "переименовал файл";
+      return t("activity.item.action.rename");
     case "delete":
-      return "удалил файл";
+      return t("activity.item.action.delete");
     case "restore":
-      return "восстановил файл";
+      return t("activity.item.action.restore");
     case "permission_change":
-      return "изменил права доступа";
+      return t("activity.item.action.permission_change");
     default:
-      return "выполнил действие";
+      return t("activity.item.action.default");
   }
 }
 
@@ -71,7 +75,11 @@ function getActivityIcon(type: ActivityItemType["type"]): string {
 /**
  * Форматирование относительного времени
  */
-function formatRelativeTime(timestamp: string): string {
+function formatRelativeTime(
+  timestamp: string,
+  locale: Locale,
+  t: ReturnType<typeof useI18n>["t"],
+): string {
   const now = new Date();
   const date = new Date(timestamp);
   const diffMs = now.getTime() - date.getTime();
@@ -79,19 +87,24 @@ function formatRelativeTime(timestamp: string): string {
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffMins < 1) return "только что";
-  if (diffMins < 60) return `${diffMins} мин назад`;
-  if (diffHours < 24) return `${diffHours} ч назад`;
-  if (diffDays < 7) return `${diffDays} дн назад`;
+  if (diffMins < 1) return t("activity.item.time.justNow");
+  if (diffMins < 60)
+    return t("activity.item.time.minutesAgo", { count: String(diffMins) });
+  if (diffHours < 24)
+    return t("activity.item.time.hoursAgo", { count: String(diffHours) });
+  if (diffDays < 7)
+    return t("activity.item.time.daysAgo", { count: String(diffDays) });
 
-  return date.toLocaleDateString("ru-RU", {
+  return date.toLocaleDateString(locale === "ru" ? "ru-RU" : "en-US", {
     day: "numeric",
     month: "short",
   });
 }
 
 export function ActivityItem(props: Props) {
-  const actorName = () => props.item.actor.displayName || "Кто-то";
+  const { locale, t } = useI18n();
+  const actorName = () =>
+    props.item.actor.displayName || t("activity.item.actor.unknown");
   const actorInitials = () => getActorInitials(actorName());
 
   const handleClick = () => {
@@ -136,7 +149,7 @@ export function ActivityItem(props: Props) {
             <span class="activity-item-actor-name">{actorName()}</span>
           </span>
           <span class="activity-item-action">
-            {` ${getActivityActionText(props.item.type)}`}
+            {` ${getActivityActionText(props.item.type, t)}`}
           </span>
         </div>
 
@@ -174,7 +187,7 @@ export function ActivityItem(props: Props) {
         </Show>
 
         <div class="activity-item-time">
-          {formatRelativeTime(props.item.timestamp)}
+          {formatRelativeTime(props.item.timestamp, locale(), t)}
         </div>
       </div>
 
@@ -186,14 +199,14 @@ export function ActivityItem(props: Props) {
             e.stopPropagation();
             handleClick();
           }}
-          aria-label="Открыть файл"
+          aria-label={t("activity.item.openFile")}
         >
           <span class="material-symbols-rounded">open_in_new</span>
         </Tooltip.Trigger>
         <Tooltip.Portal>
           <Tooltip.Content class="tab-tooltip">
             <Tooltip.Arrow class="tab-tooltip-arrow" />
-            <span>Открыть файл</span>
+            <span>{t("activity.item.openFile")}</span>
           </Tooltip.Content>
         </Tooltip.Portal>
       </Tooltip>

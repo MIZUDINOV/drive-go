@@ -2,6 +2,7 @@ import { fetchWithRetry } from "./transferHttpRetry";
 import { CHUNK_SIZE } from "./transferQueueConstants";
 import { getSession, upsertSession } from "./transferQueueDb";
 import type { TransferQueueItem } from "../../shared/transferQueueTypes";
+import { translateCurrentLocale } from "../../shared/i18n/runtime";
 
 const OAUTH_SCOPE_DRIVE_WRITE = "https://www.googleapis.com/auth/drive";
 
@@ -23,7 +24,7 @@ async function getAccessToken(): Promise<string> {
     scopes: [OAUTH_SCOPE_DRIVE_WRITE],
   });
   if (!result?.token) {
-    throw new Error("Не удалось получить токен доступа");
+    throw new Error(translateCurrentLocale("service.error.accessToken"));
   }
 
   return result.token;
@@ -68,12 +69,17 @@ async function uploadMultipart(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Ошибка загрузки: ${response.status} ${text}`);
+    throw new Error(
+      translateCurrentLocale("transfer.error.multipartStatus", {
+        status: String(response.status),
+        details: text,
+      }),
+    );
   }
 
   const data = (await response.json()) as { id?: string };
   if (!data.id) {
-    throw new Error("Drive API не вернул id загруженного файла");
+    throw new Error(translateCurrentLocale("transfer.error.driveIdMissing"));
   }
 
   return data.id;
@@ -116,13 +122,18 @@ async function createResumableSession(
   if (!response.ok) {
     const text = await response.text();
     throw new Error(
-      `Ошибка инициализации resumable: ${response.status} ${text}`,
+      translateCurrentLocale("transfer.error.resumableInitStatus", {
+        status: String(response.status),
+        details: text,
+      }),
     );
   }
 
   const uploadUrl = response.headers.get("Location");
   if (!uploadUrl) {
-    throw new Error("Не получен Location для resumable upload");
+    throw new Error(
+      translateCurrentLocale("transfer.error.resumableLocationMissing"),
+    );
   }
 
   return uploadUrl;
@@ -179,7 +190,10 @@ async function probeResumableProgress(
 
   const text = await response.text();
   throw new Error(
-    `Ошибка проверки resumable сессии: ${response.status} ${text}`,
+    translateCurrentLocale("transfer.error.resumableProbeStatus", {
+      status: String(response.status),
+      details: text,
+    }),
   );
 }
 
@@ -276,7 +290,9 @@ async function uploadResumable(
     if (response.status === 200 || response.status === 201) {
       const data = (await response.json()) as { id?: string };
       if (!data.id) {
-        throw new Error("Drive API не вернул id после resumable upload");
+        throw new Error(
+          translateCurrentLocale("transfer.error.driveIdMissingAfterResumable"),
+        );
       }
 
       await onProgress(blob.size);
@@ -297,15 +313,20 @@ async function uploadResumable(
 
     if (response.status === 404) {
       throw new Error(
-        "Сессия resumable upload истекла, попробуйте повторить задачу",
+        translateCurrentLocale("transfer.error.resumableExpired"),
       );
     }
 
     const text = await response.text();
-    throw new Error(`Ошибка chunk upload: ${response.status} ${text}`);
+    throw new Error(
+      translateCurrentLocale("transfer.error.chunkUploadStatus", {
+        status: String(response.status),
+        details: text,
+      }),
+    );
   }
 
-  throw new Error("Resumable upload завершился без file id");
+  throw new Error(translateCurrentLocale("transfer.error.resumableNoFileId"));
 }
 
 class TransferUploadExecutor {

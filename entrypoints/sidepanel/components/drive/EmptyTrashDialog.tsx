@@ -1,6 +1,7 @@
 import { Show, createSignal } from "solid-js";
 import { Dialog } from "@kobalte/core/dialog";
 import { Button } from "@kobalte/core/button";
+import { useI18n } from "../../../shared/i18n";
 
 type EmptyTrashDialogProps = {
   open: boolean;
@@ -9,6 +10,7 @@ type EmptyTrashDialogProps = {
 };
 
 export function EmptyTrashDialog(props: EmptyTrashDialogProps) {
+  const { t } = useI18n();
   const [isDeleting, setIsDeleting] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
@@ -24,7 +26,7 @@ export function EmptyTrashDialog(props: EmptyTrashDialogProps) {
       return;
     }
 
-    setError("Не удалось очистить корзину. Попробуйте еще раз.");
+    setError(t("drive.emptyTrashDialog.error"));
   };
 
   return (
@@ -34,13 +36,12 @@ export function EmptyTrashDialog(props: EmptyTrashDialogProps) {
 
         <Dialog.Content class="danger-delete-dialog-content">
           <Dialog.Title class="danger-delete-dialog-title">
-            Удалить навсегда?
+            {t("drive.emptyTrashDialog.title")}
           </Dialog.Title>
 
           <div class="danger-delete-dialog-body">
             <Dialog.Description class="danger-delete-dialog-description">
-              Все объекты в корзине будут удалены навсегда. Это действие нельзя
-              отменить.
+              {t("drive.emptyTrashDialog.description")}
             </Dialog.Description>
 
             <Show when={error()}>
@@ -54,7 +55,7 @@ export function EmptyTrashDialog(props: EmptyTrashDialogProps) {
               onClick={() => props.onOpenChange(false)}
               disabled={isDeleting()}
             >
-              Отмена
+              {t("drive.emptyTrashDialog.cancel")}
             </Button>
 
             <Button
@@ -62,7 +63,9 @@ export function EmptyTrashDialog(props: EmptyTrashDialogProps) {
               onClick={() => void handleDelete()}
               disabled={isDeleting()}
             >
-              {isDeleting() ? "Удаление..." : "Удалить"}
+              {isDeleting()
+                ? t("drive.emptyTrashDialog.deleting")
+                : t("drive.emptyTrashDialog.confirm")}
             </Button>
           </div>
         </Dialog.Content>

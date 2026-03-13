@@ -2,17 +2,20 @@ import { Show, createEffect, createSignal, onMount } from "solid-js";
 import { Alert } from "@kobalte/core/alert";
 import { Skeleton } from "@kobalte/core/skeleton";
 import { Switch } from "@kobalte/core/switch";
+import { OptionsSelect } from "./OptionsSelect";
 import {
   getTransferQueueGeneralSettings,
   saveTransferQueueGeneralSettings,
   type TransferQueueGeneralSettings,
 } from "../../shared/transferQueueSettings";
+import { SUPPORTED_LOCALES, type Locale, useI18n } from "../../shared/i18n";
 
 const DEFAULT_SETTINGS: TransferQueueGeneralSettings = {
   backgroundTransfersEnabled: true,
 };
 
 export function GeneralSettings() {
+  const { locale, setLocale, t } = useI18n();
   const [settings, setSettings] =
     createSignal<TransferQueueGeneralSettings | null>(null);
   const [saveError, setSaveError] = createSignal<string | null>(null);
@@ -24,9 +27,7 @@ export function GeneralSettings() {
       setSettings(loadedSettings);
     } catch (error: unknown) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Не удалось загрузить общие настройки";
+        error instanceof Error ? error.message : t("general.errors.load");
       setSaveError(message);
       setSettings(DEFAULT_SETTINGS);
     }
@@ -48,42 +49,61 @@ export function GeneralSettings() {
     void saveTransferQueueGeneralSettings(nextSettings).catch(
       (error: unknown) => {
         const message =
-          error instanceof Error
-            ? error.message
-            : "Не удалось сохранить общие настройки";
+          error instanceof Error ? error.message : t("general.errors.save");
         setSaveError(message);
       },
     );
   });
 
+  const getLocaleLabel = (value: Locale): string => {
+    if (value === "ru") {
+      return t("general.language.ru");
+    }
+
+    return t("general.language.en");
+  };
+
   return (
     <div class="options-section">
-      <h2>Общие настройки</h2>
-      <p class="options-section-description">
-        Управляйте поведением загрузок при закрытой боковой панели.
-      </p>
+      <h2>{t("general.title")}</h2>
+      <p class="options-section-description">{t("general.description")}</p>
+
+      <div class="options-settings-block">
+        <h3>{t("general.language.title")}</h3>
+        <div class="options-setting-row">
+          <div class="options-setting-label">
+            <div>{t("general.language.title")}</div>
+            <div class="options-setting-hint">{t("general.language.hint")}</div>
+          </div>
+          <OptionsSelect<Locale>
+            ariaLabel={t("general.language.aria")}
+            value={locale()}
+            options={[...SUPPORTED_LOCALES]}
+            getLabel={getLocaleLabel}
+            onChange={setLocale}
+          />
+        </div>
+      </div>
 
       <Show
         when={settings()}
         fallback={
           <div
             class="options-loading-skeletons"
-            aria-label="Загрузка общих настроек"
+            aria-label={t("general.loadingAria")}
           >
             <Skeleton class="options-skeleton" height={92} radius={12} />
           </div>
         }
       >
         <div class="options-settings-block">
-          <h3>Передачи</h3>
+          <h3>{t("general.transfers.title")}</h3>
 
           <div class="options-setting-row">
             <div class="options-setting-label">
-              <div>Фоновая загрузка</div>
+              <div>{t("general.backgroundUpload.title")}</div>
               <div class="options-setting-hint">
-                Если включено, загрузки продолжаются после закрытия расширения.
-                Если выключено, загрузки ставятся на паузу и продолжаются при
-                открытии боковой панели.
+                {t("general.backgroundUpload.hint")}
               </div>
             </div>
 

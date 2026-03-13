@@ -612,6 +612,11 @@
   dependencies:
     "@solid-primitives/utils" "^6.4.0"
 
+"@solid-primitives/i18n@^2.2.1":
+  version "2.2.1"
+  resolved "https://registry.yarnpkg.com/@solid-primitives/i18n/-/i18n-2.2.1.tgz#f650fa7704345367d20a9ce63a6897d26ce23ee4"
+  integrity sha512-TnTnE2Ku11MGYZ1JzhJ8pYscwg1fr9MteoYxPwsfxWfh9Jp5K7RRJncJn9BhOHvNLwROjqOHZ46PT7sPHqbcXw==
+
 "@solid-primitives/keyed@^1.2.0":
   version "1.5.3"
   resolved "https://registry.npmjs.org/@solid-primitives/keyed/-/keyed-1.5.3.tgz"

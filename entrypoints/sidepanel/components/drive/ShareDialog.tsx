@@ -1,4 +1,4 @@
-import { createSignal, createEffect, For, Show } from "solid-js";
+import { createSignal, createEffect, createMemo, For, Show } from "solid-js";
 import { Dialog } from "@kobalte/core/dialog";
 import { Button } from "@kobalte/core/button";
 import { TextField } from "@kobalte/core/text-field";
@@ -12,6 +12,7 @@ import {
   type PermissionRole,
 } from "../../services/sharingApi";
 import { openDriveItemInNewTab } from "../../services/driveApi";
+import { useI18n } from "../../../shared/i18n";
 
 type ShareDialogProps = {
   item: DriveItem | null;
@@ -24,37 +25,40 @@ type RoleOption = {
   label: string;
 };
 
-const ROLE_OPTIONS: RoleOption[] = [
-  { value: "reader", label: "Читатель" },
-  { value: "commenter", label: "Комментатор" },
-  { value: "writer", label: "Редактор" },
-];
-
-function getRoleLabel(role: string): string {
-  switch (role) {
-    case "owner":
-      return "Владелец";
-    case "writer":
-      return "Редактор";
-    case "commenter":
-      return "Комментатор";
-    case "reader":
-      return "Читатель";
-    default:
-      return role;
-  }
-}
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function ShareDialog(props: ShareDialogProps) {
+  const { t } = useI18n();
+
+  const roleOptions = createMemo<RoleOption[]>(() => [
+    { value: "reader", label: t("drive.share.role.reader") },
+    { value: "commenter", label: t("drive.share.role.commenter") },
+    { value: "writer", label: t("drive.share.role.writer") },
+  ]);
+
+  const getRoleLabel = (role: string): string => {
+    switch (role) {
+      case "owner":
+        return t("drive.share.role.owner");
+      case "writer":
+        return t("drive.share.role.writer");
+      case "commenter":
+        return t("drive.share.role.commenter");
+      case "reader":
+        return t("drive.share.role.reader");
+      default:
+        return role;
+    }
+  };
+
   const [permissions, setPermissions] = createSignal<DrivePermission[]>([]);
   const [isLoading, setIsLoading] = createSignal(false);
   const [email, setEmail] = createSignal("");
   const [emailTouched, setEmailTouched] = createSignal(false);
-  const [selectedRole, setSelectedRole] = createSignal<RoleOption>(
-    ROLE_OPTIONS[0],
-  );
+  const [selectedRole, setSelectedRole] = createSignal<RoleOption>({
+    value: "reader",
+    label: "",
+  });
   const [isAdding, setIsAdding] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
@@ -68,7 +72,7 @@ export function ShareDialog(props: ShareDialogProps) {
       setError(null);
       setEmail("");
       setEmailTouched(false);
-      setSelectedRole(ROLE_OPTIONS[0]);
+      setSelectedRole(roleOptions()[0]);
       void loadPermissions();
     }
   });
@@ -142,7 +146,7 @@ export function ShareDialog(props: ShareDialogProps) {
         <Dialog.Overlay class="dialog-overlay" />
         <Dialog.Content class="dialog-content share-dialog-content">
           <Dialog.Title class="dialog-title">
-            Поделиться «{props.item?.name}»
+            {t("drive.share.title", { name: props.item?.name ?? "" })}
           </Dialog.Title>
 
           <div class="dialog-body">
@@ -161,7 +165,7 @@ export function ShareDialog(props: ShareDialogProps) {
                 <TextField.Input
                   class="folder-name-input"
                   type="email"
-                  placeholder="Введите email"
+                  placeholder={t("drive.share.emailPlaceholder")}
                   autofocus
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && email().trim() && !isAdding()) {
@@ -170,7 +174,7 @@ export function ShareDialog(props: ShareDialogProps) {
                   }}
                 />
                 <TextField.ErrorMessage class="share-email-error">
-                  Введите корректный email
+                  {t("drive.share.emailError")}
                 </TextField.ErrorMessage>
               </TextField>
 
@@ -179,7 +183,7 @@ export function ShareDialog(props: ShareDialogProps) {
                 onChange={(val) => {
                   if (val) setSelectedRole(val);
                 }}
-                options={ROLE_OPTIONS}
+                options={roleOptions()}
                 optionValue="value"
                 optionTextValue="label"
                 itemComponent={(itemProps) => (
@@ -217,11 +221,17 @@ export function ShareDialog(props: ShareDialogProps) {
             </Show>
 
             <div class="share-permissions-section">
-              <div class="share-permissions-title">Кто имеет доступ</div>
+              <div class="share-permissions-title">
+                {t("drive.share.whoHasAccess")}
+              </div>
 
               <Show
                 when={!isLoading()}
-                fallback={<div class="share-loading">Загрузка...</div>}
+                fallback={
+                  <div class="share-loading">
+                    {t("drive.share.loadingPermissions")}
+                  </div>
+                }
               >
                 <div class="share-permissions-list">
                   <For each={permissions()}>
@@ -242,7 +252,7 @@ export function ShareDialog(props: ShareDialogProps) {
                           <Button
                             class="share-permission-remove"
                             onClick={() => void handleDelete(perm.id)}
-                            aria-label="Удалить доступ"
+                            aria-label={t("drive.share.removeAccess")}
                           >
                             <span class="material-symbols-rounded">close</span>
                           </Button>
@@ -260,7 +270,7 @@ export function ShareDialog(props: ShareDialogProps) {
               type="button"
             >
               <span class="material-symbols-rounded">open_in_new</span>
-              Открыть настройки доступа в Google Drive
+              {t("drive.share.openInDrive")}
             </Button>
           </div>
 
@@ -269,7 +279,7 @@ export function ShareDialog(props: ShareDialogProps) {
               class="dialog-btn dialog-btn-create"
               onClick={() => props.onOpenChange(false)}
             >
-              Готово
+              {t("drive.share.done")}
             </Button>
           </div>
         </Dialog.Content>

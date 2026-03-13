@@ -7,6 +7,7 @@ import { trashFile } from "../../services/driveApi";
 import { markSavePathsFoldersDirty } from "../../../shared/savePathsSettings";
 import { DriveWritePermissionDialog } from "../permissions/DriveWritePermissionDialog";
 import { useDriveWritePermissionGate } from "../permissions/useDriveWritePermissionGate";
+import { useI18n } from "../../../shared/i18n";
 
 type TrashConfirmDialogProps = {
   item: DriveItem | null;
@@ -18,6 +19,7 @@ type TrashConfirmDialogProps = {
 export function TrashConfirmDialog(
   props: TrashConfirmDialogProps,
 ): JSX.Element {
+  const { t } = useI18n();
   const [isTrashing, setIsTrashing] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const permissionGate = useDriveWritePermissionGate();
@@ -29,7 +31,7 @@ export function TrashConfirmDialog(
     setError(null);
 
     const canProceed = await permissionGate.ensureDriveWriteOrRequest(
-      "Для удаления в корзину требуется доступ на изменение Google Drive.",
+      t("drive.trashDialog.permRequired"),
       handleTrash,
     );
     if (!canProceed) {
@@ -52,7 +54,7 @@ export function TrashConfirmDialog(
     } else {
       const isPermissionDenied = permissionGate.handleDriveWriteDeniedFallback(
         result.error,
-        "Для удаления в корзину требуется доступ на изменение Google Drive.",
+        t("drive.trashDialog.permRequired"),
         handleTrash,
       );
 
@@ -69,11 +71,15 @@ export function TrashConfirmDialog(
       <Dialog.Portal>
         <Dialog.Overlay class="dialog-overlay" />
         <Dialog.Content class="dialog-content">
-          <Dialog.Title class="dialog-title">Отправить в корзину</Dialog.Title>
+          <Dialog.Title class="dialog-title">
+            {t("drive.trashDialog.title")}
+          </Dialog.Title>
 
           <div class="dialog-body">
             <Dialog.Description>
-              Объект «{props.item?.name}» будет перемещён в корзину.
+              {t("drive.trashDialog.description", {
+                name: props.item?.name ?? "",
+              })}
             </Dialog.Description>
 
             <Show when={error()}>
@@ -87,14 +93,16 @@ export function TrashConfirmDialog(
               onClick={() => props.onOpenChange(false)}
               disabled={isTrashing()}
             >
-              Отмена
+              {t("drive.trashDialog.cancel")}
             </Button>
             <Button
               class="dialog-btn dialog-btn-create"
               onClick={() => void handleTrash()}
               disabled={isTrashing()}
             >
-              {isTrashing() ? "Удаление..." : "В корзину"}
+              {isTrashing()
+                ? t("drive.trashDialog.trashing")
+                : t("drive.trashDialog.confirm")}
             </Button>
           </div>
         </Dialog.Content>
