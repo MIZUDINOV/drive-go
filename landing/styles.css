@@ -306,6 +306,52 @@ body {
   color: var(--text-muted);
 }
 
+.security-panel {
+  border-radius: calc(var(--radius) + 8px);
+  padding: 1.6rem;
+  border: 1px solid rgba(158, 248, 107, 0.28);
+  background: linear-gradient(
+    160deg,
+    rgba(16, 33, 62, 0.94),
+    rgba(9, 17, 31, 0.98)
+  );
+  box-shadow: var(--shadow);
+}
+
+.security-panel .section-title {
+  max-width: 15ch;
+}
+
+.security-copy {
+  max-width: 66ch;
+  margin: 1rem 0 0;
+  color: var(--text-muted);
+}
+
+.security-points {
+  margin-top: 1.4rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.security-point {
+  border-radius: 16px;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.security-point strong {
+  display: block;
+  font-family: "Sora", sans-serif;
+  margin-bottom: 0.45rem;
+}
+
+.security-point span {
+  color: var(--text-muted);
+}
+
 .faq-list {
   margin-top: 2rem;
   display: grid;
@@ -376,6 +422,68 @@ body {
   color: var(--brand-2);
 }
 
+.legal-main {
+  padding: 5rem 0 3rem;
+}
+
+.legal-shell {
+  max-width: 860px;
+}
+
+.legal-hero {
+  margin-bottom: 1.8rem;
+}
+
+.legal-hero h1 {
+  margin: 0;
+  font-family: "Sora", sans-serif;
+  font-size: clamp(2rem, 5vw, 3.6rem);
+}
+
+.legal-updated {
+  margin: 0.8rem 0 0;
+  color: var(--text-muted);
+}
+
+.legal-card {
+  background: linear-gradient(
+    170deg,
+    rgba(22, 36, 63, 0.88),
+    rgba(12, 20, 34, 0.82)
+  );
+  border: 1px solid rgba(159, 182, 255, 0.24);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+}
+
+.legal-card + .legal-card {
+  margin-top: 1rem;
+}
+
+.legal-card h2 {
+  margin: 0 0 0.75rem;
+  font-family: "Sora", sans-serif;
+  font-size: 1.3rem;
+}
+
+.legal-card p,
+.legal-card li {
+  color: var(--text-muted);
+}
+
+.legal-card ul {
+  margin: 0.75rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.legal-nav {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-top: 1.2rem;
+}
+
 .reveal,
 .reveal-on-scroll {
   opacity: 0;
@@ -409,7 +517,8 @@ body {
 
 @media (max-width: 980px) {
   .feature-grid,
-  .proof-grid {
+  .proof-grid,
+  .security-points {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -424,7 +533,8 @@ body {
   }
 
   .feature-grid,
-  .proof-grid {
+  .proof-grid,
+  .security-points {
     grid-template-columns: 1fr;
   }
 
