@@ -9,6 +9,7 @@ import {
   type TransferQueueGeneralSettings,
 } from "../../shared/transferQueueSettings";
 import { SUPPORTED_LOCALES, type Locale, useI18n } from "../../shared/i18n";
+import { useTheme } from "../../shared/theme";
 
 const DEFAULT_SETTINGS: TransferQueueGeneralSettings = {
   backgroundTransfersEnabled: true,
@@ -16,6 +17,7 @@ const DEFAULT_SETTINGS: TransferQueueGeneralSettings = {
 
 export function GeneralSettings() {
   const { locale, setLocale, t } = useI18n();
+  const { theme, setTheme } = useTheme();
   const [settings, setSettings] =
     createSignal<TransferQueueGeneralSettings | null>(null);
   const [saveError, setSaveError] = createSignal<string | null>(null);
@@ -98,6 +100,77 @@ export function GeneralSettings() {
             getLabel={getLocaleLabel}
             onChange={setLocale}
           />
+        </div>
+      </div>
+
+      <div class="options-settings-block">
+        <h3>{t("general.theme.title")}</h3>
+        <div class="options-setting-row">
+          <div class="options-setting-label">
+            <div>
+              {theme() === "dark"
+                ? t("general.theme.option.dark")
+                : t("general.theme.option.light")}
+            </div>
+            <div class="options-setting-hint">{t("general.theme.hint")}</div>
+          </div>
+          <Switch
+            class="options-switch options-theme-switch"
+            checked={theme() === "dark"}
+            onChange={(isDark) => setTheme(isDark ? "dark" : "light")}
+          >
+            <Switch.Input
+              class="options-switch-input"
+              aria-label={t("general.theme.aria")}
+            />
+            <Switch.Control class="options-switch-control">
+              <Switch.Thumb class="options-switch-thumb" />
+            </Switch.Control>
+            <Switch.Label class="options-theme-switch-label">
+              {theme() === "dark"
+                ? t("general.theme.switch.dark")
+                : t("general.theme.switch.light")}
+            </Switch.Label>
+          </Switch>
+        </div>
+        <div
+          class="options-theme-tokens"
+          aria-label={t("general.theme.tokens.title")}
+        >
+          <div class="options-setting-label">
+            {t("general.theme.tokens.hint")}
+          </div>
+          <ul class="options-theme-token-list">
+            <li>
+              <span class="options-theme-token-kind">Surface</span>
+              <span class="options-theme-token-code">
+                --color-bg, --color-surface, --color-surface-elevated,
+                --color-surface-hover
+              </span>
+            </li>
+            <li>
+              <span class="options-theme-token-kind">Text</span>
+              <span class="options-theme-token-code">
+                --color-text-main, --color-text-secondary
+              </span>
+            </li>
+            <li>
+              <span class="options-theme-token-kind">Border</span>
+              <span class="options-theme-token-code">--color-line</span>
+            </li>
+            <li>
+              <span class="options-theme-token-kind">Action</span>
+              <span class="options-theme-token-code">
+                --color-accent, --color-accent-strong, --color-focus-ring
+              </span>
+            </li>
+            <li>
+              <span class="options-theme-token-kind">State</span>
+              <span class="options-theme-token-code">
+                --color-success-bg, --color-success-text, --color-success-line
+              </span>
+            </li>
+          </ul>
         </div>
       </div>
 

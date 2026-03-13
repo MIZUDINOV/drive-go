@@ -34,6 +34,17 @@ export const dict: Dictionary = {
   "general.language.ja": "日本語",
   "general.language.ko": "한국어",
   "general.language.zh_CN": "简体中文",
+  "general.theme.title": "Thème",
+  "general.theme.hint":
+    "Sélectionnez le thème visuel pour la page des paramètres et le panneau latéral.",
+  "general.theme.aria": "Thème de l'interface",
+  "general.theme.option.light": "Google Drive Clair",
+  "general.theme.option.dark": "Google Drive Sombre",
+  "general.theme.switch.light": "Clair",
+  "general.theme.switch.dark": "Sombre",
+  "general.theme.tokens.title": "Variables CSS du thème",
+  "general.theme.tokens.hint":
+    "Jetons CSS principaux pour personnaliser rapidement les thèmes clair et sombre.",
   "general.errors.load": "Impossible de charger les paramètres généraux",
   "general.errors.save": "Impossible d’enregistrer les paramètres généraux",
   "activity.title": "Paramètres d’activité",

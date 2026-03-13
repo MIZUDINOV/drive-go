@@ -13,7 +13,7 @@
 }
 .toast-close-btn:hover,
 .toast-close-btn:focus {
-  background: #f0f0f0;
+  background: var(--color-surface-hover);
 }
 .toast-close-btn .material-symbols-rounded {
   font-size: 20px;
@@ -33,15 +33,15 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #e6f4ea;
-  color: #137333;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(19, 115, 51, 0.08);
   padding: 16px 24px;
   font-size: 15px;
   font-weight: 500;
   min-width: 220px;
-  border: 1px solid #b7e1cd;
+  border: 1px solid var(--color-success-line);
   animation: toast-fade-in 0.2s;
 }
 
@@ -56,12 +56,48 @@
   }
 }
 :root {
-  --accent: #1a73e8;
-  --surface: #f8f9fa;
-  --surface-hover: #e8eaed;
-  --line: #dadce0;
-  --text-main: #202124;
-  --text-secondary: #5f6368;
+  --color-bg: #ffffff;
+  --color-surface: #f8f9fa;
+  --color-surface-elevated: #ffffff;
+  --color-surface-hover: #e8eaed;
+  --color-line: #dadce0;
+  --color-text-main: #202124;
+  --color-text-secondary: #5f6368;
+  --color-accent: #1a73e8;
+  --color-accent-strong: #1557d3;
+  --color-focus-ring: rgba(26, 115, 232, 0.2);
+  --color-success-bg: #e6f4ea;
+  --color-success-text: #137333;
+  --color-success-line: #b7e1cd;
+  --color-danger-bg: #fce8e6;
+  --color-danger-text: #b3261e;
+  --color-danger-line: #f4c7c3;
+
+  --accent: var(--color-accent);
+  --surface: var(--color-surface);
+  --surface-hover: var(--color-surface-hover);
+  --line: var(--color-line);
+  --text-main: var(--color-text-main);
+  --text-secondary: var(--color-text-secondary);
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #131314;
+  --color-surface: #1e1f20;
+  --color-surface-elevated: #282a2c;
+  --color-surface-hover: #323438;
+  --color-line: #3c4043;
+  --color-text-main: #e8eaed;
+  --color-text-secondary: #9aa0a6;
+  --color-accent: #8ab4f8;
+  --color-accent-strong: #a8c7fa;
+  --color-focus-ring: rgba(138, 180, 248, 0.25);
+  --color-success-bg: #1e3a2d;
+  --color-success-text: #81c995;
+  --color-success-line: #355b49;
+  --color-danger-bg: #3c1f1f;
+  --color-danger-text: #f28b82;
+  --color-danger-line: #5f3434;
 }
 
 * {
@@ -74,7 +110,7 @@ body {
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
     Cantarell, "Helvetica Neue", sans-serif;
-  background: #ffffff;
+  background: var(--color-bg);
   color: var(--text-main);
   -webkit-font-smoothing: antialiased;
 }
@@ -144,7 +180,7 @@ body {
 }
 
 .options-nav-item[data-selected] {
-  background: white;
+  background: var(--color-surface-elevated);
   color: var(--accent);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -181,7 +217,7 @@ body {
 .options-settings-block {
   margin-bottom: 32px;
   padding: 24px;
-  background: white;
+  background: var(--color-surface-elevated);
   border: 1px solid var(--line);
   border-radius: 12px;
 }
@@ -261,6 +297,16 @@ body {
   align-items: center;
 }
 
+.options-theme-switch {
+  gap: 10px;
+}
+
+.options-theme-switch-label {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .options-switch-input {
   position: absolute;
   width: 1px;
@@ -273,7 +319,7 @@ body {
   width: 44px;
   height: 24px;
   border-radius: 12px;
-  background: #dadce0;
+  background: var(--color-line);
   cursor: pointer;
   transition: background 200ms;
 }
@@ -289,7 +335,7 @@ body {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: white;
+  background: var(--color-surface-elevated);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   transition: transform 200ms;
 }
@@ -303,7 +349,7 @@ body {
   padding: 8px 12px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: white;
+  background: var(--color-surface-elevated);
   font-size: 14px;
   color: var(--text-main);
   cursor: pointer;
@@ -313,7 +359,7 @@ body {
 .options-select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
 }
 
 .options-kb-select-trigger {
@@ -341,7 +387,7 @@ body {
 
 .options-kb-select-content {
   z-index: 1200;
-  background: white;
+  background: var(--color-surface-elevated);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
@@ -407,11 +453,11 @@ body {
 
 .options-btn-primary {
   background: var(--accent);
-  color: white;
+  color: #ffffff;
 }
 
 .options-btn-primary:hover:not(:disabled) {
-  background: #1765cc;
+  background: var(--color-accent-strong);
   box-shadow: 0 2px 4px rgba(26, 115, 232, 0.3);
 }
 
@@ -425,9 +471,9 @@ body {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: #e6f4ea;
+  background: var(--color-success-bg);
   border-radius: 8px;
-  color: #137333;
+  color: var(--color-success-text);
   font-size: 14px;
   font-weight: 500;
 }
@@ -471,9 +517,9 @@ body {
 }
 
 .options-alert-error {
-  background: #fce8e6;
-  color: #b3261e;
-  border: 1px solid #f4c7c3;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+  border: 1px solid var(--color-danger-line);
 }
 
 .options-alert .material-symbols-rounded {
@@ -494,7 +540,7 @@ body {
   height: 36px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: white;
+  background: var(--color-surface-elevated);
   color: var(--text-main);
   cursor: pointer;
 }
@@ -505,4 +551,38 @@ body {
 
 .options-sound-preview-btn .material-symbols-rounded {
   font-size: 20px;
+}
+
+.options-theme-tokens {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.options-theme-token-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.options-theme-token-list li {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.options-theme-token-kind {
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.options-theme-token-code {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-word;
 }

@@ -24,7 +24,7 @@ import type {
   TransferHistoryItem,
   TransferQueueItem,
 } from "../../../shared/transferQueueTypes";
-import { useI18n } from "../../../shared/i18n";
+import { type Locale, useI18n } from "../../../shared/i18n";
 import "./Transfers.css";
 
 type TransferFilter = "all" | "uploaded" | "downloaded";
@@ -88,17 +88,16 @@ function formatBytes(bytes: number): string {
   return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 }
 
-function formatDateTime(timestamp: number, locale: "en" | "ru"): string {
-  return new Date(timestamp).toLocaleString(
-    locale === "ru" ? "ru-RU" : "en-US",
-    {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    },
-  );
+function formatDateTime(timestamp: number, locale: Locale): string {
+  const localeTag = locale === "ru" ? "ru-RU" : "en-US";
+
+  return new Date(timestamp).toLocaleString(localeTag, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function queueStatusText(
@@ -123,7 +122,7 @@ function queueStatusText(
 function mapQueueItem(
   item: TransferQueueItem,
   t: ReturnType<typeof useI18n>["t"],
-  locale: "en" | "ru",
+  locale: Locale,
 ): TransferListItem {
   const action =
     item.status === "uploading" || item.status === "pending"
@@ -156,7 +155,7 @@ function mapQueueItem(
 function mapHistoryItem(
   item: TransferHistoryItem,
   t: ReturnType<typeof useI18n>["t"],
-  locale: "en" | "ru",
+  locale: Locale,
 ): TransferListItem {
   return {
     id: item.id,

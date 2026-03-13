@@ -32,6 +32,17 @@ export const enBase = {
   "general.language.ja": "日本語",
   "general.language.ko": "한국어",
   "general.language.zh_CN": "简体中文",
+  "general.theme.title": "Theme",
+  "general.theme.hint":
+    "Choose visual theme for the options page and side panel.",
+  "general.theme.aria": "Interface theme",
+  "general.theme.option.light": "Google Drive Light",
+  "general.theme.option.dark": "Google Drive Dark",
+  "general.theme.switch.light": "Light",
+  "general.theme.switch.dark": "Dark",
+  "general.theme.tokens.title": "Theme CSS variables",
+  "general.theme.tokens.hint":
+    "Core CSS tokens to quickly customize the light and dark themes.",
   "general.errors.load": "Failed to load general settings",
   "general.errors.save": "Failed to save general settings",
   "activity.title": "Activity settings",

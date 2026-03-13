@@ -34,6 +34,17 @@ export const dict: Dictionary = {
   "general.language.ja": "日本語",
   "general.language.ko": "한국어",
   "general.language.zh_CN": "简体中文",
+  "general.theme.title": "Tema",
+  "general.theme.hint":
+    "Selecciona el tema visual para la página de configuración y el panel lateral.",
+  "general.theme.aria": "Tema de la interfaz",
+  "general.theme.option.light": "Google Drive Claro",
+  "general.theme.option.dark": "Google Drive Oscuro",
+  "general.theme.switch.light": "Claro",
+  "general.theme.switch.dark": "Oscuro",
+  "general.theme.tokens.title": "Variables CSS del tema",
+  "general.theme.tokens.hint":
+    "Tokens CSS principales para personalizar rápidamente los temas claro y oscuro.",
   "general.errors.load": "No se pudo cargar la configuración general",
   "general.errors.save": "No se pudo guardar la configuración general",
   "activity.title": "Configuración de actividad",

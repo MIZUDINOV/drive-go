@@ -34,6 +34,17 @@ export const dict: Dictionary = {
   "general.language.ja": "日本語",
   "general.language.ko": "한국어",
   "general.language.zh_CN": "简体中文",
+  "general.theme.title": "Design",
+  "general.theme.hint":
+    "Wählen Sie das visuelle Design für die Einstellungsseite und das Seitenpanel.",
+  "general.theme.aria": "Oberflächendesign",
+  "general.theme.option.light": "Google Drive Hell",
+  "general.theme.option.dark": "Google Drive Dunkel",
+  "general.theme.switch.light": "Hell",
+  "general.theme.switch.dark": "Dunkel",
+  "general.theme.tokens.title": "Theme-CSS-Variablen",
+  "general.theme.tokens.hint":
+    "Zentrale CSS-Tokens zum schnellen Anpassen von hellem und dunklem Design.",
   "general.errors.load":
     "Allgemeine Einstellungen konnten nicht geladen werden",
   "general.errors.save":

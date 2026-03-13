@@ -1,12 +1,34 @@
 :root {
-  --surface: #ffffff;
-  --surface-strong: #f8fafd;
-  --surface-hover: #edf3fb;
-  --line: #d6dde7;
-  --text-main: #1c2530;
-  --text-muted: #5e6c7c;
-  --accent: #1a73e8;
-  --accent-soft: #9dc0f5;
+  --color-bg: #eef4fb;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-surface-strong: #f8fafd;
+  --color-surface-hover: #edf3fb;
+  --color-line: #d6dde7;
+  --color-text-main: #1c2530;
+  --color-text-muted: #5e6c7c;
+  --color-accent: #1a73e8;
+  --color-accent-soft: #9dc0f5;
+  --color-accent-strong: #1557d3;
+  --color-accent-border: #8fb7ff;
+  --color-accent-container: #e6f0ff;
+  --color-accent-container-soft: #eef5ff;
+  --color-text-subtle: #667185;
+  --color-danger: #c5221f;
+  --color-danger-strong: #b11d1a;
+  --color-danger-text: #d93025;
+  --color-danger-soft: #fce8e6;
+  --color-danger-soft-border: #f8d9d5;
+  --color-positive: #16a34a;
+
+  --surface: var(--color-surface);
+  --surface-strong: var(--color-surface-strong);
+  --surface-hover: var(--color-surface-hover);
+  --line: var(--color-line);
+  --text-main: var(--color-text-main);
+  --text-muted: var(--color-text-muted);
+  --accent: var(--color-accent);
+  --accent-soft: var(--color-accent-soft);
 
   font-family: "IBM Plex Sans", "Trebuchet MS", sans-serif;
   line-height: 1.5;
@@ -27,10 +49,42 @@
   -webkit-text-size-adjust: 100%;
 }
 
+:root[data-theme="dark"] {
+  --color-bg: #11171f;
+  --color-surface: #1a1f28;
+  --color-surface-elevated: #242b36;
+  --color-surface-strong: #202734;
+  --color-surface-hover: #2b3444;
+  --color-line: #344153;
+  --color-text-main: #e3ebf6;
+  --color-text-muted: #9eb0c8;
+  --color-accent: #8ab4f8;
+  --color-accent-soft: #5f84bf;
+  --color-accent-strong: #6ea3f7;
+  --color-accent-border: #5f84bf;
+  --color-accent-container: #1d3557;
+  --color-accent-container-soft: #1c2f47;
+  --color-text-subtle: #95a6bd;
+  --color-danger: #f28b82;
+  --color-danger-strong: #ffb4ab;
+  --color-danger-text: #f28b82;
+  --color-danger-soft: #3a1f1f;
+  --color-danger-soft-border: #5f3434;
+  --color-positive: #81c995;
+
+  color: var(--text-main);
+  background: radial-gradient(
+    circle at 15% 0%,
+    #1f2836 0,
+    #151d28 48%,
+    #11171f 100%
+  );
+}
+
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: #c4cdd6 transparent;
+  scrollbar-color: color-mix(in srgb, var(--line) 86%, transparent) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -43,12 +97,12 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background: #c4cdd6;
+  background: color-mix(in srgb, var(--line) 86%, transparent);
   border-radius: 999px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: #a0adb8;
+  background: color-mix(in srgb, var(--line) 100%, #000000 8%);
 }
 
 body {
