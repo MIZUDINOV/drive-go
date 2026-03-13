@@ -20,6 +20,8 @@
   --color-danger-soft: #fce8e6;
   --color-danger-soft-border: #f8d9d5;
   --color-positive: #16a34a;
+  --shadow-menu-elevated:
+    0 14px 30px rgba(15, 31, 53, 0.22), 0 4px 12px rgba(15, 31, 53, 0.12);
 
   --surface: var(--color-surface);
   --surface-strong: var(--color-surface-strong);
@@ -71,6 +73,8 @@
   --color-danger-soft: #3a1f1f;
   --color-danger-soft-border: #5f3434;
   --color-positive: #81c995;
+  --shadow-menu-elevated:
+    0 16px 36px rgba(0, 0, 0, 0.42), 0 6px 14px rgba(0, 0, 0, 0.28);
 
   color: var(--text-main);
   background: radial-gradient(

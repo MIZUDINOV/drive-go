@@ -9,6 +9,7 @@ import {
 import { Badge } from "@kobalte/core/badge";
 import { Tabs } from "@kobalte/core/tabs";
 import { Button } from "@kobalte/core/button";
+import { ToggleGroup } from "@kobalte/core/toggle-group";
 import { Tooltip } from "@kobalte/core/tooltip";
 import { TabIcon, type TabIconName } from "./tabIcons";
 import { DriveBrowser } from "./components/drive/DriveBrowser";
@@ -41,6 +42,7 @@ import {
 } from "./services/activityTypes";
 import { PORT_TRANSFER_QUEUE_SIDEPANEL_SESSION } from "../shared/transferQueueMessages";
 import { useI18n } from "../shared/i18n";
+import { useTheme } from "../shared/theme";
 import "material-symbols/rounded.css";
 import "./App.css";
 
@@ -115,6 +117,7 @@ type SidepanelAuthState =
 
 function App() {
   const { locale, t } = useI18n();
+  const { theme, setTheme } = useTheme();
   const tabs = createMemo<TabItem[]>(() => [
     { id: "my-drive", title: t("app.tab.myDrive"), icon: "drive" },
     { id: "recent", title: t("app.tab.recent"), icon: "clock" },
@@ -502,6 +505,48 @@ function App() {
           </Tabs.List>
 
           <div class="sidebar-bottom">
+            <Tooltip placement="right" gutter={8} disabled={!isMenuCollapsed()}>
+              <Tooltip.Trigger as="div" class="theme-toggle-btn">
+                <ToggleGroup
+                  class="theme-toggle-group"
+                  value={theme()}
+                  onChange={(next) => {
+                    if (next === "light" || next === "dark") {
+                      setTheme(next);
+                    }
+                  }}
+                  aria-label={t("general.theme.aria")}
+                >
+                  <ToggleGroup.Item
+                    class="theme-toggle-item"
+                    value="light"
+                    aria-label={t("general.theme.switch.light")}
+                  >
+                    <span class="material-symbols-rounded">light_mode</span>
+                  </ToggleGroup.Item>
+
+                  <ToggleGroup.Item
+                    class="theme-toggle-item"
+                    value="dark"
+                    aria-label={t("general.theme.switch.dark")}
+                  >
+                    <span class="material-symbols-rounded">dark_mode</span>
+                  </ToggleGroup.Item>
+                </ToggleGroup>
+              </Tooltip.Trigger>
+              <Tooltip.Portal>
+                <Tooltip.Content class="tab-tooltip">
+                  <Tooltip.Arrow class="tab-tooltip-arrow" />
+                  <span>
+                    {t("general.theme.title")}:{" "}
+                    {theme() === "dark"
+                      ? t("general.theme.switch.dark")
+                      : t("general.theme.switch.light")}
+                  </span>
+                </Tooltip.Content>
+              </Tooltip.Portal>
+            </Tooltip>
+
             <Tooltip placement="right" gutter={8} disabled={!isMenuCollapsed()}>
               <Tooltip.Trigger
                 as={Button}
