@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drive GO | Google Drive in your Chrome side panel</title>
+    <meta
+      name="description"
+      content="Drive GO is a Chrome extension that helps you search, upload, manage, and share Google Drive files faster from the Chrome side panel."
+    />
+    <meta
+      property="og:title"
+      content="Drive GO | Work with Google Drive faster"
+    />
+    <meta
+      property="og:description"
+      content="Less tab switching. Faster file actions. Clear transfer queue. All from your Chrome side panel."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://drivego.app/" />
+    <meta name="theme-color" content="#080b14" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,0,0"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg-glow bg-glow-a" aria-hidden="true"></div>
+    <div class="bg-glow bg-glow-b" aria-hidden="true"></div>
+    <div class="bg-grid" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="#top">Drive GO</a>
+        <a
+          class="btn btn-small"
+          href="https://chromewebstore.google.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Install for Chrome
+        </a>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero section-hero">
+        <div class="container hero-inner">
+          <p class="eyebrow reveal">Chrome extension for Google Drive</p>
+          <h1 class="hero-title reveal reveal-delay-1">
+            Google Drive™, but faster.
+            <span>Right inside your Chrome side panel.</span>
+          </h1>
+          <p class="hero-subtitle reveal reveal-delay-2">
+            Search files, run core file actions, upload with drag and drop, and
+            track every transfer without opening extra tabs.
+          </p>
+          <div class="hero-actions reveal reveal-delay-3">
+            <a
+              class="btn btn-primary"
+              href="https://chromewebstore.google.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span class="material-symbols-rounded" aria-hidden="true"
+                >download</span
+              >
+              Get Drive GO on Chrome
+            </a>
+            <a class="btn btn-ghost" href="#features"> Explore features </a>
+          </div>
+          <ul class="hero-chips reveal reveal-delay-4" aria-label="Highlights">
+            <li>Google OAuth</li>
+            <li>Official Drive APIs</li>
+            <li>Permissions on demand</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="features" class="section section-features">
+        <div class="container">
+          <p class="section-label reveal">Why teams choose Drive GO</p>
+          <h2 class="section-title reveal">
+            Everything you need in one focused workflow
+          </h2>
+
+          <div class="feature-grid">
+            <article class="card reveal-on-scroll">
+              <span
+                class="material-symbols-rounded card-icon"
+                aria-hidden="true"
+                >folder_open</span
+              >
+              <h3>One panel, less switching</h3>
+              <p>
+                My Drive, Recent, Shared, Starred, Activity, Transfers, and
+                Trash in one compact space.
+              </p>
+            </article>
+
+            <article class="card reveal-on-scroll">
+              <span
+                class="material-symbols-rounded card-icon"
+                aria-hidden="true"
+                >search</span
+              >
+              <h3>Fast search and filters</h3>
+              <p>
+                Find files quickly with filters by type, owner, and modified
+                time directly in the side panel.
+              </p>
+            </article>
+
+            <article class="card reveal-on-scroll">
+              <span
+                class="material-symbols-rounded card-icon"
+                aria-hidden="true"
+                >upload_file</span
+              >
+              <h3>Drag-and-drop uploads</h3>
+              <p>
+                Drop files from desktop to the current folder and immediately
+                see progress in the transfer queue.
+              </p>
+            </article>
+
+            <article class="card reveal-on-scroll">
+              <span
+                class="material-symbols-rounded card-icon"
+                aria-hidden="true"
+                >bolt</span
+              >
+              <h3>Quick file actions</h3>
+              <p>
+                Open, rename, move, trash, restore, star, share access, and copy
+                links in a few clicks.
+              </p>
+            </article>
+
+            <article class="card reveal-on-scroll">
+              <span
+                class="material-symbols-rounded card-icon"
+                aria-hidden="true"
+                >sync_alt</span
+              >
+              <h3>Clear transfer control</h3>
+              <p>
+                Track status and history, then cancel, retry, or remove tasks
+                with confidence.
+              </p>
+            </article>
+
+            <article class="card reveal-on-scroll">
+              <span
+                class="material-symbols-rounded card-icon"
+                aria-hidden="true"
+                >notifications_active</span
+              >
+              <h3>Activity and notifications</h3>
+              <p>
+                Unread counters, sync interval, browser notifications, and
+                selectable sounds tuned to your workflow.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-proof">
+        <div class="container proof-grid">
+          <article class="proof-block reveal-on-scroll">
+            <h3>Faster start every day</h3>
+            <p>
+              Open one side panel and instantly see recent files, activity
+              updates, and active transfers.
+            </p>
+          </article>
+          <article class="proof-block reveal-on-scroll">
+            <h3>Less routine, more done</h3>
+            <p>
+              Core file operations are available where you work, so your flow
+              stays uninterrupted.
+            </p>
+          </article>
+          <article class="proof-block reveal-on-scroll">
+            <h3>Built for Chrome users</h3>
+            <p>
+              Drive GO is available as a Chrome extension and works with your
+              Google Drive ecosystem.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section section-faq">
+        <div class="container">
+          <p class="section-label reveal">FAQ</p>
+          <h2 class="section-title reveal">Quick answers</h2>
+
+          <div class="faq-list">
+            <details class="faq-item reveal-on-scroll">
+              <summary>Is this a standalone desktop app?</summary>
+              <p>No. Drive GO is a Chrome extension.</p>
+            </details>
+            <details class="faq-item reveal-on-scroll">
+              <summary>Can I upload with drag and drop?</summary>
+              <p>
+                Yes. Drop files into the side panel and upload to the currently
+                open Google Drive folder.
+              </p>
+            </details>
+            <details class="faq-item reveal-on-scroll">
+              <summary>
+                Do I need a separate Google Drive tab to upload?
+              </summary>
+              <p>
+                Usually no. Core upload and transfer controls are available
+                directly in the side panel.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-cta">
+        <div class="container cta-box reveal-on-scroll">
+          <p class="section-label">Ready to speed up your Drive workflow?</p>
+          <h2>Install Drive GO from Chrome Web Store</h2>
+          <a
+            class="btn btn-primary btn-large"
+            href="https://chromewebstore.google.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span class="material-symbols-rounded" aria-hidden="true"
+              >download</span
+            >
+            Install for Chrome
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <p>© <span id="year"></span> Drive GO</p>
+        <div class="footer-links">
+          <a href="https://drivego.app/privacy">Privacy</a>
+          <a href="mailto:support@drivego.app">Support</a>
+        </div>
+      </div>
+    </footer>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
