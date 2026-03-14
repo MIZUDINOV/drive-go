@@ -11,7 +11,6 @@ import {
 } from "./sidepanel/services/activityTypes";
 import {
   CONTEXT_MENU_IMAGE_ID,
-  CONTEXT_MENU_PDF_ID,
   CONTEXT_MENU_ROOT_ID,
   CONTEXT_MENU_SCREENSHOT_ID,
   CONTEXT_MENU_SELECTION_TEXT_ID,
@@ -74,6 +73,11 @@ const STAGING_BLOB_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const STAGING_CLEANUP_INTERVAL_MS = 30 * 60 * 1000;
 
 type RuntimePort = ReturnType<typeof browser.runtime.connect>;
+type ContextMenuShownInfo = {
+  selectionText?: string;
+  mediaType?: string;
+  srcUrl?: string;
+};
 
 let syncTimer: ReturnType<typeof setTimeout> | undefined;
 const backgroundLifecycle = new BackgroundLifecycle();
@@ -89,6 +93,7 @@ const recentEnqueueByFingerprint = new Map<
   string,
   { timestamp: number; jobId: string }
 >();
+let contextMenuSetupPromise: Promise<void> | null = null;
 
 function buildEnqueueFingerprint(params: {
   name: string;
@@ -147,14 +152,52 @@ export default defineBackground(() => {
     void cleanupStaleStagedTransferBlobs(STAGING_BLOB_MAX_AGE_MS);
   }, STAGING_CLEANUP_INTERVAL_MS);
 
-  const handleInstalled = () => {
-    void setupContextMenus();
-  };
-
   const handleContextMenuClickListener: Parameters<
     typeof browser.contextMenus.onClicked.addListener
   >[0] = (info, tab) => {
     void handleContextMenuClick(info, tab);
+  };
+
+  const contextMenusWithShown =
+    browser.contextMenus as typeof browser.contextMenus & {
+      onShown?: {
+        addListener: (
+          callback: (
+            info: ContextMenuShownInfo,
+            tab?: Browser.tabs.Tab,
+          ) => void,
+        ) => void;
+        removeListener: (
+          callback: (
+            info: ContextMenuShownInfo,
+            tab?: Browser.tabs.Tab,
+          ) => void,
+        ) => void;
+      };
+      refresh?: () => void;
+    };
+
+  const handleContextMenuShown = (info: ContextMenuShownInfo): void => {
+    const hasSelection =
+      typeof info.selectionText === "string" &&
+      info.selectionText.trim().length > 0;
+    const canSaveImage =
+      info.mediaType === "image" && typeof info.srcUrl === "string";
+
+    void Promise.all([
+      browser.contextMenus.update(CONTEXT_MENU_SELECTION_TEXT_ID, {
+        enabled: hasSelection,
+      }),
+      browser.contextMenus.update(CONTEXT_MENU_IMAGE_ID, {
+        enabled: canSaveImage,
+      }),
+    ])
+      .then(() => {
+        contextMenusWithShown.refresh?.();
+      })
+      .catch(() => {
+        // Игнорируем редкие гонки обновления меню в момент закрытия.
+      });
   };
 
   const handleRuntimeMessage: Parameters<
@@ -213,8 +256,8 @@ export default defineBackground(() => {
     });
   };
 
-  browser.runtime.onInstalled.addListener(handleInstalled);
   browser.contextMenus.onClicked.addListener(handleContextMenuClickListener);
+  contextMenusWithShown.onShown?.addListener(handleContextMenuShown);
   browser.runtime.onMessage.addListener(handleRuntimeMessage);
   browser.runtime.onConnect.addListener(handleRuntimeConnect);
 
@@ -240,10 +283,10 @@ export default defineBackground(() => {
     }, 140);
 
   backgroundLifecycle.add(() => {
-    browser.runtime.onInstalled.removeListener(handleInstalled);
     browser.contextMenus.onClicked.removeListener(
       handleContextMenuClickListener,
     );
+    contextMenusWithShown.onShown?.removeListener(handleContextMenuShown);
     browser.runtime.onMessage.removeListener(handleRuntimeMessage);
     browser.runtime.onConnect.removeListener(handleRuntimeConnect);
   });
@@ -660,41 +703,48 @@ async function notifyAboutNewActivities(
 }
 
 async function setupContextMenus(): Promise<void> {
-  await browser.contextMenus.removeAll();
+  if (contextMenuSetupPromise) {
+    return contextMenuSetupPromise;
+  }
 
-  browser.contextMenus.create({
-    id: CONTEXT_MENU_ROOT_ID,
-    title: "Drive GO",
-    contexts: ["all"],
+  contextMenuSetupPromise = (async () => {
+    await browser.contextMenus.removeAll();
+
+    browser.contextMenus.create({
+      id: CONTEXT_MENU_ROOT_ID,
+      title: "Drive GO",
+      contexts: ["all"],
+    });
+
+    browser.contextMenus.create({
+      id: CONTEXT_MENU_SCREENSHOT_ID,
+      parentId: CONTEXT_MENU_ROOT_ID,
+      title: await translateStoredLocale("background.contextMenu.screenshot"),
+      contexts: ["all"],
+    });
+
+    browser.contextMenus.create({
+      id: CONTEXT_MENU_SELECTION_TEXT_ID,
+      parentId: CONTEXT_MENU_ROOT_ID,
+      title: await translateStoredLocale(
+        "background.contextMenu.selectionText",
+      ),
+      contexts: ["all"],
+      enabled: false,
+    });
+
+    browser.contextMenus.create({
+      id: CONTEXT_MENU_IMAGE_ID,
+      parentId: CONTEXT_MENU_ROOT_ID,
+      title: await translateStoredLocale("background.contextMenu.image"),
+      contexts: ["all"],
+      enabled: false,
+    });
+  })().finally(() => {
+    contextMenuSetupPromise = null;
   });
 
-  browser.contextMenus.create({
-    id: CONTEXT_MENU_SCREENSHOT_ID,
-    parentId: CONTEXT_MENU_ROOT_ID,
-    title: await translateStoredLocale("background.contextMenu.screenshot"),
-    contexts: ["page", "frame", "selection", "image", "link"],
-  });
-
-  browser.contextMenus.create({
-    id: CONTEXT_MENU_SELECTION_TEXT_ID,
-    parentId: CONTEXT_MENU_ROOT_ID,
-    title: await translateStoredLocale("background.contextMenu.selectionText"),
-    contexts: ["selection"],
-  });
-
-  browser.contextMenus.create({
-    id: CONTEXT_MENU_PDF_ID,
-    parentId: CONTEXT_MENU_ROOT_ID,
-    title: await translateStoredLocale("background.contextMenu.pdf"),
-    contexts: ["page", "frame", "selection", "image", "link"],
-  });
-
-  browser.contextMenus.create({
-    id: CONTEXT_MENU_IMAGE_ID,
-    parentId: CONTEXT_MENU_ROOT_ID,
-    title: await translateStoredLocale("background.contextMenu.image"),
-    contexts: ["image"],
-  });
+  return contextMenuSetupPromise;
 }
 
 async function handleContextMenuClick(
@@ -709,10 +759,6 @@ async function handleContextMenuClick(
 
     if (info.menuItemId === CONTEXT_MENU_SELECTION_TEXT_ID) {
       await saveSelectionTextToDrive(info, tab);
-      return;
-    }
-
-    if (info.menuItemId === CONTEXT_MENU_PDF_ID) {
       return;
     }
 
