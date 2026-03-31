@@ -203,26 +203,27 @@
         <div class="container">
           <div class="security-panel reveal-on-scroll">
             <p class="section-label">Security and privacy</p>
-            <h2 class="section-title">Your local data stays on your device</h2>
+            <h2 class="section-title">Sensitive data is handled with minimal access</h2>
             <p class="security-copy">
               Drive GO uses official Google APIs for sign-in and Google Drive
-              actions. Your settings and transfer data stay in your browser on
-              your device and are not sent to other companies or outside
-              services that are not needed for the product to work.
+              actions. Settings, transfer state, and local extension data stay
+              in your browser on your device. Data is sent to Google only when
+              a feature needs authentication or a Google Drive action you
+              requested.
             </p>
             <div class="security-points">
               <div class="security-point">
-                <strong>Stored locally</strong>
+                <strong>Local by default</strong>
                 <span>
                   Your preferences, transfer state, and temporary app data stay
                   in your browser storage on your device.
                 </span>
               </div>
               <div class="security-point">
-                <strong>Sent only to Google when needed</strong>
+                <strong>Protected in transit</strong>
                 <span>
-                  Data is transmitted only when a feature requires Google
-                  authentication or a Google Drive action initiated by the user.
+                  Data sent between the extension and Google services is
+                  transmitted over HTTPS and TLS-protected connections.
                 </span>
               </div>
               <div class="security-point">
@@ -233,7 +234,19 @@
                   extension to work.
                 </span>
               </div>
+              <div class="security-point">
+                <strong>User-controlled access</strong>
+                <span>
+                  Google access can be revoked at any time, and local extension
+                  data can be removed by clearing extension storage or
+                  uninstalling Drive GO.
+                </span>
+              </div>
             </div>
+            <p class="security-copy">
+              Full details are available in the
+              <a href="./privacy.html">Privacy Policy</a>.
+            </p>
           </div>
         </div>
       </section>
