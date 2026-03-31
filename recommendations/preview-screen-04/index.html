@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drive GO — Chrome Web Store Promo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Unbounded:wght@500;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="preview-canvas" aria-label="Промо Chrome Web Store — Drive GO">
+      <!-- background orbs -->
+      <div class="bg-orb bg-orb-a" aria-hidden="true"></div>
+      <div class="bg-orb bg-orb-b" aria-hidden="true"></div>
+      <div class="bg-orb bg-orb-c" aria-hidden="true"></div>
+
+      <!-- ───── LEFT: hero copy ───── -->
+      <section class="hero-copy">
+        <p class="hero-kicker">Browser Extension &bull; Drive Workflow</p>
+
+        <h1>
+          Управление<br />
+          файлами<br />
+          без лишних<br />
+          шагов
+        </h1>
+
+        <p class="hero-subtitle">
+          Быстрый доступ, фильтры, поиск и<br />
+          сохранение контента в Google&nbsp;Drive прямо<br />
+          из боковой панели.
+        </p>
+      </section>
+
+      <!-- ───── RIGHT: extension panel mockup ───── -->
+      <section class="workspace-scene" aria-label="Интерфейс расширения">
+        <article class="workspace-shell">
+          <div class="panel-layout">
+
+            <!-- sidebar — 100% match с настоящим расширением -->
+            <aside class="sidebar">
+              <!-- menu toggle -->
+              <button class="menu-btn" type="button" aria-label="Меню">
+                <span class="material-symbols-rounded">menu_open</span>
+              </button>
+
+              <!-- tab list -->
+              <nav class="tab-list" aria-label="Навигация">
+                <!-- My Drive (active) — uses gd-logo -->
+                <button class="tab-item active" type="button" title="Мой диск">
+                  <span class="tab-icon">
+                    <img class="tab-icon-logo" src="../../assets/gd-logo.svg" alt="" aria-hidden="true" />
+                  </span>
+                </button>
+                <!-- Recent -->
+                <button class="tab-item" type="button" title="Недавние">
+                  <span class="tab-icon">
+                    <span class="material-symbols-rounded">schedule</span>
+                  </span>
+                </button>
+                <!-- Shared -->
+                <button class="tab-item" type="button" title="Доступные мне">
+                  <span class="tab-icon">
+                    <span class="material-symbols-rounded">people</span>
+                  </span>
+                </button>
+                <!-- Starred -->
+                <button class="tab-item" type="button" title="Помеченные">
+                  <span class="tab-icon">
+                    <span class="material-symbols-rounded">star</span>
+                  </span>
+                </button>
+                <!-- Activity -->
+                <button class="tab-item" type="button" title="Активность">
+                  <span class="tab-icon">
+                    <span class="material-symbols-rounded">notifications</span>
+                  </span>
+                </button>
+                <!-- Transfers -->
+                <button class="tab-item" type="button" title="Загрузки">
+                  <span class="tab-icon">
+                    <span class="material-symbols-rounded">sync_alt</span>
+                  </span>
+                </button>
+                <!-- Trash -->
+                <button class="tab-item" type="button" title="Корзина">
+                  <span class="tab-icon">
+                    <span class="material-symbols-rounded">delete</span>
+                  </span>
+                </button>
+              </nav>
+
+              <!-- bottom: theme + settings -->
+              <div class="sidebar-bottom">
+                <div class="theme-toggle" aria-hidden="true">
+                  <span class="theme-seg active"><span class="material-symbols-rounded">light_mode</span></span>
+                  <span class="theme-seg"><span class="material-symbols-rounded">dark_mode</span></span>
+                </div>
+                <button class="tab-item settings-btn" type="button" title="Настройки">
+                  <span class="tab-icon">
+                    <span class="material-symbols-rounded">settings</span>
+                  </span>
+                </button>
+              </div>
+            </aside>
+
+            <!-- main content area -->
+            <section class="content-area">
+              <!-- topbar: brand + search + upload -->
+              <header class="topbar">
+                <h2 class="brand" aria-label="Drive GO">
+                  <span class="brand-google" aria-hidden="true">
+                    <span class="brand-letter blue">D</span><span class="brand-letter red">r</span><span class="brand-letter yellow">i</span><span class="brand-letter blue">v</span><span class="brand-letter green">e</span><span class="brand-gap">&nbsp;</span><span class="brand-letter blue">G</span><span class="brand-letter red">O</span>
+                  </span>
+                </h2>
+
+                <div class="search-block">
+                  <div class="search-mock">
+                    <span class="material-symbols-rounded search-icon">search</span>
+                    <span class="search-placeholder">Поиск по файлам и папкам</span>
+                  </div>
+                  <button class="upload-btn" type="button" title="Загрузить">
+                    <span class="material-symbols-rounded">upload</span>
+                  </button>
+                </div>
+              </header>
+
+              <!-- drive-browser header: breadcrumb + view toggle + refresh -->
+              <div class="browser-header">
+                <div class="breadcrumb-row">
+                  <span class="breadcrumb-item active">Мой диск</span>
+                </div>
+                <div class="browser-actions">
+                  <div class="view-toggle" aria-hidden="true">
+                    <span class="vt-seg active"><span class="material-symbols-rounded">grid_view</span></span>
+                    <span class="vt-seg"><span class="material-symbols-rounded">view_list</span></span>
+                  </div>
+                  <button class="icon-btn" type="button" title="Обновить">
+                    <span class="material-symbols-rounded">refresh</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- filters: Type · Owner · Modified -->
+              <div class="filter-row" aria-hidden="true">
+                <span class="filter-pill">
+                  <span class="filter-label">Тип</span>
+                  <span class="material-symbols-rounded filter-arrow">expand_more</span>
+                </span>
+                <span class="filter-pill">
+                  <span class="filter-label">Владелец</span>
+                  <span class="material-symbols-rounded filter-arrow">expand_more</span>
+                </span>
+                <span class="filter-pill short">
+                  <span class="filter-label">Дата</span>
+                  <span class="material-symbols-rounded filter-arrow">expand_more</span>
+                </span>
+              </div>
+
+              <!-- skeleton content grid -->
+              <div class="skeleton-grid" aria-hidden="true">
+                <div class="tile-skeleton big"></div>
+                <div class="tile-skeleton"></div>
+                <div class="tile-skeleton"></div>
+                <div class="tile-skeleton"></div>
+                <div class="tile-skeleton"></div>
+                <div class="tile-skeleton"></div>
+              </div>
+            </section>
+
+          </div>
+        </article>
+
+        <!-- ───── 3D tile grid extending from panel ───── -->
+        <div class="tile-3d-layer" aria-hidden="true">
+          <!-- Row 1 -->
+          <div class="tile-3d h1">
+            <div class="tile-3d-head">
+              <svg class="tile-3d-icon" viewBox="0 0 16 16"><path fill="#1a73e8" d="M14.222 0H1.778C.8 0 0 .8 0 1.778v12.444C0 15.2.8 16 1.778 16h12.444C15.2 16 16 15.2 16 14.222V1.778C16 .8 15.2 0 14.222 0zm-1.769 5.333H3.556V3.556h8.897v1.777zm0 3.556H3.556V7.11h8.897V8.89zm-2.666 3.555H3.556v-1.777h6.23v1.777z"/></svg>
+              <span class="tile-3d-line" style="width:62%"></span>
+            </div>
+            <div class="tile-3d-body"></div>
+          </div>
+          <div class="tile-3d h1">
+            <div class="tile-3d-head">
+              <svg class="tile-3d-icon" viewBox="0 0 16 16"><path fill="#1e8e3e" d="M14.222 0H1.778C.8 0 .008.8.008 1.778L0 4.444v9.778C0 15.2.8 16 1.778 16h12.444C15.2 16 16 15.2 16 14.222V1.778C16 .8 15.2 0 14.222 0zm0 7.111h-7.11v7.111H5.332v-7.11H1.778V5.332h3.555V1.778h1.778v3.555h7.111v1.778z"/></svg>
+              <span class="tile-3d-line" style="width:48%"></span>
+            </div>
+            <div class="tile-3d-body"></div>
+          </div>
+          <div class="tile-3d h1">
+            <div class="tile-3d-head">
+              <svg class="tile-3d-icon" viewBox="0 0 24 24"><path fill="#fbbc04" d="M10,4H4C2.9,4,2.01,4.9,2.01,6L2,18c0,1.1,0.9,2,2,2h16c1.1,0,2-0.9,2-2V8c0-1.1-0.9-2-2-2h-8L10,4z"/></svg>
+              <span class="tile-3d-line" style="width:55%"></span>
+            </div>
+            <div class="tile-3d-body"></div>
+          </div>
+
+          <!-- Row 2 -->
+          <div class="tile-3d h2">
+            <div class="tile-3d-head">
+              <svg class="tile-3d-icon" viewBox="0 0 16 16"><path fill="#d93025" fill-rule="evenodd" clip-rule="evenodd" d="M1.778 0h12.444C15.2 0 16 .8 16 1.778v12.444C16 15.2 15.2 16 14.222 16H1.778C.8 16 0 15.2 0 14.222V1.778C0 .8.8 0 1.778 0zm2.666 7.556h-.888v-.89h.888v.89zm1.334 0c0 .737-.596 1.333-1.334 1.333h-.888v1.778H2.222V5.333h2.222c.738 0 1.334.596 1.334 1.334v.889zm6.666-.89h2.223V5.334H11.11v5.334h1.333V8.889h1.334V7.556h-1.334v-.89zm-2.222 2.667c0 .738-.595 1.334-1.333 1.334H6.667V5.333h2.222c.738 0 1.333.596 1.333 1.334v2.666zm-1.333 0H8V6.667h.889v2.666z"/></svg>
+              <span class="tile-3d-line" style="width:72%"></span>
+            </div>
+            <div class="tile-3d-body"></div>
+          </div>
+          <div class="tile-3d h2">
+            <div class="tile-3d-head">
+              <svg class="tile-3d-icon" viewBox="0 0 16 16"><path fill="#a142f4" d="M16 14.222V1.778C16 .796 15.204 0 14.222 0H1.778C.796 0 0 .796 0 1.778v12.444C0 15.204.796 16 1.778 16h12.444c.982 0 1.778-.796 1.778-1.778zM4.889 9.333l2.222 2.671L10.222 8l4 5.333H1.778l3.11-4z"/></svg>
+              <span class="tile-3d-line" style="width:58%"></span>
+            </div>
+            <div class="tile-3d-body"></div>
+          </div>
+          <div class="tile-3d h2">
+            <div class="tile-3d-head">
+              <svg class="tile-3d-icon" viewBox="0 0 16 16"><path fill="#1a73e8" d="M14.222 0H1.778C.8 0 0 .8 0 1.778v12.444C0 15.2.8 16 1.778 16h12.444C15.2 16 16 15.2 16 14.222V1.778C16 .8 15.2 0 14.222 0zm-1.769 5.333H3.556V3.556h8.897v1.777zm0 3.556H3.556V7.11h8.897V8.89zm-2.666 3.555H3.556v-1.777h6.23v1.777z"/></svg>
+              <span class="tile-3d-line" style="width:44%"></span>
+            </div>
+            <div class="tile-3d-body"></div>
+          </div>
+
+          <!-- Row 3 -->
+          <div class="tile-3d h3">
+            <div class="tile-3d-head">
+              <svg class="tile-3d-icon" viewBox="0 0 16 16"><path fill="#188038" d="M14.222 0H1.778C.796 0 0 .796 0 1.778v12.444C0 15.204.796 16 1.778 16h12.444c.982 0 1.778-.796 1.778-1.778V1.778C16 .796 15.204 0 14.222 0zm-2.489 12.444H9.956L8 9.067l-1.956 3.377H4.267L7.11 8 4.267 3.556h1.777L8 6.933l1.956-3.377h1.777L8.89 8l2.844 4.444z"/></svg>
+              <span class="tile-3d-line" style="width:66%"></span>
+            </div>
+            <div class="tile-3d-body"></div>
+          </div>
+          <div class="tile-3d h3">
+            <div class="tile-3d-head">
+              <svg class="tile-3d-icon" viewBox="0 0 16 16"><path fill="#f29900" d="M14.213 0H1.77C.79 0 0 .8 0 1.778v12.444C0 15.2.791 16 1.769 16h12.444c.978 0 1.778-.8 1.778-1.778V1.778C15.991.8 15.191 0 14.213 0zm0 11.556H1.77V4.444h12.444v7.112z"/></svg>
+              <span class="tile-3d-line" style="width:52%"></span>
+            </div>
+            <div class="tile-3d-body"></div>
+          </div>
+          <div class="tile-3d h3">
+            <div class="tile-3d-head">
+              <svg class="tile-3d-icon" viewBox="0 -2 16 16"><path fill="#d93025" d="M12.8 0l1.6 3.2H12L10.4 0H8.8l1.6 3.2H8L6.4 0H4.8l1.6 3.2H4L2.4 0h-.8C.72 0 .008.72.008 1.6L0 11.2c0 .88.72 1.6 1.6 1.6h12.8c.88 0 1.6-.72 1.6-1.6V0h-3.2z"/></svg>
+              <span class="tile-3d-line" style="width:40%"></span>
+            </div>
+            <div class="tile-3d-body"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
