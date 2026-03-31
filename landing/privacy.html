@@ -34,7 +34,7 @@
         <section class="legal-hero">
           <p class="section-label">Legal</p>
           <h1>Privacy Policy</h1>
-          <p class="legal-updated">Last updated: March 13, 2026</p>
+          <p class="legal-updated">Last updated: March 31, 2026</p>
           <div class="legal-nav">
             <a class="btn btn-ghost" href="./index.html">Back to home</a>
             <a class="btn btn-primary" href="mailto:app.drivego@gmail.com"
@@ -51,8 +51,52 @@
             the user's Google account and Google Drive data only when needed for
             the features the user chooses to use. Data that is not needed for a
             Google action stays stored locally in the user's browser on their
-            device.
+            device. Drive GO is designed so that the developer does not operate
+            a backend service that receives or stores the user's Google Drive
+            files, Google Drive metadata, or local extension state for the core
+            product workflow.
           </p>
+        </section>
+
+        <section class="legal-card">
+          <h2>How we protect sensitive data</h2>
+          <ul>
+            <li>
+              Data sent between the extension and Google services is transmitted
+              over HTTPS and TLS-protected connections.
+            </li>
+            <li>
+              Authentication uses Google OAuth and browser identity APIs so that
+              access tokens are requested only when needed for the relevant
+              feature.
+            </li>
+            <li>
+              Drive GO is designed to keep settings, transfer state, and other
+              local extension data on the user's device in browser-provided
+              storage instead of sending that data to developer-operated
+              servers.
+            </li>
+            <li>
+              Access to Google Drive data is limited to the extension features
+              the user chooses to use, such as browsing files, uploads,
+              activity, sharing, or file management actions initiated by the
+              user.
+            </li>
+            <li>
+              Drive GO does not use user Google Drive data for advertising,
+              profiling, or sale to third parties.
+            </li>
+            <li>
+              No third-party advertising trackers are included in the extension,
+              and no outside analytics services are used for the core extension
+              workflow.
+            </li>
+            <li>
+              When local data is no longer needed, the user can remove it by
+              clearing extension storage, removing queued items, revoking Google
+              access, or uninstalling the extension.
+            </li>
+          </ul>
         </section>
 
         <section class="legal-card">
@@ -117,7 +161,10 @@
               To show browser notifications and optional sounds for activity
               events when enabled by the user.
             </li>
-            <li>To keep the extension reliable and handle errors locally.</li>
+            <li>
+              To keep the extension reliable, resume eligible transfers, and
+              handle errors locally on the user's device.
+            </li>
           </ul>
         </section>
 
@@ -136,6 +183,11 @@
             <li>
               Settings, app state, and transfer data stay on the user's device
               unless the user starts an action that sends data to Google.
+            </li>
+            <li>
+              The extension is not designed to transfer Google Drive files or
+              extension state to developer-operated servers for storage,
+              analytics, or profiling.
             </li>
           </ul>
         </section>
@@ -161,6 +213,30 @@
               Data sent outside the browser is sent to Google services only when
               required to authenticate the user or perform the Google Drive
               action requested by the user.
+            </li>
+            <li>
+              The developer does not provide a general cloud storage backend for
+              extension data. Core settings and queue state are intended to stay
+              in browser-managed local storage on the user's device.
+            </li>
+          </ul>
+        </section>
+
+        <section class="legal-card">
+          <h2>Access controls and least privilege</h2>
+          <ul>
+            <li>
+              Drive GO requests Google permissions and browser permissions only
+              for features the user chooses to use.
+            </li>
+            <li>
+              Sensitive actions such as uploads, sharing changes, trash
+              operations, and activity access are performed only after the user
+              initiates the feature or enables the related option.
+            </li>
+            <li>
+              Google account access can be revoked by the user at any time from
+              their Google account permissions settings.
             </li>
           </ul>
         </section>
@@ -199,6 +275,24 @@
             app data that is not part of Google services stays only in the
             user's local browser storage.
           </p>
+        </section>
+
+        <section class="legal-card">
+          <h2>User controls and deletion</h2>
+          <ul>
+            <li>
+              The user can revoke Google OAuth access from their Google account
+              security settings.
+            </li>
+            <li>
+              The user can delete local extension data by clearing extension
+              storage or uninstalling the extension.
+            </li>
+            <li>
+              The user can remove transfer records or other locally stored state
+              from inside the extension where those controls are available.
+            </li>
+          </ul>
         </section>
 
         <section class="legal-card">
